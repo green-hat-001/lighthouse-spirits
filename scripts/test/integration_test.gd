@@ -7,6 +7,11 @@ extends Node3D
 ## Run with:
 ##   godot --headless --path . res://scenes/integration_test.tscn
 ##
+## After adding or renaming any script that declares a class_name, run an
+## editor pass FIRST or every reference to the new type fails to parse - the
+## global class cache is only rebuilt by the editor, not by a headless run:
+##   godot --headless --editor --quit --path .
+##
 ## Exits with code 0 on pass, 1 on failure, so it can be wired into CI.
 
 const SPIRIT_SCENE: PackedScene = preload("res://scenes/spirit.tscn")
