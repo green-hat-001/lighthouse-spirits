@@ -15,3 +15,8 @@ extends Resource
 
 @export_group("Affinity")
 @export var elemental_affinity: ElementalAffinity.Type = ElementalAffinity.Type.NONE
+
+@export_group("Availability")
+## Foraged from the start. Everything else is gated behind the lighthouse
+## upgrade that opens its foraging zone.
+@export var available_from_start: bool = false

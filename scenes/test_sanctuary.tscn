@@ -19,6 +19,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 6)
 [node name="DebugLabel" type="Label" parent="UI"]
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 420.0
-offset_bottom = 120.0
+offset_right = 480.0
+offset_bottom = 560.0
 text = "state: ARRIVING"

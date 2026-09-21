@@ -14,3 +14,8 @@ extends Resource
 @export var buoyancy_multiplier: float = 1.0
 @export var nourishment_flat_bonus: float = 0.0
 @export var calming_flat_bonus: float = 0.0
+
+@export_group("Availability")
+## Known from the start. Everything else is gated behind the lighthouse
+## upgrade that installs the equipment it needs.
+@export var available_from_start: bool = false

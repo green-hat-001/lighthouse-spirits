@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="LighthouseUpgrade" format=3]
+
+[ext_resource type="Script" path="res://resources/lighthouse_upgrade.gd" id="1_4esvj"]
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="2_3gv02"]
+[ext_resource type="Script" path="res://resources/preparation_technique.gd" id="3_4rn45"]
+
+[resource]
+script = ExtResource("1_4esvj")
+id = &"brewing_retort"
+display_name = "Brewing Retort"
+description = "Copper retort salvaged from the keeper's stores. Draws the bitterness out of a long simmer."
+light_cost = 12
+prerequisites = Array[StringName]([&"restored_burner"])
+calming_multiplier = 1.25

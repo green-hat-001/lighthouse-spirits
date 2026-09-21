@@ -11,3 +11,4 @@ calming_multiplier = 1.5
 buoyancy_multiplier = 1.0
 nourishment_flat_bonus = 0.0
 calming_flat_bonus = 5.0
+available_from_start = true

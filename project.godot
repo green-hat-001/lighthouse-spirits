@@ -17,6 +17,7 @@ run/main_scene="res://scenes/test_sanctuary.tscn"
 [autoload]
 
 SpiritEventBus="*res://autoload/SpiritEventBus.gd"
+LighthouseProgression="*res://autoload/LighthouseProgression.gd"
 
 [rendering]
 

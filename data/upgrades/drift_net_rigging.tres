@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="LighthouseUpgrade" format=3]
+
+[ext_resource type="Script" path="res://resources/lighthouse_upgrade.gd" id="1_ua6ns"]
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="2_52hjb"]
+[ext_resource type="Resource" path="res://data/ingredients/driftwood_ember_root.tres" id="3_oxfby"]
+[ext_resource type="Script" path="res://resources/preparation_technique.gd" id="4_la8cu"]
+
+[resource]
+script = ExtResource("1_ua6ns")
+id = &"drift_net_rigging"
+display_name = "Drift Net Rigging"
+description = "Re-rig the drift nets off the north rocks to catch what the deeper current carries in."
+light_cost = 15
+prerequisites = Array[StringName]([&"cliff_garden_terrace"])
+unlocked_ingredients = Array[ExtResource("2_52hjb")]([ExtResource("3_oxfby")])

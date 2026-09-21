@@ -11,3 +11,4 @@ base_nourishment = 25.0
 base_calming = 5.0
 base_buoyancy_delta = 0.15
 elemental_affinity = 3
+available_from_start = false
