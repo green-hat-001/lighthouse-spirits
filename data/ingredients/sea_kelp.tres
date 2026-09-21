@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Ingredient" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"sea_kelp"
+display_name = "Sea Kelp"
+tint_color = Color(0.2, 0.5, 0.3, 1)
+base_nourishment = 10.0
+base_calming = 25.0
+base_buoyancy_delta = 0.05
+elemental_affinity = 1

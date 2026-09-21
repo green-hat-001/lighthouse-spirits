@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="PreparationTechnique" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/preparation_technique.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"seasoned"
+display_name = "Seasoned"
+nourishment_multiplier = 1.0
+calming_multiplier = 1.2
+buoyancy_multiplier = 1.0
+nourishment_flat_bonus = 5.0
+calming_flat_bonus = 0.0

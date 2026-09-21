@@ -4,8 +4,6 @@ extends Resource
 ## Data definition for one Warawara "species". New varieties are authored
 ## as new .tres instances of this resource - no new code required.
 
-enum ElementalAffinity { NONE, TIDE, WIND, EMBER, STONE }
-
 @export var id: StringName = &""
 @export var display_name: String = ""
 @export var mesh_variant: PackedScene
@@ -33,4 +31,4 @@ enum ElementalAffinity { NONE, TIDE, WIND, EMBER, STONE }
 @export var luminescence_curve: Curve
 
 @export_group("Affinity")
-@export var elemental_affinity: ElementalAffinity = ElementalAffinity.NONE
+@export var elemental_affinity: ElementalAffinity.Type = ElementalAffinity.Type.NONE

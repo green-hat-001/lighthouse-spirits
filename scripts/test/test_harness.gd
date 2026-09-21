@@ -1,12 +1,18 @@
 extends Node3D
 
-## Manual verification harness for the Spirit FSM. Spawns one spirit and
-## lets you drive it through the full lifecycle by hand:
-##   F - simulate a feeding event (as the future Culinary module would send)
+## Manual verification harness for the Spirit FSM + Culinary Crafting
+## Matrix together. Spawns one spirit and lets you drive it through the
+## full lifecycle by hand:
+##   F - craft a simmered-kelp + raw-clam dish and serve it to the spirit
 ##   R - respawn a spirit once the current one has departed
 
 const SPIRIT_SCENE: PackedScene = preload("res://scenes/spirit.tscn")
 const TEST_ARCHETYPE: SpiritArchetype = preload("res://data/archetypes/example_spirit_basic.tres")
+
+const SEA_KELP: Ingredient = preload("res://data/ingredients/sea_kelp.tres")
+const TIDE_POOL_CLAM: Ingredient = preload("res://data/ingredients/tide_pool_clam.tres")
+const SIMMERED: PreparationTechnique = preload("res://data/techniques/simmered.tres")
+const RAW: PreparationTechnique = preload("res://data/techniques/raw.tres")
 
 const STATE_NAMES: Array[String] = [
 	"ARRIVING", "SEEKING", "WAITING", "FED", "ASCENDING", "DISTRESSED", "DEPARTED"
@@ -16,6 +22,7 @@ const STATE_NAMES: Array[String] = [
 @onready var _label: Label = $UI/DebugLabel
 
 var _spirit: SpiritController
+var _serving_station := DishServingStation.new()
 
 func _ready() -> void:
 	_spawn_spirit()
@@ -51,10 +58,10 @@ func _spawn_spirit() -> void:
 func _feed_active_spirit() -> void:
 	if not is_instance_valid(_spirit):
 		return
-	var result := FeedingResult.new()
-	result.nourishment = 40.0
-	result.calming = 40.0
-	SpiritEventBus.feed_spirit_requested.emit(_spirit.spirit_id, result)
+	var dish := CraftedDish.new()
+	dish.add_component(SEA_KELP, SIMMERED)
+	dish.add_component(TIDE_POOL_CLAM, RAW)
+	_serving_station.serve(dish, _spirit)
 
 func _on_spirit_state_changed(spirit_id: StringName, old_state: int, new_state: int) -> void:
 	print("[%s] %s -> %s" % [spirit_id, STATE_NAMES[old_state], STATE_NAMES[new_state]])

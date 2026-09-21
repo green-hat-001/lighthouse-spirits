@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Ingredient" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"driftwood_ember_root"
+display_name = "Driftwood Ember-Root"
+tint_color = Color(0.7, 0.35, 0.15, 1)
+base_nourishment = 25.0
+base_calming = 5.0
+base_buoyancy_delta = 0.15
+elemental_affinity = 3
