@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpiritArchetype" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/spirit_archetype.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"basic_warawara"
+display_name = "Drifting Warawara"
+tint_color = Color(1, 0.95, 0.7, 1)
+base_hunger = 75.0
+base_instability = 65.0
+base_weight = 1.0
+patience_seconds = 25.0
+settle_seconds = 1.5
+fed_feedback_seconds = 1.5
+ascension_seconds = 4.0
+recovery_window_seconds = 10.0
+despawn_seconds = 1.0
+ascension_hunger_threshold = 20.0
+ascension_instability_threshold = 20.0
+elemental_affinity = 1
