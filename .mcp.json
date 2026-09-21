@@ -4,7 +4,7 @@
       "command": "npx",
       "args": ["@coding-solo/godot-mcp"],
       "env": {
-        "GODOT_PATH": "/home/gal1le02620/Games/Godot/godot"
+        "GODOT_PATH": "/usr/bin/godot"
       }
     }
   }
