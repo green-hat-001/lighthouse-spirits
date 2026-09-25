@@ -28,6 +28,59 @@ Work is on branch **`kitchen-simulation`** (not merged to `main`), and everythin
 | Outdoor scene | Sky, sea and grass shaders, sun, fog, glow, cliff, lighthouse with glowing lamp, sea stacks; the user **likes the look** | Done |
 | First-person | `Caretaker` (WASD, mouse look, ledge guard, 3.2 m/s, no sliding), `KitchenViewMode` FSM, E to step in and Esc to step out, edge-peek at the counter, mouse always locked | Done; the user reported sliding, slow walking and no mouse lock, all fixed. **Not yet re-confirmed by the user** |
 
+## The plan, step by step
+
+A condensed copy of `docs/kitchen_plan.md`, which has the full pass/fail check for each step and the deviation notes. ✅ done and tested · 🟡 built, waiting on the user · ⬜ not started · ⛔ blocked on a user decision.
+
+**1. Food state model** ✅
+- 1.1 `FoodPiece` physical state ✅
+- 1.2 Ingredient physical data and `validate()` ✅
+- 1.3 Flavour axes and mass-weighted mixing ✅
+- 1.4 Cutting geometry: mass conserved, thin slices crumble, unsteadied perpendicular cuts damage pieces ✅
+
+**2. Heat and cooking** ✅ (simulation only)
+- 2.1 Gas stove: flame level to watts ✅
+- 2.2 Pot and medium: heating, heat loss, a cold batch dropping the oil's temperature ✅
+- 2.3 Heat into food: time grows with thickness² ✅
+- 2.4 Surface: evaporation, browning, char, oil uptake ✅
+- 2.5 Water: capped at 100°C, softening when overcooked ✅
+- 2.6 Fixed-step, frame-rate-independent simulation ✅
+
+**3. Equipment and transformations** ✅ (simulation only)
+- 3.1 `Transformation` resource with conservation checks ✅
+- 3.2 Oil press driven by crank work ✅
+- 3.3 Infusion (chilli oil) emerging with no rule of its own ✅
+- 3.4 Equipment gating on upgrades ✅ (additive; technique gating is removed in 4.6)
+
+**4. Perception and outcomes**
+- 4.1 Texture ✅
+- 4.2 Appearance (shader values) ✅
+- 4.3 Bite-sound layer selection ✅
+- 4.4 Dish fingerprint ✅
+- 4.5 Nourishment and ascension strength ✅
+- 4.6 Retire `CulinaryCraftingMatrix` and techniques, re-tune spirit pacing, give kelp/clam/herb/ember root physical data or retire them ⛔ needs the user's go-ahead
+
+**5. Falling, catching and the moon** ⛔
+- 5.1 Decisions (uncaught spirit, chance vs readable, catch style, moon vs kindled light) ⛔
+- 5.2 Spirit strength from `FeedingResult.ascension_strength` ⬜
+- 5.3 FSM: `FALLING` and `CATCHING` states, legality table, `STATE_NAMES` in both test scripts ⬜
+- 5.4 Moon progression module ⬜
+- 5.5 Moon visuals and model ⬜
+
+**6. The 3D kitchen**, built in three checkpoints
+- Checkpoint 1 🟡: scene, camera, pointer, interaction framework (6.1, 6.2), the mezzaluna board (6.3), food shader (6.7, first pass). Plus, beyond the plan: the outdoor setting ✅ and the first-person caretaker with step-in/out and edge-peek 🟡
+- Checkpoint 2 ⬜ **next**: stove knob (6.4); pot with pouring, pieces in and slotted-spoon lift-out (6.5); the frying loop on screen
+- Checkpoint 3 ⬜: oil press crank (6.6), food shader polish (6.7), taste test with bite captions and later audio (6.8)
+- 6.9 Scene–simulation bridge: views wrap sim objects and no scene script holds food logic. This is the rule for every checkpoint; the board already follows it.
+- The **cut-piece kit** (halves, planks, sticks, dice) models are deferred until the rule for matching a cut piece to a mesh is written. Cut pieces are boxes for now.
+
+**7. Dishes, naming and service** ⬜
+- 7.1 Plating onto a plate to make a `Dish` ⬜
+- 7.2 Naming a dish, stored by fingerprint ⬜
+- 7.3 Service menu ⛔ (recipes cooked to order, or cooked stock?)
+- 7.4 Serving through `DishServingStation` with equipment gating ⬜
+- 7.5 Persistence of named dishes ⬜
+
 ## Next up
 
 1. **Ask how the cutting and the walking feel.** The user hasn't reported on either since the fixes. Tune `walk_speed_mps` and `mouse_sensitivity` on the Caretaker if asked.
