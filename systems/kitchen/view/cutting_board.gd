@@ -89,8 +89,7 @@ func cut_stroke(start: Vector3, end: Vector3, steadied: bool) -> int:
 
 ## Tips a piece onto its side where it lies.
 func roll(view: FoodPieceView) -> void:
-	view.piece.roll()
-	view.refresh_shape()
+	view.rolled_about(view.piece.roll())
 	view.position = _clamped(view.position, view.footprint_m())
 
 func _add_view(piece: FoodPiece, local_position: Vector3) -> FoodPieceView:

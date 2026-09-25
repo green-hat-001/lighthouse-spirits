@@ -14,7 +14,7 @@ const ROCK_SECONDS: float = 0.12
 
 var _tween: Tween
 
-@onready var _blade_pivot: Node3D = $BladePivot
+@onready var _blade_pivot: Node3D = $Model/BladePivot
 
 func _ready() -> void:
 	rest()

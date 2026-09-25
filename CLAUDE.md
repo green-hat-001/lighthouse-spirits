@@ -22,7 +22,7 @@ The loop: shelter and observe → forage → prepare → serve and elevate → r
 
 ## Cooking model
 
-Cooking is a physical simulation that stays close to real gastronomy, played in a 3D kitchen seen from a fixed three-quarter view looking down at the counter, as if standing at it, panning left and right between stations.
+Cooking is a physical simulation that stays close to real gastronomy, played in an outdoor kitchen on the cliff top beside the lighthouse, seen from a fixed three-quarter view looking down at the counter, as if standing at it, panning left and right between stations.
 
 - **Cutting** uses a mezzaluna, chosen as an echo of the moon. The player drags it with the mouse to make precise cuts, and holds a button to steady the food so it doesn't fall apart while making the perpendicular cut.
 - **Heat is controlled directly.** The player sets the flame size and manages the temperature by hand. Nothing has a set recipe or time, including baking.
@@ -30,6 +30,8 @@ Cooking is a physical simulation that stays close to real gastronomy, played in 
 - **Dishes are emergent.** The player combines any ingredients, equipment and real techniques, then names the result and chooses whether to put it up for service. For example, they chop a potato, discover that the oil press turns sunflower seeds into oil, fry the potato into fries, and improve them with chilli oil.
 - **Bad food can still be served.** A poorly cooked or burnt dish is weaker and makes the spirit less likely to reach the moon. It is never thrown away as a failure.
 - **Starting equipment** is an oil press, a gas stove and a pot. Hired help or automation for repetitive prep may come later but is not part of the core.
+- **Oil is pressed by hand at first.** One crank turn presses 20g of seed, so a 200g shallow-fry of oil is about 29 turns. Automated presses arrive later as a lighthouse retrofit.
+- **The pantry is unlimited for now.** Baskets never run out until foraging exists.
 
 For the code, this means food is modelled as physical state that processes change over time: piece size and shape, moisture, core temperature, surface browning, fat, structure and flavour. Ingredient properties, equipment and ingredient-to-ingredient transformations (seeds to oil; oil and chilli to chilli oil) are authored as `.tres`. Finished dishes are never authored.
 
@@ -99,6 +101,9 @@ godot --path . res://scenes/kitchen/kitchen.tscn
 blender --background --factory-startup --python tools/blender/build_models.py [-- potato pot]
 blender --background --factory-startup --python tools/blender/validate_models.py
 blender --background --factory-startup --python tools/blender/preview_models.py -- <out_dir>
+# The outdoor setting (cliff top, lighthouse, sea stacks, grass) has its own
+# builder so it can never overwrite the kitchen kit. validate_models.py covers both.
+blender --background --factory-startup --python tools/blender/build_environment.py [-- lighthouse ...]
 
 # Manual play harness (main scene): F = serve a dish, U = buy cheapest retrofit,
 # R = spawn a new spirit after the current one departs
@@ -152,6 +157,8 @@ Spirit FSM ──SpiritEventBus.spirit_lifecycle_complete("ASCENDED")──> Lig
   - `FoodPerception` maps a piece's state to `FoodTexture`, `FoodAppearance` and `BiteSound`. `Dish` holds plated pieces and `LiquidPortion`s and has a `fingerprint()` (via `DishDescriber`). `DishNourishment` turns a `Dish` into a `FeedingResult`, including `ascension_strength`.
   - A `Transformation` in `data/transformations/` (loaded automatically) describes what one piece of equipment does to one bulk ingredient, e.g. pressing seeds into oil. `ManualProcessor` runs it from the player's work. Transformations are the only authored recipes, and they never describe a finished dish.
   - A piece's local Y axis is height, matching Godot.
+- **Kitchen scene** (`scenes/kitchen/`, scripts in `systems/kitchen/view/`) is the playable view layer. `KitchenPointer` raycasts mouse input into `Interactable` areas, and their owners (`CuttingBoard`, `IngredientSource`) turn it into simulation calls. `CameraRig` glides between `Marker3D` poses: the counter stations, plus a sea vista the scene opens on.
+- **World** (`scenes/world/coast.tscn`, `systems/world/coast.gd`) is the outdoor setting: a painted sky shader, the sea shader, sun, fog and glow, the cliff top, the lighthouse, sea stacks and a wind-blown grass field. Imported `.glb` models get the toon look from `tools/godot/toon_post_import.gd`, which is set as each model's import script.
 - `ElementalAffinity.Type` is the shared tag enum. Ingredients and archetypes both use it, so neither module depends on the other's scripts.
 
 ## Conventions

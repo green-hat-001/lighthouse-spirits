@@ -125,12 +125,13 @@ func clamp_surface_moisture() -> void:
 ## Tips the piece 90 degrees onto its side, rolling it like a log about its
 ## longer horizontal axis - how a cook lays a plank flat to cut it into
 ## sticks. Its cut history turns with it, so a cut that was vertical before
-## the roll is horizontal after it.
-func roll() -> void:
+## the roll is horizontal after it. Returns the axis it rolled about.
+func roll() -> int:
 	if size_mm.x >= size_mm.z:
 		_swap_axes(Vector3.AXIS_Y, Vector3.AXIS_Z)
-	else:
-		_swap_axes(Vector3.AXIS_X, Vector3.AXIS_Y)
+		return Vector3.AXIS_X
+	_swap_axes(Vector3.AXIS_X, Vector3.AXIS_Y)
+	return Vector3.AXIS_Z
 
 func _swap_axes(first: int, second: int) -> void:
 	var size := size_mm

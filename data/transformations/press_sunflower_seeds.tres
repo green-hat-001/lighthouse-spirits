@@ -14,4 +14,4 @@ equipment = ExtResource("2")
 input = ExtResource("3")
 outputs = Array[ExtResource("6")]([ExtResource("4"), ExtResource("5")])
 output_yields = Array[float]([0.35, 0.6])
-work_per_gram = 0.5
+work_per_gram = 0.05

@@ -105,7 +105,7 @@ Built beyond the entries below:
 ### Oil press
 - **Path:** `assets/models/equipment/oil_press.glb`
 - **Size:** a hand-cranked countertop screw press, about 0.35 m long, 0.15 m wide and 0.30 m tall.
-- **Data it must match:** `data/equipment/oil_press.tres` and `data/transformations/press_sunflower_seeds.tres`. Seeds go in, and each crank turn presses 2g of seed (0.5 turns per gram). Oil drips out of the spout and seed cake is pushed out of the end of the barrel.
+- **Data it must match:** `data/equipment/oil_press.tres` and `data/transformations/press_sunflower_seeds.tres`. Seeds go in, and each crank turn presses 20g of seed (0.05 turns per gram). Oil drips out of the spout and seed cake is pushed out of the end of the barrel.
 - **Parts:**
   - `frame`: cast-iron body, clamped or bolted to the counter.
   - `hopper`: an open funnel on top where seeds are poured in. Holds about 250g of seeds.
@@ -173,3 +173,30 @@ Section 4 needs no models. It defines what the food shader and bite audio will b
 
 - **Food material parameters** (for the cut-piece kit and whole ingredients): `browning`, `char`, `gloss`, `translucency`, `crumble`, each 0–1. Every food mesh needs its `flesh` and `skin` slots so the shader can brown and char them.
 - **Bite sounds (audio, not models):** five recorded layers, `crisp`, `crunch`, `soft`, `squelch` and `chew`. Each is a short (0.2–0.5 s) close-miked bite, mixed by weight and pitched from 0.85 to 1.25 in Godot. They go in `assets/audio/bite/`.
+
+## The outdoor setting (built)
+
+The first mockup of the outdoor kitchen on the cliff top. These are built by `tools/blender/build_environment.py`, not `build_models.py`, so rebuilding the setting never touches the kitchen kit, and they are validated with the rest. Blender X runs along the coast, Y out to sea (Godot −Z), Z up. The counter stands at the origin, the ground there is Z = 0 (Godot y = −0.9), and the sea surface is Z = −14.
+
+### Cliff top
+- **Path:** `assets/models/environment/cliff_top.glb`
+- **What it is:** 120 × 121 m of grassy cliff-top terrain with a rounded lip and a 14 m drop to the sea, about 3.6 m beyond the counter. A long headland runs out to sea on the left for the lighthouse. The kitchen stands on a level terrace.
+- **Material slots:** `grass`, `grass_dry` (drifts), `rock_light` and `rock_dark` (alternating 2.4 m strata on the cliff faces), `rock_wet` (at the waterline).
+- **Budget:** about 18,600 triangles. It's an open heightfield.
+
+### Lighthouse
+- **Path:** `assets/models/environment/lighthouse.glb`
+- **Size:** 14.7 m to the finial.
+- **Parts:** `lighthouse` holds the stone plinth, the white tower with a red band, the iron gallery and railing, the glazed lantern room with its red dome, a door facing inland, climbing windows, and the keeper's cottage with a slate roof and chimney. `lamp` is a separate mesh inside the lantern; the Godot `Coast` script makes it glow and gives it a warm light.
+- **Material slots:** `stone`, `white`, `red`, `iron`, `glass`, `roof`, `door`, `lamp`.
+- **Budget:** about 1,700 triangles.
+
+### Sea stack
+- **Path:** `assets/models/environment/sea_stack.glb`
+- **Size:** 22.6 m tall, with its origin at sea level (6 m of it below the surface) and a grassy cap. It's instanced at different scales and turns for the cove's stacks and rocks.
+- **Material slots:** `rock_light`, `rock_dark`, `grass`.
+
+### Grass field
+- **Path:** `assets/models/environment/grass_field.glb`
+- **What it is:** 2,600 tufts of five blades each, scattered on the cliff top in drifts from a fixed seed. They keep clear of the cliff edge, the cook's standing room and the lighthouse. Each vertex stores how far up its blade it is in its colour alpha, which the `coast_grass` wind shader uses to sway only the tips.
+- **Material slots:** `grass_blade` (replaced by the wind shader in Godot).

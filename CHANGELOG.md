@@ -2,6 +2,20 @@
 
 Completed work, newest first. Section numbers refer to `docs/kitchen_plan.md`.
 
+## The outdoor kitchen, first mockup
+
+- The kitchen now stands outdoors on the cliff top beside the lighthouse (`scenes/world/coast.tscn`, instanced into the kitchen):
+  - A painted sky shader with a warm horizon haze, a sun glow and slow two-tone cumulus.
+  - A sea shader with rolling swells, colour that deepens with distance, and foam where the sea meets the cliff and rocks.
+  - Late-afternoon sun with tight shadow cascades for the counter, depth fog that melts the sea into the horizon, glow and light SSAO.
+  - New Blender-built models: the cliff top and headland, the lighthouse with its keeper's cottage and a glowing lamp, three sea stacks, and 2,600 grass tufts that sway in the wind off the sea. They're built by `tools/blender/build_environment.py`, and all 20 models pass `validate_models.py`.
+- Swapped every greybox for the model kit. Whole potatoes and chillies on the board are their real models and turn with the piece when rolled. Baskets show their contents, and the mezzaluna, board and counter are the kit's.
+- Imported models get the cel look (toon diffuse and specular, a soft rim, capped metalness) from `tools/godot/toon_post_import.gd`.
+- The camera opens on a sea vista and settles onto the board. W/↑ looks out to sea again and S/↓ comes back. Each station is now a full camera pose.
+- The stove, pot, press, oil bottle, water jug, slotted spoon and a sunflower head are on the counter as set dressing; they don't work until checkpoints 2 and 3.
+- Decisions: oil is pressed by hand at 0.05 turns per gram (about 29 turns for a 200g shallow-fry), with automated presses to come as a retrofit. The pantry is unlimited until foraging exists.
+- Integration suite: 191 checks, including the camera look actions.
+
 ## Model kit: every model in `docs/models_needed.md`
 
 - Built all 16 models: potato, chilli, sunflower head, sunflower seed, seed cake, gas stove, pot, slotted spoon, water jug, oil bottle, oil press, oil catch cup, mezzaluna, cutting board, pantry basket and counter. Each has an editable `models/<name>.blend` (Godot skips the folder via `.gdignore`) and a `.glb` export at the path the doc gives.

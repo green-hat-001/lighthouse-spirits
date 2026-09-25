@@ -55,6 +55,18 @@ SPEC = {
                {"basket": "MESH"}, {"wicker"}),
     "counter": ("assets/models/kitchen/counter.glb", (300, 800), (1.6, 0.6, 0.9), 0.01, "top",
                 {"counter": "MESH"}, {"top", "base"}),
+    # The outdoor setting (tools/blender/build_environment.py). The terrain and
+    # grass are positioned around the kitchen origin, so their origin is not
+    # checked.
+    "cliff_top": ("assets/models/environment/cliff_top.glb", (15000, 20000), (120.0, 122.0, None), 0.02, "none",
+                  {"cliff_top": "MESH"}, {"grass", "grass_dry", "rock_light", "rock_dark", "rock_wet"}),
+    "lighthouse": ("assets/models/environment/lighthouse.glb", (1200, 2500), (None, None, 14.68), 0.02, "none",
+                   {"lighthouse": "MESH", "lamp": "MESH"},
+                   {"stone", "white", "red", "iron", "glass", "roof", "door", "lamp"}),
+    "sea_stack": ("assets/models/environment/sea_stack.glb", (200, 600), (None, None, 22.6), 0.05, "none",
+                  {"sea_stack": "MESH"}, {"rock_light", "rock_dark", "grass"}),
+    "grass_field": ("assets/models/environment/grass_field.glb", (35000, 40000), (None, None, None), 0.0, "none",
+                    {"grass_field": "MESH"}, {"grass_blade"}),
 }
 
 # Parts whose origin is a pivot: name -> expected world location.
@@ -64,7 +76,7 @@ PIVOTS = {
     "mezzaluna": {"BladePivot": (0, 0, 0)},
 }
 # Flat single-face discs are the only open meshes allowed.
-OPEN_MESHES = {"liquid_surface", "oil_surface"}
+OPEN_MESHES = {"liquid_surface", "oil_surface", "cliff_top", "grass_field"}
 
 failures = []
 

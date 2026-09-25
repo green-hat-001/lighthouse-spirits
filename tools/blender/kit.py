@@ -370,8 +370,11 @@ def _frame_viewports():
                     r3d.view_distance = max((hi - lo).length * 1.6, 0.03)
 
 
-def save(slug, glb_rel):
-    """Write models/<slug>.blend and export <glb_rel> as binary glTF."""
+def save(slug, glb_rel, vertex_colors=False):
+    """Write models/<slug>.blend and export <glb_rel> as binary glTF.
+
+    With `vertex_colors`, the active colour attribute is exported even though
+    no material reads it (a Godot shader does)."""
     for obj in bpy.context.scene.objects:
         assert tuple(obj.rotation_euler) == (0.0, 0.0, 0.0), obj.name
         assert tuple(obj.scale) == (1.0, 1.0, 1.0), obj.name
@@ -389,5 +392,6 @@ def save(slug, glb_rel):
         export_extras=True,
         export_materials="EXPORT",
         use_selection=False,
+        **({"export_vertex_color": "ACTIVE"} if vertex_colors else {}),
     )
     print(f"SAVED {slug}: {os.path.relpath(blend_path, ROOT)} + {glb_rel}")

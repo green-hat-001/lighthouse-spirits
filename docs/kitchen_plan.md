@@ -84,6 +84,8 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 
 ## 6. The 3D kitchen
 
+*Outdoor mockup (between checkpoints 1 and 2):* the greybox is replaced by the model kit, and the kitchen stands in its outdoor setting on the cliff top: sky, sea, cliff, lighthouse, sea stacks and grass. The camera opens on a sea vista (W/↑ to look out again, S/↓ to come back). The stove, pot, press, bottle, jug, spoon and sunflower are set dressing until checkpoints 2 and 3 make them work.
+
 *Status: checkpoint 1 of 3 built and awaiting the user's play-test: the kitchen scene (`scenes/kitchen/kitchen.tscn`), three-quarter camera rig, pointer and interaction framework, and the cutting board with the mezzaluna, steadying and rolling. Checkpoint 2 (stove, pot, frying) waits on the oil-supply decision below. Checkpoint 3 is the food shader polish, taste captions and the press.*
 
 *Changed from the first draft:*
@@ -91,7 +93,8 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 - One stroke cuts every piece it crosses, so laid-out planks can be cut into sticks in one pass.
 - Pieces render as axis-aligned boxes with the food cel shader. Unsteadied cuts show as pieces sliding apart, never rotating, so the view always matches the simulation.
 - The camera keeps its horizontal field of view, so the counter stays framed in tiled or portrait windows.
-- **Open decision before checkpoint 2:** frying needs a lot of oil. At the current press data, 200g of oil is about 290 crank turns. Options: a starting bottle, fewer turns per gram, or shallow frying in a pan. Also: are pantry potatoes and seeds unlimited for now?
+- **Decided:** oil is pressed by hand, at 0.05 turns per gram (about 29 turns for 200g of oil). Automated presses come later as a lighthouse retrofit. The pantry is unlimited until foraging exists.
+- The kitchen is outdoors, on the cliff top beside the lighthouse.
 
 - **6.1 Kitchen scene and camera** 🎨: counter, stove, pot, board. Greybox meshes until the kit exists.
 - **6.2 Interaction framework** ⚠: mouse raycast picking, grab and place, hold and drag inputs.

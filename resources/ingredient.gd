@@ -19,6 +19,9 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 @export var tint_color: Color = Color.WHITE
 ## Colour of the inside, shown on fresh cut faces.
 @export var flesh_color: Color = Color.WHITE
+## The whole, uncut item as it appears in the kitchen: a .glb from the model
+## kit, origin at the centre of its base. Cut pieces are drawn separately.
+@export var whole_model: PackedScene
 
 @export_group("Base Restorative Properties")
 @export var base_nourishment: float = 0.0

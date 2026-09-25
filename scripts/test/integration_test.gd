@@ -701,7 +701,7 @@ func _test_mezzaluna_gesture() -> void:
 		MezzalunaGesture.resolve(footprint_min, footprint_size, Vector2(140.0, 230.0), Vector2(142.0, 230.0)) == null, true)
 
 func _test_kitchen_input_actions() -> void:
-	for action in [&"kitchen_steady", &"camera_pan_left", &"camera_pan_right"]:
+	for action in [&"kitchen_steady", &"camera_pan_left", &"camera_pan_right", &"camera_look_out", &"camera_look_back"]:
 		_expect_equal("input action %s is defined" % action, InputMap.has_action(action) and not InputMap.action_get_events(action).is_empty(), true)
 
 func _test_kitchen_board_wiring() -> void:
