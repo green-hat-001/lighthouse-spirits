@@ -7,7 +7,7 @@ extends RefCounted
 ## Golden-to-deep-brown tint over the ingredient's own colour.
 var browning: float = 0.0
 ## Blackened patches.
-var char: float = 0.0
+var charring: float = 0.0
 ## Shine from oil or surface water.
 var gloss: float = 0.0
 ## Cooked starch and flesh turning translucent.

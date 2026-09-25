@@ -2,6 +2,17 @@
 
 Completed work, newest first. Section numbers refer to `docs/kitchen_plan.md`.
 
+## Kitchen Section 6, checkpoint 1: the cutting board (awaiting play-test)
+
+- Added the kitchen scene, `scenes/kitchen/kitchen.tscn`: a counter, a cutting board, potato and chilli baskets, and a fixed three-quarter camera that glides between stations with A/D or the arrow keys.
+- Added `Interactable` and `KitchenPointer`: a two-state (idle or holding) mouse-hand that raycasts into the kitchen and reports presses, drags and releases to whatever owns the object.
+- Added the cutting board. Click a basket to put a whole item on the board. Drag across the bare board through food to cut it with the mezzaluna, which follows the stroke and rocks through the cut. Hold Space or Shift to steady the food, drag a piece to move it, and right-click a piece to roll it onto its side.
+- Added `FoodPiece.roll()`, which turns a piece's cut history with it, and `MezzalunaGesture`, which snaps a stroke to a cut axis and offset.
+- Added a cel-shaded food shader driven by the simulation: skin vs flesh, glassy cooked flesh, golden-to-brown browning, char patches, oil gloss and crumbling edges.
+- Added `kitchen_steady` and the camera input actions, and set a 1280 × 720 default window.
+- Integration suite: 169 → 189 checks, including the real kitchen scene: basket to board, a stroke cutting a potato, rolling, and refusing items once the board is full.
+- Mutation check: rolling without turning the cut history fails two checks.
+
 ## Kitchen Section 4.1–4.5: perception and outcomes
 
 - Added `FoodPerception` with `FoodTexture`, `FoodAppearance` and `BiteSound`: pure mappings from a piece's physical state to what the player perceives.

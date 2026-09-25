@@ -84,6 +84,15 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 
 ## 6. The 3D kitchen
 
+*Status: checkpoint 1 of 3 built and awaiting the user's play-test: the kitchen scene (`scenes/kitchen/kitchen.tscn`), three-quarter camera rig, pointer and interaction framework, and the cutting board with the mezzaluna, steadying and rolling. Checkpoint 2 (stove, pot, frying) waits on the oil-supply decision below. Checkpoint 3 is the food shader polish, taste captions and the press.*
+
+*Changed from the first draft:*
+- A cut is a drag across the bare board through the food. Pressing on a piece picks it up to move it, and right-clicking a piece rolls it onto its side. `kitchen_steady` (Space or Shift) holds the food during a cut.
+- One stroke cuts every piece it crosses, so laid-out planks can be cut into sticks in one pass.
+- Pieces render as axis-aligned boxes with the food cel shader. Unsteadied cuts show as pieces sliding apart, never rotating, so the view always matches the simulation.
+- The camera keeps its horizontal field of view, so the counter stays framed in tiled or portrait windows.
+- **Open decision before checkpoint 2:** frying needs a lot of oil. At the current press data, 200g of oil is about 290 crank turns. Options: a starting bottle, fewer turns per gram, or shallow frying in a pan. Also: are pantry potatoes and seeds unlimited for now?
+
 - **6.1 Kitchen scene and camera** 🎨: counter, stove, pot, board. Greybox meshes until the kit exists.
 - **6.2 Interaction framework** ⚠: mouse raycast picking, grab and place, hold and drag inputs.
 - **6.3 Mezzaluna** 🎨⚠: a drag defines the cut, snapped to the piece's axes, with a rocking animation. A hold input steadies the food. Pieces render as the nearest match from a cut-piece kit (halves, planks, sticks, dice).

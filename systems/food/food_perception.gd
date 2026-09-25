@@ -39,7 +39,7 @@ static func texture_of(piece: FoodPiece) -> FoodTexture:
 static func appearance_of(piece: FoodPiece) -> FoodAppearance:
 	var appearance := FoodAppearance.new()
 	appearance.browning = piece.surface_browning
-	appearance.char = piece.surface_char
+	appearance.charring = piece.surface_char
 	appearance.gloss = clampf(
 		piece.oil_fraction() / GREASY_OIL_FRACTION + (1.0 - piece.surface_dryness()) * WET_GLOSS_WEIGHT,
 		0.0, 1.0

@@ -1,0 +1,75 @@
+class_name KitchenPointer
+extends Node
+
+## The player's hand. A flat two-state machine:
+##
+##   IDLE --left press on an Interactable--> HOLDING
+##   HOLDING --mouse motion--> HOLDING (reports a drag)
+##   HOLDING --left release--> IDLE
+##
+## A right press on an Interactable is a one-shot action and never leaves
+## IDLE. Only one Interactable is held at a time, so a drag can never be
+## split between two owners.
+
+enum State { IDLE, HOLDING }
+
+const RAY_LENGTH_M: float = 5.0
+
+@export var camera: Camera3D
+
+var state: State = State.IDLE
+var _held: Interactable
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var button := event as InputEventMouseButton
+		if button.button_index == MOUSE_BUTTON_LEFT:
+			if button.pressed and state == State.IDLE:
+				_press(button.position)
+			elif not button.pressed and state == State.HOLDING:
+				_release(button.position)
+		elif button.button_index == MOUSE_BUTTON_RIGHT and button.pressed and state == State.IDLE:
+			var hit := _pick(button.position)
+			if hit.interactable:
+				hit.interactable.secondary_pressed.emit(hit.point)
+	elif event is InputEventMouseMotion and state == State.HOLDING:
+		var point: Variant = _project(event.position, _held.drag_plane)
+		if point != null:
+			_held.dragged.emit(point)
+
+func _press(screen_position: Vector2) -> void:
+	var hit := _pick(screen_position)
+	if hit.interactable == null:
+		return
+	state = State.HOLDING
+	_held = hit.interactable
+	_held.pressed.emit(hit.point)
+
+func _release(screen_position: Vector2) -> void:
+	var held := _held
+	state = State.IDLE
+	_held = null
+	if not is_instance_valid(held):
+		return
+	var point: Variant = _project(screen_position, held.drag_plane)
+	held.released.emit(point if point != null else held.global_position)
+
+func _pick(screen_position: Vector2) -> PointerHit:
+	var hit := PointerHit.new()
+	var origin := camera.project_ray_origin(screen_position)
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + camera.project_ray_normal(screen_position) * RAY_LENGTH_M)
+	query.collide_with_areas = true
+	query.collide_with_bodies = false
+	var result := camera.get_world_3d().direct_space_state.intersect_ray(query)
+	if result.is_empty():
+		return hit
+	hit.interactable = result.collider as Interactable
+	hit.point = result.position
+	return hit
+
+func _project(screen_position: Vector2, plane: Plane) -> Variant:
+	return plane.intersects_ray(camera.project_ray_origin(screen_position), camera.project_ray_normal(screen_position))
+
+class PointerHit:
+	var interactable: Interactable
+	var point: Vector3

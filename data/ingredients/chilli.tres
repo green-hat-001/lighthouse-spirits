@@ -15,6 +15,7 @@ script = ExtResource("1")
 id = &"chilli"
 display_name = "Chilli"
 tint_color = Color(0.8, 0.12, 0.08, 1)
+flesh_color = Color(0.92, 0.35, 0.22, 1)
 elemental_affinity = 3
 physical_form = 0
 whole_size_mm = Vector3(70, 18, 18)

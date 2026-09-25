@@ -22,7 +22,7 @@ The loop: shelter and observe → forage → prepare → serve and elevate → r
 
 ## Cooking model
 
-Cooking is a physical simulation that stays close to real gastronomy, played in a 3D kitchen.
+Cooking is a physical simulation that stays close to real gastronomy, played in a 3D kitchen seen from a fixed three-quarter view looking down at the counter, as if standing at it, panning left and right between stations.
 
 - **Cutting** uses a mezzaluna, chosen as an echo of the moon. The player drags it with the mouse to make precise cuts, and holds a button to steady the food so it doesn't fall apart while making the perpendicular cut.
 - **Heat is controlled directly.** The player sets the flame size and manages the temperature by hand. Nothing has a set recipe or time, including baking.
@@ -87,6 +87,10 @@ godot --headless --path . res://scenes/integration_test.tscn
 # do not rebuild the global class cache, so without this every reference to the
 # new type fails to parse.
 godot --headless --editor --quit --path .
+
+# The kitchen (work in progress): click a basket, drag across the board to
+# cut, hold Space to steady, right-click to roll a piece, A/D to pan.
+godot --path . res://scenes/kitchen/kitchen.tscn
 
 # Manual play harness (main scene): F = serve a dish, U = buy cheapest retrofit,
 # R = spawn a new spirit after the current one departs

@@ -13,6 +13,10 @@ godot --headless --path . res://scenes/integration_test.tscn
 # Rebuild the global class cache after adding or renaming a class_name script.
 godot --headless --editor --quit --path .
 
+# The kitchen (work in progress): click a basket, drag across the board to
+# cut, hold Space to steady, right-click to roll a piece, A/D to pan.
+godot --path . res://scenes/kitchen/kitchen.tscn
+
 # Manual play harness: F serves a dish, U buys the cheapest retrofit,
 # R calls in a new spirit once the current one has left.
 godot --path .

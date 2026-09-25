@@ -122,6 +122,28 @@ func clamp_surface_moisture() -> void:
 		return
 	surface_moisture = clampf(surface_moisture, 0.0, minf(water_g / shell_mass, 1.0))
 
+## Tips the piece 90 degrees onto its side, rolling it like a log about its
+## longer horizontal axis - how a cook lays a plank flat to cut it into
+## sticks. Its cut history turns with it, so a cut that was vertical before
+## the roll is horizontal after it.
+func roll() -> void:
+	if size_mm.x >= size_mm.z:
+		_swap_axes(Vector3.AXIS_Y, Vector3.AXIS_Z)
+	else:
+		_swap_axes(Vector3.AXIS_X, Vector3.AXIS_Y)
+
+func _swap_axes(first: int, second: int) -> void:
+	var size := size_mm
+	var first_length: float = size[first]
+	size[first] = size[second]
+	size[second] = first_length
+	size_mm = size
+	for index in cut_axes.size():
+		if cut_axes[index] == first:
+			cut_axes[index] = second
+		elif cut_axes[index] == second:
+			cut_axes[index] = first
+
 ## Independent deep copy: the clone's flavour and cut history can change
 ## without touching this piece.
 func clone() -> FoodPiece:

@@ -15,7 +15,10 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 
 @export var id: StringName = &""
 @export var display_name: String = ""
+## Colour of the outside - skin, peel, shell.
 @export var tint_color: Color = Color.WHITE
+## Colour of the inside, shown on fresh cut faces.
+@export var flesh_color: Color = Color.WHITE
 
 @export_group("Base Restorative Properties")
 @export var base_nourishment: float = 0.0

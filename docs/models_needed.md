@@ -120,6 +120,42 @@ Every model the finished kitchen sections need, specific enough to build without
 - **Budget:** under 150 triangles.
 - **Material slots:** `cake` (muted brown).
 
+## From Section 6, checkpoint 1: the cutting board
+
+These replace greybox shapes in `scenes/kitchen/`. Keep the node names and pivots listed, because the scripts look them up by name.
+
+### Mezzaluna
+- **Path:** `assets/models/tools/mezzaluna.glb`
+- **Size:** blade about 0.17 m from tip to tip and 0.05 m deep at the centre, 2.5 mm thick. Two upright handles, 0.07 m tall, rising from each end.
+- **Shape:** a crescent blade curving down to its cutting edge (the curve is what lets it rock), with a wooden handle at each tip. It echoes the moon; lean into the crescent silhouette.
+- **Parts:** `Blade`, `HandleLeft`, `HandleRight`, all under a `BladePivot` object whose origin is the **centre of the cutting edge, where it touches the board**. The blade rocks about the axis through that point, perpendicular to the blade's face.
+- **Axes:** blade length along Blender X, blade face in the XZ plane.
+- **Budget:** 400–800 triangles.
+- **Material slots:** `steel` (bright, slightly blue), `wood` (handles).
+
+### Cutting board
+- **Path:** `assets/models/tools/cutting_board.glb`
+- **Size:** 0.40 × 0.28 m, 0.02 m thick. The scripts treat exactly this area as the cutting surface.
+- **Shape:** a thick end-grain or plank board, slightly worn, with softened edges.
+- **Origin:** **centre of the top surface** (not the base), because pieces rest at height 0 in the board's space.
+- **Budget:** 200–400 triangles.
+- **Material slots:** `wood`.
+
+### Pantry basket
+- **Path:** `assets/models/pantry/basket.glb`
+- **Size:** about 0.14 m across and 0.06 m tall.
+- **Shape:** a shallow woven basket. One mesh is reused for every ingredient; the contents and label change per instance.
+- **Origin:** centre of the base.
+- **Budget:** 400–800 triangles.
+- **Material slots:** `wicker`.
+
+### Counter
+- **Path:** `assets/models/kitchen/counter.glb`
+- **Size:** 1.6 m long, 0.6 m deep, 0.9 m tall, with the top surface at height 0 in the scene (origin at the centre of the top surface).
+- **Shape:** a sturdy lighthouse-kitchen counter, with a scrubbed wooden or slate top on a painted base.
+- **Budget:** 300–800 triangles.
+- **Material slots:** `top`, `base`.
+
 ## From Section 4: perception and outcomes
 
 Section 4 needs no models. It defines what the food shader and bite audio will be driven by:

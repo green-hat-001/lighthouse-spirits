@@ -104,6 +104,10 @@ func _ready() -> void:
 	_test_bite_sounds()
 	_test_dish_fingerprints()
 	_test_dish_nourishment()
+	_test_rolling_a_piece()
+	_test_mezzaluna_gesture()
+	_test_kitchen_input_actions()
+	_test_kitchen_board_wiring()
 	_test_progression_economy()
 	_test_progression_unlocks()
 	_test_progression_persistence()
@@ -588,7 +592,7 @@ func _test_appearance_reads_physical_state() -> void:
 	var burnt := FoodPerception.appearance_of(_fry(220.0, 420.0))
 	_expect_equal("frying browns food visibly", cooked.browning > raw.browning + 0.3, true)
 	_expect_equal("cooked flesh turns translucent", cooked.translucency > raw.translucency + 0.5, true)
-	_expect_equal("burnt food shows char", burnt.char > cooked.char + 0.1, true)
+	_expect_equal("burnt food shows char", burnt.charring > cooked.charring + 0.1, true)
 	_expect_equal("fried food glistens", cooked.gloss > 0.3, true)
 
 func _test_bite_sounds() -> void:
@@ -653,6 +657,79 @@ func _test_dish_nourishment() -> void:
 	var nothing := DishNourishment.feeding_result_of(Dish.new())
 	_expect_near("an empty plate feeds nothing", nothing.nourishment, 0.0)
 	_expect_near("legacy feeding results carry full strength", FeedingResult.new().ascension_strength, 1.0)
+
+# --- Kitchen scene checks -------------------------------------------------------
+
+func _test_rolling_a_piece() -> void:
+	var whole := FoodPiece.from_ingredient(_make_test_ingredient(), AMBIENT_TEMP_C)
+	var plank: FoodPiece = FoodCutting.cut(whole, Vector3.AXIS_Z, 10.0, false)[0]
+	var mass_before := plank.mass_g()
+	plank.roll()
+	_expect_equal("rolling a standing plank lays it flat", plank.size_mm.is_equal_approx(Vector3(80.0, 10.0, 40.0)), true)
+	_expect_near("rolling doesn't change mass", plank.mass_g(), mass_before)
+	_expect_equal("a rolled plank's cut turns with it", plank.cut_axes, [Vector3.AXIS_Y] as Array[int])
+
+	# The fries flow: planks cut along Z, laid flat, cut along Z again. The
+	# second pass crosses the first, so it needs the food held steady.
+	var sticks := FoodCutting.cut(plank, Vector3.AXIS_Z, 10.0, false)
+	_expect_equal("cutting a laid-flat plank into sticks needs steadying", sticks[0].integrity < 1.0, true)
+
+	var long_side := FoodPiece.from_ingredient(_make_test_ingredient(), AMBIENT_TEMP_C)
+	long_side.size_mm = Vector3(20.0, 30.0, 70.0)
+	long_side.roll()
+	_expect_equal("a piece rolls about its longer horizontal axis", long_side.size_mm.is_equal_approx(Vector3(30.0, 20.0, 70.0)), true)
+
+func _test_mezzaluna_gesture() -> void:
+	var footprint_min := Vector2(100.0, 200.0)
+	var footprint_size := Vector2(80.0, 60.0)
+	var across := MezzalunaGesture.resolve(footprint_min, footprint_size, Vector2(80.0, 230.0), Vector2(200.0, 230.0))
+	_expect_equal("a stroke along X cuts across Z", across.axis, Vector3.AXIS_Z)
+	_expect_near("the cut lands where the stroke crosses", across.offset_mm, 30.0)
+
+	var down := MezzalunaGesture.resolve(footprint_min, footprint_size, Vector2(125.0, 180.0), Vector2(125.0, 280.0))
+	_expect_equal("a stroke along Z cuts across X", down.axis, Vector3.AXIS_X)
+	_expect_near("its offset is measured from the piece's near face", down.offset_mm, 25.0)
+
+	var slanted := MezzalunaGesture.resolve(footprint_min, footprint_size, Vector2(80.0, 220.0), Vector2(200.0, 240.0))
+	_expect_near("a slanted stroke cuts where it passes the piece's centre", slanted.offset_mm, 30.0)
+
+	_expect_equal("a stroke beside the piece cuts nothing",
+		MezzalunaGesture.resolve(footprint_min, footprint_size, Vector2(80.0, 300.0), Vector2(200.0, 300.0)) == null, true)
+	_expect_equal("a stroke that barely enters the piece cuts nothing",
+		MezzalunaGesture.resolve(footprint_min, footprint_size, Vector2(60.0, 230.0), Vector2(120.0, 230.0)) == null, true)
+	_expect_equal("a tiny slip of the hand cuts nothing",
+		MezzalunaGesture.resolve(footprint_min, footprint_size, Vector2(140.0, 230.0), Vector2(142.0, 230.0)) == null, true)
+
+func _test_kitchen_input_actions() -> void:
+	for action in [&"kitchen_steady", &"camera_pan_left", &"camera_pan_right"]:
+		_expect_equal("input action %s is defined" % action, InputMap.has_action(action) and not InputMap.action_get_events(action).is_empty(), true)
+
+func _test_kitchen_board_wiring() -> void:
+	var kitchen: Kitchen = load("res://scenes/kitchen/kitchen.tscn").instantiate()
+	add_child(kitchen)
+	var board := kitchen.board
+	var potato: Ingredient = KITCHEN_INGREDIENTS[0]
+	var view := board.add_whole(potato)
+	_expect_equal("a potato from the basket lands on the board", view != null and board.views().size() == 1, true)
+
+	var piece_min := view.position
+	var footprint := view.footprint_m()
+	var across_middle_z := piece_min.z + footprint.y * 0.5
+	var cuts := board.cut_stroke(
+		Vector3(piece_min.x - 0.02, 0.0, across_middle_z), Vector3(piece_min.x + footprint.x + 0.02, 0.0, across_middle_z), false
+	)
+	_expect_equal("a stroke across the potato cuts it in two", cuts == 1 and board.views().size() == 2, true)
+
+	var half: FoodPieceView = board.views()[0]
+	var height_before := half.piece.size_mm.y
+	board.roll(half)
+	_expect_equal("rolling a piece on the board turns it", not is_equal_approx(half.piece.size_mm.y, height_before), true)
+
+	var many := 0
+	while board.add_whole(potato) != null and many < 50:
+		many += 1
+	_expect_equal("the board refuses more potatoes once it is full", many < 50, true)
+	kitchen.queue_free()
 
 ## A 10mm fry of the test ingredient, held in oil at the given temperature.
 func _fry(temp_c: float, seconds: float) -> FoodPiece:
