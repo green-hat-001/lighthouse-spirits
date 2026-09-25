@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CookingVessel" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/cooking_vessel.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"pot"
+display_name = "Pot"
+available_from_start = true
+mass_g = 1500.0
+specific_heat_j_per_g_k = 0.5
+heat_loss_w_per_k = 4.0
+capacity_ml = 3000.0
+dry_contact_w_per_m2_k = 400.0

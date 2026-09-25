@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="KitchenEquipment" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/kitchen_equipment.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"oil_press"
+display_name = "Oil Press"
+available_from_start = true

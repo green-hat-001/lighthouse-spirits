@@ -1,14 +1,9 @@
-[gd_resource type="Resource" script_class="PreparationTechnique" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PreparationTechnique" format=3 uid="uid://jllmwavj17ch"]
 
-[ext_resource type="Script" path="res://resources/preparation_technique.gd" id="1"]
+[ext_resource type="Script" uid="uid://54nxscoptd0j" path="res://resources/preparation_technique.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
 id = &"raw"
 display_name = "Raw"
-nourishment_multiplier = 1.0
-calming_multiplier = 1.0
-buoyancy_multiplier = 1.0
-nourishment_flat_bonus = 0.0
-calming_flat_bonus = 0.0
 available_from_start = true

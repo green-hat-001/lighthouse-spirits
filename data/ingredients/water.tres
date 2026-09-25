@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Ingredient" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="1"]
+[ext_resource type="Script" path="res://resources/flavour_profile.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_flavour"]
+script = ExtResource("2")
+
+[resource]
+script = ExtResource("1")
+id = &"water"
+display_name = "Water"
+tint_color = Color(0.7, 0.82, 0.9, 1)
+elemental_affinity = 1
+physical_form = 2
+density_g_per_cm3 = 1.0
+water_fraction = 1.0
+specific_heat_j_per_g_k = 4.18
+thermal_conductivity_w_per_m_k = 0.6
+boiling_point_c = 100.0
+latent_heat_j_per_g = 2257.0
+medium_heat_transfer_w_per_m2_k = 600.0
+flavour = SubResource("Resource_flavour")
+available_from_start = true

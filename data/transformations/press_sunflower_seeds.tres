@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Transformation" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://resources/transformation.gd" id="1"]
+[ext_resource type="Resource" path="res://data/equipment/oil_press.tres" id="2"]
+[ext_resource type="Resource" path="res://data/ingredients/sunflower_seeds.tres" id="3"]
+[ext_resource type="Resource" path="res://data/ingredients/sunflower_oil.tres" id="4"]
+[ext_resource type="Resource" path="res://data/ingredients/sunflower_seed_cake.tres" id="5"]
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="6"]
+
+[resource]
+script = ExtResource("1")
+id = &"press_sunflower_seeds"
+equipment = ExtResource("2")
+input = ExtResource("3")
+outputs = Array[ExtResource("6")]([ExtResource("4"), ExtResource("5")])
+output_yields = Array[float]([0.35, 0.6])
+work_per_gram = 0.5

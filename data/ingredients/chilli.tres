@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="Ingredient" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="1"]
+[ext_resource type="Script" path="res://resources/flavour_profile.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_flavour"]
+script = ExtResource("2")
+sweet = 0.1
+bitter = 0.05
+heat = 0.9
+aroma = 0.5
+
+[resource]
+script = ExtResource("1")
+id = &"chilli"
+display_name = "Chilli"
+tint_color = Color(0.8, 0.12, 0.08, 1)
+elemental_affinity = 3
+physical_form = 0
+whole_size_mm = Vector3(70, 18, 18)
+density_g_per_cm3 = 0.6
+water_fraction = 0.88
+sugar_fraction = 0.05
+fat_fraction = 0.004
+protein_fraction = 0.019
+stable_thickness_mm = 1.5
+unsteadied_cut_integrity_loss = 0.2
+specific_heat_j_per_g_k = 3.9
+thermal_conductivity_w_per_m_k = 0.5
+cook_temp_c = 60.0
+cook_seconds = 60.0
+overcook_softening_per_s = 0.003
+char_susceptibility = 6.0
+ideal_doneness_min = 0.3
+ideal_doneness_max = 1.5
+flavour = SubResource("Resource_flavour")
+available_from_start = true

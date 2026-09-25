@@ -73,6 +73,14 @@ func is_technique_unlocked(technique: PreparationTechnique) -> bool:
 			return true
 	return false
 
+func is_equipment_unlocked(equipment: KitchenEquipment) -> bool:
+	if equipment.available_from_start:
+		return true
+	for upgrade_id in _purchased:
+		if _catalog[upgrade_id].unlocked_equipment.has(equipment):
+			return true
+	return false
+
 ## Product of every purchased upgrade's bonus, applied to served dishes.
 func station_nourishment_multiplier() -> float:
 	var multiplier: float = 1.0
