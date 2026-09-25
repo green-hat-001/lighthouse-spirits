@@ -1,9 +1,10 @@
 class_name Caretaker
 extends CharacterBody3D
 
-## The lighthouse caretaker, seen through their own eyes. They walk at an
-## unhurried pace and look around with the mouse; there is no running and
-## no jumping. They will not step off an edge - the cliff, or the end of the
+## The lighthouse caretaker, seen through their own eyes. They walk at a
+## steady pace and look around with the mouse; there is no running and no
+## jumping. Feet grip the ground: they get up to speed quickly and stop
+## almost at once when the keys are let go, with no sliding. They will not step off an edge - the cliff, or the end of the
 ## land - so the player can stand right at the lip and look down at the sea.
 ##
 ## Movement is read only while `control_enabled`; the kitchen turns it off
@@ -16,8 +17,11 @@ const MAX_PITCH_DEG: float = 80.0
 const LEDGE_PROBE_AHEAD_M: float = 0.45
 const LEDGE_MAX_DROP_M: float = 0.9
 
-@export var walk_speed_mps: float = 1.6
-@export var acceleration: float = 8.0
+@export var walk_speed_mps: float = 3.2
+## Metres per second gained each second while walking, and lost each second
+## once the keys are released. Braking is much stronger than setting off.
+@export var acceleration_mps2: float = 14.0
+@export var braking_mps2: float = 40.0
 @export var mouse_sensitivity: float = 0.0025
 
 var control_enabled: bool = true
@@ -53,9 +57,11 @@ func _physics_process(delta: float) -> void:
 	var target := wish * walk_speed_mps
 	if target.length() > 0.0 and not _ground_ahead(target.normalized()):
 		target = Vector3.ZERO
-	var weight: float = clampf(acceleration * delta, 0.0, 1.0)
-	velocity.x = lerpf(velocity.x, target.x, weight)
-	velocity.z = lerpf(velocity.z, target.z, weight)
+	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	var rate: float = acceleration_mps2 if target.length() > 0.0 else braking_mps2
+	horizontal = horizontal.move_toward(target, rate * delta)
+	velocity.x = horizontal.x
+	velocity.z = horizontal.z
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 	elif velocity.y < 0.0:

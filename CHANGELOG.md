@@ -2,6 +2,14 @@
 
 Completed work, newest first. Section numbers refer to `docs/kitchen_plan.md`.
 
+## Walking feel and mouse lock
+
+- The mouse is always locked. It's captured while walking and confined to the window at the counter, so the edge-peek can't run off-screen. The mode is re-asserted every frame while the window has focus, because the single capture request at startup could be dropped under Wayland and leave no lock at all. Esc while walking is still the deliberate way to free it, and a click locks it again.
+- Stepping in puts the hand in the middle of the screen.
+- No more sliding: walking accelerates at 14 m/s² and brakes at 40 m/s², so letting go stops the caretaker within a few frames.
+- Walking speed raised from 1.6 to 3.2 m/s.
+- Integration suite: 226 → 234 checks, covering full walking pace, stopping without sliding, and the mouse mode in every view state.
+
 ## First-person caretaker
 
 - The kitchen is now the main scene. Play in the editor (or `godot --path .`) opens it; the spirit harness is still at `scenes/test_sanctuary.tscn`.

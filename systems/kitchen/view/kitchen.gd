@@ -12,8 +12,13 @@ extends Node3D
 ##                 to a screen edge peeks sideways. Esc steps back out.
 ##   STEPPING_OUT  the camera glides back to the eyes.
 ##
-## Esc while walking frees the mouse (so the window and the editor stay
-## reachable); a click captures it again. Also wires the pantry baskets to
+## The mouse is always locked: captured while walking and gliding back to
+## the eyes, confined to the window at the counter (where the cursor is the
+## hand and must not slip off-screen while peeking). The mode is re-asserted
+## every frame while the window has focus, because a capture requested
+## before the window is focused can be dropped. Esc while walking is the one
+## deliberate way to free it, so the window and editor stay reachable; a
+## click locks it again. Also wires the pantry baskets to
 ## the board and sets the kitchen's ambient temperature.
 
 const GLIDE_SPEED: float = 5.0
@@ -33,6 +38,8 @@ const ARRIVED_DEG: float = 0.8
 var view_mode := KitchenViewMode.new()
 
 var _peek_deg: float = 0.0
+## Set when the player frees the mouse with Esc while walking.
+var _mouse_freed: bool = false
 
 @onready var board: CuttingBoard = $CuttingBoard
 @onready var camera: Camera3D = $Camera3D
@@ -52,7 +59,17 @@ func _ready() -> void:
 	counter_views.active = false
 	camera.fov = WALK_FOV_DEG
 	camera.global_transform = caretaker.eye_transform()
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_lock_mouse()
+
+## The mouse mode each view mode wants.
+static func mouse_mode_for(mode: KitchenViewMode.Mode, freed_by_player: bool) -> Input.MouseMode:
+	match mode:
+		KitchenViewMode.Mode.WALKING:
+			return Input.MOUSE_MODE_VISIBLE if freed_by_player else Input.MOUSE_MODE_CAPTURED
+		KitchenViewMode.Mode.STEPPING_OUT:
+			return Input.MOUSE_MODE_CAPTURED
+		_:
+			return Input.MOUSE_MODE_CONFINED
 
 ## True when the caretaker is standing at the counter, facing it.
 func counter_in_reach() -> bool:
@@ -68,7 +85,9 @@ func step_in() -> bool:
 	counter_views.looking_out = false
 	caretaker.control_enabled = false
 	_peek_deg = 0.0
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	# Start the hand in the middle of the screen, not wherever the captured
+	# pointer was left.
+	Input.warp_mouse(get_viewport().get_visible_rect().get_center())
 	return true
 
 func step_out() -> bool:
@@ -83,13 +102,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		step_in()
 	elif event.is_action_pressed("leave_view"):
 		if not step_out() and view_mode.mode == KitchenViewMode.Mode.WALKING:
-			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+			_mouse_freed = true
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
-			and view_mode.mode == KitchenViewMode.Mode.WALKING and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			and view_mode.mode == KitchenViewMode.Mode.WALKING and _mouse_freed:
+		_mouse_freed = false
 		get_viewport().set_input_as_handled()
+	_lock_mouse()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_lock_mouse()
+
+func _lock_mouse() -> void:
+	var wanted := mouse_mode_for(view_mode.mode, _mouse_freed)
+	if Input.mouse_mode != wanted and DisplayServer.window_is_focused():
+		Input.mouse_mode = wanted
 
 func _process(delta: float) -> void:
+	_lock_mouse()
 	var walking := view_mode.mode == KitchenViewMode.Mode.WALKING
 	_prompt.visible = walking and counter_in_reach()
 	_crosshair.visible = walking
@@ -112,7 +142,6 @@ func _process(delta: float) -> void:
 			if _glide(caretaker.eye_transform(), WALK_FOV_DEG, delta):
 				view_mode.arrived()
 				caretaker.control_enabled = true
-				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 ## Eases the camera towards a pose and field of view. Returns true once it
 ## has arrived.

@@ -22,7 +22,7 @@ The loop: shelter and observe → forage → prepare → serve and elevate → r
 
 ## Cooking model
 
-Cooking is a physical simulation that stays close to real gastronomy, played in an outdoor kitchen on the cliff top beside the lighthouse. The caretaker is first-person: they walk about the cliff top, and step up to the counter to work, where the view becomes a fixed three-quarter look down at one station, panning between stations and glancing sideways when the mouse nears a screen edge. They stand still while working.
+Cooking is a physical simulation that stays close to real gastronomy, played in an outdoor kitchen on the cliff top beside the lighthouse. The caretaker is first-person: they walk about the cliff top, and step up to the counter to work, where the view becomes a fixed three-quarter look down at one station, panning between stations and glancing sideways when the mouse nears a screen edge. They stand still while working. The mouse is always locked: captured while walking, confined to the window at the counter.
 
 - **Cutting** uses a mezzaluna, chosen as an echo of the moon. The player drags it with the mouse to make precise cuts, and holds a button to steady the food so it doesn't fall apart while making the perpendicular cut.
 - **Heat is controlled directly.** The player sets the flame size and manages the temperature by hand. Nothing has a set recipe or time, including baking.

@@ -111,6 +111,7 @@ func _ready() -> void:
 	_test_view_mode_transitions()
 	_test_counter_reach()
 	_test_peek_mapping()
+	_test_mouse_is_always_locked()
 	_test_progression_economy()
 	_test_progression_unlocks()
 	_test_progression_persistence()
@@ -775,6 +776,20 @@ func _test_peek_mapping() -> void:
 		previous = turn
 	_expect_equal("peeking grows steadily towards the edge", monotonic, true)
 
+func _test_mouse_is_always_locked() -> void:
+	_expect_equal("walking captures the mouse",
+		Kitchen.mouse_mode_for(KitchenViewMode.Mode.WALKING, false), Input.MOUSE_MODE_CAPTURED)
+	_expect_equal("the counter confines the cursor to the window",
+		Kitchen.mouse_mode_for(KitchenViewMode.Mode.AT_COUNTER, false), Input.MOUSE_MODE_CONFINED)
+	_expect_equal("gliding in keeps it confined",
+		Kitchen.mouse_mode_for(KitchenViewMode.Mode.STEPPING_IN, false), Input.MOUSE_MODE_CONFINED)
+	_expect_equal("gliding back out captures it again",
+		Kitchen.mouse_mode_for(KitchenViewMode.Mode.STEPPING_OUT, false), Input.MOUSE_MODE_CAPTURED)
+	_expect_equal("only Esc while walking frees it",
+		Kitchen.mouse_mode_for(KitchenViewMode.Mode.WALKING, true), Input.MOUSE_MODE_VISIBLE)
+	_expect_equal("and even then the counter still confines it",
+		Kitchen.mouse_mode_for(KitchenViewMode.Mode.AT_COUNTER, true), Input.MOUSE_MODE_CONFINED)
+
 ## Physics needs real frames, so this runs after the lifecycle simulation,
 ## at normal time scale.
 func _test_caretaker_in_the_kitchen() -> void:
@@ -785,6 +800,20 @@ func _test_caretaker_in_the_kitchen() -> void:
 		await get_tree().physics_frame
 	_expect_equal("the caretaker stands on the cliff top",
 		caretaker.is_on_floor() and absf(caretaker.global_position.y - (-0.9)) < 0.2, true)
+
+	# Walk inland across the terrace, then let go: full speed, then a stop
+	# with no sliding.
+	caretaker.rotation = Vector3(0.0, PI, 0.0)
+	Input.action_press("move_forward")
+	for frame in 45:
+		await get_tree().physics_frame
+	var walking_speed := Vector2(caretaker.velocity.x, caretaker.velocity.z).length()
+	Input.action_release("move_forward")
+	_expect_near("the caretaker walks at their full pace", walking_speed, caretaker.walk_speed_mps)
+	for frame in 9:
+		await get_tree().physics_frame
+	_expect_equal("letting go stops them within a few frames, without sliding",
+		Vector2(caretaker.velocity.x, caretaker.velocity.z).length() < 0.01, true)
 
 	# Walk straight at the cliff edge for longer than it takes to reach it.
 	caretaker.global_position = Vector3(2.5, -0.7, 0.0)
