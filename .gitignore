@@ -7,6 +7,12 @@ export_presets.cfg
 # Imported translations (automatically generated from CSV files)
 *.translation
 
+# Blender backup saves
+*.blend1
+
 # Mono-specific ignores
 .mono/
 data_*/
+
+# Python bytecode from the Blender tooling
+__pycache__/

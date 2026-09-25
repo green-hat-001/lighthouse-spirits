@@ -92,6 +92,14 @@ godot --headless --editor --quit --path .
 # cut, hold Space to steady, right-click to roll a piece, A/D to pan.
 godot --path . res://scenes/kitchen/kitchen.tscn
 
+# Model kit: rebuild (all, or the named models), validate against
+# docs/models_needed.md, and render previews. A rebuild overwrites both
+# models/<name>.blend and its .glb under assets/models/, so a model that has
+# been hand-edited in Blender must not be rebuilt by name.
+blender --background --factory-startup --python tools/blender/build_models.py [-- potato pot]
+blender --background --factory-startup --python tools/blender/validate_models.py
+blender --background --factory-startup --python tools/blender/preview_models.py -- <out_dir>
+
 # Manual play harness (main scene): F = serve a dish, U = buy cheapest retrofit,
 # R = spawn a new spirit after the current one departs
 godot --path .

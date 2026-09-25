@@ -2,6 +2,16 @@
 
 Completed work, newest first. Section numbers refer to `docs/kitchen_plan.md`.
 
+## Model kit: every model in `docs/models_needed.md`
+
+- Built all 16 models: potato, chilli, sunflower head, sunflower seed, seed cake, gas stove, pot, slotted spoon, water jug, oil bottle, oil press, oil catch cup, mezzaluna, cutting board, pantry basket and counter. Each has an editable `models/<name>.blend` (Godot skips the folder via `.gdignore`) and a `.glb` export at the path the doc gives.
+- The models come from `tools/blender/build_models.py`, which builds them procedurally in Blender to the doc's sizes, origins, pivots, part names and material slots. `tools/blender/validate_models.py` checks every one against the doc, and `tools/blender/preview_models.py` renders three-quarter previews.
+- Measured: the pot holds 3,034 ml (data: 3,000), the oil cup 253 ml, and the press hopper about 290 g of seeds.
+- The sunflower's seed disc carries a generated golden-angle spiral texture, packed into the `.blend` and embedded in the `.glb`.
+- The oil bottle's cork is its own object, so it can be pulled before pouring.
+- Added a Blender MCP server (`blender-mcp`) to `.mcp.json`. Its addon is installed in Blender 5.2 and serves on port 9876.
+- Not yet placed in scenes: the kitchen still uses its greybox meshes.
+
 ## Kitchen Section 6, checkpoint 1: the cutting board (awaiting play-test)
 
 - Added the kitchen scene, `scenes/kitchen/kitchen.tscn`: a counter, a cutting board, potato and chilli baskets, and a fixed three-quarter camera that glides between stations with A/D or the arrow keys.
