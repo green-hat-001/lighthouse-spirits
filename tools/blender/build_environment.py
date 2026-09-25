@@ -105,7 +105,11 @@ def cliff_top():
                 face.material_index = 1 if patch > 0.35 else 0
             else:
                 face.material_index = 2 if int(math.floor(centre.z / STRATUM)) % 2 == 0 else 3
-    mesh_object("cliff_top", bm, [grass, grass_dry, rock_light, rock_dark, rock_wet], smooth_angle=25, uv="none")
+    # Faces are wound counter-clockwise seen from above, so they already face
+    # up. Recalculating normals on an open heightfield can flip it upside
+    # down, which leaves the collision one-sided from below.
+    mesh_object("cliff_top", bm, [grass, grass_dry, rock_light, rock_dark, rock_wet], smooth_angle=25,
+                recalc=False, uv="none")
     kit.save("cliff_top", "assets/models/environment/cliff_top.glb")
 
 

@@ -2,6 +2,22 @@
 
 Completed work, newest first. Section numbers refer to `docs/kitchen_plan.md`.
 
+## First-person caretaker
+
+- The kitchen is now the main scene. Play in the editor (or `godot --path .`) opens it; the spirit harness is still at `scenes/test_sanctuary.tscn`.
+- Added the first-person `Caretaker`: WASD walking at an unhurried 1.6 m/s, mouse look, no running or jumping. A ledge guard means they never step off the cliff or the edge of the land, so you can stand at the lip and look down at the sea.
+- Added `KitchenViewMode`, a flat FSM (walking, stepping in, at the counter, stepping out) that owns the single camera:
+  - E at the counter glides the view down to the nearest station.
+  - Esc glides it back to your eyes. The field of view eases from 80° walking to 62° at the counter.
+  - Esc while walking frees the mouse, and a click takes it back.
+  - Stepping out mid-cut abandons the stroke cleanly.
+- At the counter, pushing the mouse toward either screen edge glances up to 26° that way, to see the baskets or the stove without leaving the board. The middle 62% of the screen never turns the view, and the view holds still while you're mid-drag.
+- `CounterViews` replaces `CameraRig`. It supplies the station poses, the sea vista and the peek; the kitchen moves the camera.
+- Collision: trimesh collision for the terrain, lighthouse and sea stacks is generated at import time, and the counter has a box. Fixed the terrain's faces, which pointed downward and made its collision one-sided from below.
+- A small HUD: an aiming dot while walking, the "E — work at the counter" prompt, and a controls hint at the counter.
+- Integration suite: 191 → 226 checks. It covers the view-mode transitions, counter reach, the peek mapping, and a physics run in the real scene: standing on the cliff top, walking at the cliff edge without going over, and stepping in and out.
+- Mutation check: disabling the ledge guard fails the cliff-edge check.
+
 ## The outdoor kitchen, first mockup
 
 - The kitchen now stands outdoors on the cliff top beside the lighthouse (`scenes/world/coast.tscn`, instanced into the kitchen):

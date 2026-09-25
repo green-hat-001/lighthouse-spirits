@@ -46,6 +46,7 @@ func _ready() -> void:
 	_surface.pressed.connect(_on_surface_pressed)
 	_surface.dragged.connect(_on_surface_dragged)
 	_surface.released.connect(_on_surface_released)
+	_surface.cancelled.connect(_on_surface_cancelled)
 	_steady_hand.visible = false
 
 func views() -> Array[FoodPieceView]:
@@ -101,6 +102,7 @@ func _add_view(piece: FoodPiece, local_position: Vector3) -> FoodPieceView:
 	view.grip.dragged.connect(_on_piece_dragged.bind(view))
 	view.grip.released.connect(_on_piece_released.bind(view))
 	view.grip.secondary_pressed.connect(func(_point: Vector3) -> void: roll(view))
+	view.grip.cancelled.connect(func() -> void: _carried = null)
 	_views.append(view)
 	return view
 
@@ -179,6 +181,11 @@ func _on_surface_dragged(point: Vector3) -> void:
 	_steady_hand.visible = Input.is_action_pressed("kitchen_steady")
 	if _steady_hand.visible:
 		_steady_hand.position = (_stroke_start + end) * 0.5
+
+func _on_surface_cancelled() -> void:
+	_stroking = false
+	_steady_hand.visible = false
+	_mezzaluna.rest()
 
 func _on_surface_released(point: Vector3) -> void:
 	if not _stroking:

@@ -22,7 +22,7 @@ The loop: shelter and observe → forage → prepare → serve and elevate → r
 
 ## Cooking model
 
-Cooking is a physical simulation that stays close to real gastronomy, played in an outdoor kitchen on the cliff top beside the lighthouse, seen from a fixed three-quarter view looking down at the counter, as if standing at it, panning left and right between stations.
+Cooking is a physical simulation that stays close to real gastronomy, played in an outdoor kitchen on the cliff top beside the lighthouse. The caretaker is first-person: they walk about the cliff top, and step up to the counter to work, where the view becomes a fixed three-quarter look down at one station, panning between stations and glancing sideways when the mouse nears a screen edge. They stand still while working.
 
 - **Cutting** uses a mezzaluna, chosen as an echo of the moon. The player drags it with the mouse to make precise cuts, and holds a button to steady the food so it doesn't fall apart while making the perpendicular cut.
 - **Heat is controlled directly.** The player sets the flame size and manages the temperature by hand. Nothing has a set recipe or time, including baking.
@@ -91,8 +91,12 @@ godot --headless --path . res://scenes/integration_test.tscn
 godot --headless --editor --quit --path .
 
 # Play the game (the main scene: the outdoor kitchen, work in progress).
-# Click a basket, drag across the board to cut, hold Space to steady,
-# right-click to roll a piece, A/D to pan, W/S to look out to sea and back.
+# Walking: WASD to walk, mouse to look, E at the counter to step in, Esc to
+# free the mouse (click to take it back).
+# At the counter: click a basket, drag across the board to cut, hold Space
+# to steady, right-click to roll a piece, A/D along the counter, W/S to look
+# out to sea and back, mouse to a screen edge to glance sideways, Esc to
+# step back.
 godot --path .
 
 # Model kit: rebuild (all, or the named models), validate against
@@ -158,8 +162,12 @@ Spirit FSM ──SpiritEventBus.spirit_lifecycle_complete("ASCENDED")──> Lig
   - `FoodPerception` maps a piece's state to `FoodTexture`, `FoodAppearance` and `BiteSound`. `Dish` holds plated pieces and `LiquidPortion`s and has a `fingerprint()` (via `DishDescriber`). `DishNourishment` turns a `Dish` into a `FeedingResult`, including `ascension_strength`.
   - A `Transformation` in `data/transformations/` (loaded automatically) describes what one piece of equipment does to one bulk ingredient, e.g. pressing seeds into oil. `ManualProcessor` runs it from the player's work. Transformations are the only authored recipes, and they never describe a finished dish.
   - A piece's local Y axis is height, matching Godot.
-- **Kitchen scene** (`scenes/kitchen/`, scripts in `systems/kitchen/view/`) is the playable view layer. `KitchenPointer` raycasts mouse input into `Interactable` areas, and their owners (`CuttingBoard`, `IngredientSource`) turn it into simulation calls. `CameraRig` glides between `Marker3D` poses: the counter stations, plus a sea vista the scene opens on.
-- **World** (`scenes/world/coast.tscn`, `systems/world/coast.gd`) is the outdoor setting: a painted sky shader, the sea shader, sun, fog and glow, the cliff top, the lighthouse, sea stacks and a wind-blown grass field. Imported `.glb` models get the toon look from `tools/godot/toon_post_import.gd`, which is set as each model's import script.
+- **Kitchen scene** (`scenes/kitchen/`, scripts in `systems/kitchen/view/`) is the playable view layer and the main scene.
+  - `Kitchen` owns the one camera and a flat `KitchenViewMode` FSM: WALKING → STEPPING_IN → AT_COUNTER → STEPPING_OUT → WALKING. It gates every input by mode.
+  - The `Caretaker` (`systems/player/`, `scenes/player/`) is the first-person body. It has a ledge guard so it never walks off the cliff.
+  - `CounterViews` supplies the station poses, the sea vista and the edge-peek.
+  - `KitchenPointer` raycasts mouse input into `Interactable` areas, and their owners (`CuttingBoard`, `IngredientSource`) turn it into simulation calls. The pointer is live only at the counter, and cancels any hold when the player steps away.
+- **World** (`scenes/world/coast.tscn`, `systems/world/coast.gd`) is the outdoor setting: a painted sky shader, the sea shader, sun, fog and glow, the cliff top, the lighthouse, sea stacks and a wind-blown grass field. Imported `.glb` models get the toon look from `tools/godot/toon_post_import.gd`, which is set as each model's import script. The terrain, lighthouse and sea stacks get trimesh collision at import time through the per-node physics settings in their `.glb.import` files. That also works in headless runs, where building collision from a mesh at runtime does not. The terrain's faces must stay wound upward (see `build_environment.py`), or its collision is one-sided from below.
 - `ElementalAffinity.Type` is the shared tag enum. Ingredients and archetypes both use it, so neither module depends on the other's scripts.
 
 ## Conventions

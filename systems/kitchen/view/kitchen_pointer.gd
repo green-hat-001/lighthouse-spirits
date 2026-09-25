@@ -9,7 +9,8 @@ extends Node
 ##
 ## A right press on an Interactable is a one-shot action and never leaves
 ## IDLE. Only one Interactable is held at a time, so a drag can never be
-## split between two owners.
+## split between two owners. While disabled the hand ignores the mouse
+## entirely; disabling it mid-drag cancels the hold.
 
 enum State { IDLE, HOLDING }
 
@@ -18,9 +19,29 @@ const RAY_LENGTH_M: float = 5.0
 @export var camera: Camera3D
 
 var state: State = State.IDLE
+var enabled: bool = true:
+	set(value):
+		enabled = value
+		if not enabled:
+			cancel()
 var _held: Interactable
 
+func is_holding() -> bool:
+	return state == State.HOLDING
+
+## Lets go of whatever is held without releasing it onto anything.
+func cancel() -> void:
+	if state != State.HOLDING:
+		return
+	var held := _held
+	state = State.IDLE
+	_held = null
+	if is_instance_valid(held):
+		held.cancelled.emit()
+
 func _unhandled_input(event: InputEvent) -> void:
+	if not enabled:
+		return
 	if event is InputEventMouseButton:
 		var button := event as InputEventMouseButton
 		if button.button_index == MOUSE_BUTTON_LEFT:

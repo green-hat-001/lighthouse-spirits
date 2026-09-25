@@ -1,9 +1,9 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://systems/kitchen/view/kitchen.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/kitchen/cutting_board.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/kitchen/ingredient_source.tscn" id="3"]
-[ext_resource type="Script" path="res://systems/kitchen/view/camera_rig.gd" id="4"]
+[ext_resource type="Script" path="res://systems/kitchen/view/counter_views.gd" id="4"]
 [ext_resource type="Script" path="res://systems/kitchen/view/kitchen_pointer.gd" id="5"]
 [ext_resource type="Resource" path="res://data/ingredients/potato.tres" id="6"]
 [ext_resource type="Resource" path="res://data/ingredients/chilli.tres" id="7"]
@@ -17,6 +17,10 @@
 [ext_resource type="PackedScene" path="res://assets/models/equipment/water_jug.glb" id="15"]
 [ext_resource type="PackedScene" path="res://assets/models/equipment/slotted_spoon.glb" id="16"]
 [ext_resource type="PackedScene" path="res://assets/models/ingredients/sunflower_head.glb" id="17"]
+[ext_resource type="PackedScene" path="res://scenes/player/caretaker.tscn" id="18"]
+
+[sub_resource type="BoxShape3D" id="counter_shape"]
+size = Vector3(1.6, 0.9, 0.6)
 
 [node name="Kitchen" type="Node3D"]
 script = ExtResource("1")
@@ -83,18 +87,80 @@ transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.7291, 0.6844, 0.0000, 
 [node name="Vista" type="Marker3D" parent="."]
 transform = Transform3D(0.9652, -0.0262, 0.2601, 0.0000, 0.9950, 0.1000, -0.2614, -0.0966, 0.9604, 0.6000, 0.7500, 1.2000)
 
-[node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("stations", "vista")]
+[node name="CounterViews" type="Node" parent="." node_paths=PackedStringArray("stations", "vista")]
 script = ExtResource("4")
 stations = NodePath("../Stations")
 vista = NodePath("../Vista")
 
-[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+[node name="Camera3D" type="Camera3D" parent="."]
 keep_aspect = 0
 current = true
-fov = 62.0
+fov = 80.0
 near = 0.02
 far = 2000.0
 
+[node name="Caretaker" parent="." instance=ExtResource("18")]
+transform = Transform3D(0.9659, 0.0000, 0.2588, 0.0000, 1.0000, 0.0000, -0.2588, 0.0000, 0.9659, 0.9000, -0.9000, 1.3000)
+
+[node name="CounterBody" type="StaticBody3D" parent="Props/Counter"]
+
+[node name="Shape" type="CollisionShape3D" parent="Props/Counter/CounterBody"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0000, -0.4500, 0.0000)
+shape = SubResource("counter_shape")
+
 [node name="Pointer" type="Node" parent="." node_paths=PackedStringArray("camera")]
 script = ExtResource("5")
-camera = NodePath("../CameraRig/Camera3D")
+camera = NodePath("../Camera3D")
+
+[node name="Hud" type="CanvasLayer" parent="."]
+
+[node name="Crosshair" type="Label" parent="Hud"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -10.0
+offset_top = -16.0
+offset_right = 10.0
+offset_bottom = 16.0
+theme_override_colors/font_color = Color(1, 0.98, 0.92, 0.75)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.35)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "·"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Prompt" type="Label" parent="Hud"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -120.0
+offset_right = 200.0
+offset_bottom = -80.0
+theme_override_colors/font_color = Color(1, 0.98, 0.92, 0.95)
+theme_override_colors/font_outline_color = Color(0.1, 0.12, 0.15, 0.6)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "E  —  work at the counter"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CounterHint" type="Label" parent="Hud"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -52.0
+offset_right = 620.0
+offset_bottom = -20.0
+theme_override_colors/font_color = Color(1, 0.98, 0.92, 0.8)
+theme_override_colors/font_outline_color = Color(0.1, 0.12, 0.15, 0.55)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 17
+text = "Esc  step back     A / D  along the counter     W  look out to sea"
+vertical_alignment = 1

@@ -84,6 +84,8 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 
 ## 6. The 3D kitchen
 
+*First-person caretaker (after the mockup):* the player walks the cliff top in first person (WASD, mouse look, a ledge guard at the cliff), presses E at the counter to step into the station view, and Esc to step back. At the counter, pushing the mouse to a screen edge glances sideways. Decided by the user: first-person, no character model.
+
 *Outdoor mockup (between checkpoints 1 and 2):* the greybox is replaced by the model kit, and the kitchen stands in its outdoor setting on the cliff top: sky, sea, cliff, lighthouse, sea stacks and grass. The camera opens on a sea vista (W/↑ to look out again, S/↓ to come back). The stove, pot, press, bottle, jug, spoon and sunflower are set dressing until checkpoints 2 and 3 make them work.
 
 *Status: checkpoint 1 of 3 built and awaiting the user's play-test: the kitchen scene (`scenes/kitchen/kitchen.tscn`), three-quarter camera rig, pointer and interaction framework, and the cutting board with the mezzaluna, steadying and rolling. Checkpoint 2 (stove, pot, frying) waits on the oil-supply decision below. Checkpoint 3 is the food shader polish, taste captions and the press.*

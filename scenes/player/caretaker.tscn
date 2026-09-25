@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://systems/player/caretaker.gd" id="1"]
+
+[sub_resource type="CapsuleShape3D" id="body_shape"]
+radius = 0.28
+height = 1.75
+
+[node name="Caretaker" type="CharacterBody3D"]
+script = ExtResource("1")
+floor_snap_length = 0.3
+
+[node name="Body" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)
+shape = SubResource("body_shape")
+
+[node name="Head" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.62, 0)

@@ -14,8 +14,12 @@ godot --headless --path . res://scenes/integration_test.tscn
 godot --headless --editor --quit --path .
 
 # Play the game (the main scene: the outdoor kitchen, work in progress).
-# Click a basket, drag across the board to cut, hold Space to steady,
-# right-click to roll a piece, A/D to pan, W/S to look out to sea and back.
+# Walking: WASD to walk, mouse to look, E at the counter to step in, Esc to
+# free the mouse (click to take it back).
+# At the counter: click a basket, drag across the board to cut, hold Space
+# to steady, right-click to roll a piece, A/D along the counter, W/S to look
+# out to sea and back, mouse to a screen edge to glance sideways, Esc to
+# step back.
 godot --path .
 
 # Manual play harness: F serves a dish, U buys the cheapest retrofit,
@@ -32,9 +36,16 @@ Everything listed here is covered by the integration suite and passes.
 - Serving dishes through the serving station, with the affinity bonus and lighthouse station bonuses.
 - Lighthouse progression: kindled light from ascensions, retrofit purchases, unlocks and save/load.
 
-**Simulation only (nothing on screen yet)**
+**Playable in the kitchen (the main scene)**
+- The outdoor kitchen on the cliff top beside the lighthouse: painted sky, sea with swells and foam, cliffs, sea stacks, and grass swaying in the wind. See `docs/screenshots/`.
+- Walking about in first person with WASD and the mouse. The caretaker never walks off the cliff.
+- Stepping up to the counter with E and back with Esc, moving between stations, looking out to sea, and glancing sideways by moving the mouse to a screen edge.
 
-The kitchen is being built simulation-first. These systems work and are tested, but have no scene, input or visuals until Section 6 of the kitchen plan.
+The cutting board (baskets, mezzaluna cuts, steadying, rolling) is in the scene and covered by the suite, but hasn't been play-tested yet. The stove, pot and press are set dressing until the next checkpoints.
+
+**Simulation only (not yet in the scene)**
+
+The rest of the kitchen is built simulation-first. These systems work and are tested, but have no input or visuals until later in Section 6 of the kitchen plan.
 
 - Food pieces with physical state: size, mass, water, oil, temperature, doneness, browning, char, integrity and flavour.
 - Mezzaluna cutting: precise axis-aligned cuts that conserve mass, thin slices that crumble, and damage when a perpendicular cut is made without holding the food steady.

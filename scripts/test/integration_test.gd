@@ -108,6 +108,9 @@ func _ready() -> void:
 	_test_mezzaluna_gesture()
 	_test_kitchen_input_actions()
 	_test_kitchen_board_wiring()
+	_test_view_mode_transitions()
+	_test_counter_reach()
+	_test_peek_mapping()
 	_test_progression_economy()
 	_test_progression_unlocks()
 	_test_progression_persistence()
@@ -701,7 +704,8 @@ func _test_mezzaluna_gesture() -> void:
 		MezzalunaGesture.resolve(footprint_min, footprint_size, Vector2(140.0, 230.0), Vector2(142.0, 230.0)) == null, true)
 
 func _test_kitchen_input_actions() -> void:
-	for action in [&"kitchen_steady", &"camera_pan_left", &"camera_pan_right", &"camera_look_out", &"camera_look_back"]:
+	for action in [&"kitchen_steady", &"camera_pan_left", &"camera_pan_right", &"camera_look_out", &"camera_look_back",
+			&"move_forward", &"move_back", &"move_left", &"move_right", &"interact", &"leave_view"]:
 		_expect_equal("input action %s is defined" % action, InputMap.has_action(action) and not InputMap.action_get_events(action).is_empty(), true)
 
 func _test_kitchen_board_wiring() -> void:
@@ -730,6 +734,93 @@ func _test_kitchen_board_wiring() -> void:
 		many += 1
 	_expect_equal("the board refuses more potatoes once it is full", many < 50, true)
 	kitchen.queue_free()
+
+func _test_view_mode_transitions() -> void:
+	var mode := KitchenViewMode.new()
+	_expect_equal("the caretaker starts out walking", mode.mode, KitchenViewMode.Mode.WALKING)
+	_expect_equal("stepping in out of reach does nothing", mode.step_in(false), false)
+	_expect_equal("stepping in within reach starts the glide", mode.step_in(true), true)
+	_expect_equal("a second step in mid-glide is ignored", mode.step_in(true), false)
+	mode.arrived()
+	_expect_equal("the glide in ends at the counter", mode.mode, KitchenViewMode.Mode.AT_COUNTER)
+	_expect_equal("Esc at the counter steps back out", mode.step_out(), true)
+	mode.arrived()
+	_expect_equal("the glide out ends walking", mode.mode, KitchenViewMode.Mode.WALKING)
+	_expect_equal("Esc while walking is not a step out", mode.step_out(), false)
+	mode.step_in(true)
+	_expect_equal("Esc during the glide in turns straight back", mode.step_out(), true)
+	_expect_equal("and glides back out", mode.mode, KitchenViewMode.Mode.STEPPING_OUT)
+
+func _test_counter_reach() -> void:
+	var counter := Rect2(-0.8, -0.3, 1.6, 0.6)
+	_expect_equal("standing at the counter facing it is within reach",
+		KitchenViewMode.within_reach(Vector2(0.0, 0.8), Vector2(0.0, -1.0), counter), true)
+	_expect_equal("standing at the counter facing away is not",
+		KitchenViewMode.within_reach(Vector2(0.0, 0.8), Vector2(0.0, 1.0), counter), false)
+	_expect_equal("standing across the terrace is not",
+		KitchenViewMode.within_reach(Vector2(0.0, 2.5), Vector2(0.0, -1.0), counter), false)
+	_expect_equal("the ends of the counter can be worked at too",
+		KitchenViewMode.within_reach(Vector2(1.4, 0.0), Vector2(-1.0, 0.0), counter), true)
+
+func _test_peek_mapping() -> void:
+	_expect_near("the mouse in the middle doesn't peek", CounterViews.peek_degrees(0.0), 0.0)
+	_expect_near("reaching towards the edge doesn't peek yet", CounterViews.peek_degrees(0.55), 0.0)
+	_expect_near("the right edge peeks fully right", CounterViews.peek_degrees(1.0), -CounterViews.PEEK_MAX_DEG)
+	_expect_near("the left edge peeks fully left", CounterViews.peek_degrees(-1.0), CounterViews.PEEK_MAX_DEG)
+	var monotonic := true
+	var previous := 0.0
+	for step in range(1, 21):
+		var turn := -CounterViews.peek_degrees(step / 20.0)
+		monotonic = monotonic and turn >= previous - EPSILON
+		previous = turn
+	_expect_equal("peeking grows steadily towards the edge", monotonic, true)
+
+## Physics needs real frames, so this runs after the lifecycle simulation,
+## at normal time scale.
+func _test_caretaker_in_the_kitchen() -> void:
+	var kitchen: Kitchen = load("res://scenes/kitchen/kitchen.tscn").instantiate()
+	add_child(kitchen)
+	var caretaker := kitchen.caretaker
+	for frame in 60:
+		await get_tree().physics_frame
+	_expect_equal("the caretaker stands on the cliff top",
+		caretaker.is_on_floor() and absf(caretaker.global_position.y - (-0.9)) < 0.2, true)
+
+	# Walk straight at the cliff edge for longer than it takes to reach it.
+	caretaker.global_position = Vector3(2.5, -0.7, 0.0)
+	caretaker.rotation = Vector3.ZERO
+	for frame in 20:
+		await get_tree().physics_frame
+	var start_z := caretaker.global_position.z
+	Input.action_press("move_forward")
+	for frame in 360:
+		await get_tree().physics_frame
+	Input.action_release("move_forward")
+	_expect_equal("walking at the cliff edge gets the caretaker there", caretaker.global_position.z < start_z - 1.0, true)
+	_expect_equal("but never over it", caretaker.is_on_floor() and caretaker.global_position.y > -1.6, true)
+
+	# Step up to the board, work, and step back.
+	caretaker.global_position = Vector3(-0.2, -0.9, 0.75)
+	caretaker.rotation = Vector3.ZERO
+	for frame in 10:
+		await get_tree().physics_frame
+	_expect_equal("standing at the counter puts it within reach", kitchen.counter_in_reach(), true)
+	_expect_equal("E steps in", kitchen.step_in(), true)
+	await _wait_for_mode(kitchen, KitchenViewMode.Mode.AT_COUNTER)
+	_expect_equal("the view settles at the counter", kitchen.view_mode.mode, KitchenViewMode.Mode.AT_COUNTER)
+	_expect_equal("at the counter the hand is live and the feet are still",
+		kitchen.pointer.enabled and not kitchen.caretaker.control_enabled, true)
+	_expect_equal("stepping in faces the station you stood at", kitchen.counter_views.station_index, 0)
+	_expect_equal("Esc steps back", kitchen.step_out(), true)
+	await _wait_for_mode(kitchen, KitchenViewMode.Mode.WALKING)
+	_expect_equal("the view returns to the caretaker's eyes",
+		kitchen.view_mode.mode == KitchenViewMode.Mode.WALKING and kitchen.caretaker.control_enabled and not kitchen.pointer.enabled, true)
+	kitchen.queue_free()
+
+func _wait_for_mode(kitchen: Kitchen, mode: KitchenViewMode.Mode) -> void:
+	var deadline := Time.get_ticks_msec() + 5000
+	while kitchen.view_mode.mode != mode and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
 
 ## A 10mm fry of the test ingredient, held in oil at the given temperature.
 func _fry(temp_c: float, seconds: float) -> FoodPiece:
@@ -1099,6 +1190,8 @@ func _finish() -> void:
 		LighthouseProgression.light,
 		LighthouseProgression.LIGHT_PER_ASCENSION * _ascended_count
 	)
+
+	await _test_caretaker_in_the_kitchen()
 
 	print("")
 	print("fed path:       ", _fed_transitions, " -> ", _fed_outcome)
