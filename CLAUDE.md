@@ -90,9 +90,10 @@ godot --headless --path . res://scenes/integration_test.tscn
 # new type fails to parse.
 godot --headless --editor --quit --path .
 
-# The kitchen (work in progress): click a basket, drag across the board to
-# cut, hold Space to steady, right-click to roll a piece, A/D to pan.
-godot --path . res://scenes/kitchen/kitchen.tscn
+# Play the game (the main scene: the outdoor kitchen, work in progress).
+# Click a basket, drag across the board to cut, hold Space to steady,
+# right-click to roll a piece, A/D to pan, W/S to look out to sea and back.
+godot --path .
 
 # Model kit: rebuild (all, or the named models), validate against
 # docs/models_needed.md, and render previews. A rebuild overwrites both
@@ -105,9 +106,9 @@ blender --background --factory-startup --python tools/blender/preview_models.py 
 # builder so it can never overwrite the kitchen kit. validate_models.py covers both.
 blender --background --factory-startup --python tools/blender/build_environment.py [-- lighthouse ...]
 
-# Manual play harness (main scene): F = serve a dish, U = buy cheapest retrofit,
+# Manual play harness: F = serve a dish, U = buy cheapest retrofit,
 # R = spawn a new spirit after the current one departs
-godot --path .
+godot --path . res://scenes/test_sanctuary.tscn
 ```
 
 There are no separate unit tests and no single-test runner. `scripts/test/integration_test.gd` runs pure checks first (crafting math, affinity, the kitchen simulation, progression economy/unlocks/persistence), then runs a two-spirit lifecycle simulation at `Engine.time_scale = 10`. To add a check, write a `_test_*` function that uses `_expect_equal`/`_expect_near` and call it from `_ready()`. Call `LighthouseProgression.reset()` before the lifecycle run so the station multipliers stay at 1.0. The persistence test writes to the real `user://progression.cfg`.
