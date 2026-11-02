@@ -18,8 +18,16 @@ const FOOD_SHADER: Shader = preload("res://shaders/food_cel.gdshader")
 ## to the food shader so the change shows.
 const VISIBLE_COOKING: float = 0.02
 
+## Hot, wet food out in the air gives off wisps of steam. Off in the pot,
+## which draws its own.
+const STEAM_FROM_C: float = 55.0
+const STEAM_FULL_C: float = 95.0
+
 var piece: FoodPiece
 var grip: Interactable
+var steams_in_air: bool = true
+
+var _steam: GPUParticles3D
 
 var _box_instance: MeshInstance3D
 var _box: BoxMesh
@@ -96,6 +104,62 @@ func refresh_shape() -> void:
 			var bounds := _model_bounds()
 			_model.position = -bounds.position
 
+func _draw_steam() -> void:
+	var heat: float = clampf((piece.surface_temp_c - STEAM_FROM_C) / (STEAM_FULL_C - STEAM_FROM_C), 0.0, 1.0)
+	var strength: float = heat * (1.0 - piece.surface_dryness() * 0.7) if steams_in_air else 0.0
+	if strength <= 0.02:
+		if _steam:
+			_steam.emitting = false
+		return
+	if _steam == null:
+		_steam = _make_steam()
+		add_child(_steam)
+	_steam.position = piece.size_mm * MM_TO_M * Vector3(0.5, 1.0, 0.5)
+	_steam.amount_ratio = strength
+	_steam.emitting = true
+
+static func _make_steam() -> GPUParticles3D:
+	var particles := GPUParticles3D.new()
+	particles.name = "Steam"
+	particles.amount = 6
+	particles.lifetime = 1.6
+	var process := ParticleProcessMaterial.new()
+	process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	process.emission_box_extents = Vector3(0.01, 0.001, 0.005)
+	process.direction = Vector3.UP
+	process.spread = 10.0
+	process.initial_velocity_min = 0.02
+	process.initial_velocity_max = 0.05
+	process.gravity = Vector3(0.01, 0.03, 0.0)
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.25, 1.0])
+	ramp.colors = PackedColorArray([Color(1, 1, 1, 0), Color(1, 1, 1, 0.22), Color(1, 1, 1, 0)])
+	var ramp_texture := GradientTexture1D.new()
+	ramp_texture.gradient = ramp
+	process.color_ramp = ramp_texture
+	process.scale_min = 0.5
+	process.scale_max = 1.0
+	particles.process_material = process
+	var soft := Gradient.new()
+	soft.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+	var soft_texture := GradientTexture2D.new()
+	soft_texture.gradient = soft
+	soft_texture.fill = GradientTexture2D.FILL_RADIAL
+	soft_texture.fill_from = Vector2(0.5, 0.5)
+	soft_texture.fill_to = Vector2(1.0, 0.5)
+	var material := StandardMaterial3D.new()
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.vertex_color_use_as_albedo = true
+	material.albedo_texture = soft_texture
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.035, 0.035)
+	quad.material = material
+	particles.draw_pass_1 = quad
+	particles.visibility_aabb = AABB(Vector3(-0.2, -0.05, -0.2), Vector3(0.4, 0.5, 0.4))
+	return particles
+
 ## Hands one per-face value to the shader as its (+X, +Y, +Z) and
 ## (-X, -Y, -Z) pair.
 func _set_faces(name: String, values: PackedFloat64Array) -> void:
@@ -118,6 +182,7 @@ func _model_bounds() -> AABB:
 	return bounds
 
 func _process(_delta: float) -> void:
+	_draw_steam()
 	var appearance := FoodPerception.appearance_of(piece)
 	_set_faces("browning", appearance.face_browning)
 	_set_faces("char", appearance.face_char)

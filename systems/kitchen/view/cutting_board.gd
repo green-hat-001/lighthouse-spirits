@@ -43,6 +43,12 @@ const CARRY_HEIGHT_M: float = 0.22
 const TOUCHING_M: float = 0.003
 ## A bite takes this much off the end of a piece, in mm.
 const BITE_MM: float = 12.0
+## How long the two sides of a cut take to ease apart.
+const SLIDE_APART_S: float = 0.14
+## A cut that costs more integrity than this sheds crumbs.
+const CRUMB_INTEGRITY_LOSS: float = 0.1
+const BLADE_LINE_WIDTH_M: float = 0.0008
+const MAX_BLADE_LINES: int = 64
 
 @export var ambient_temp_c: float = 15.0
 
@@ -65,8 +71,23 @@ var _stroke_start: Vector3
 @onready var _pieces: Node3D = $Pieces
 @onready var _mezzaluna: MezzalunaView = $Mezzaluna
 @onready var _steady_hand: Node3D = $SteadyHand
+@onready var _crumbs: GPUParticles3D = $Crumbs
+@onready var _blade_lines: MultiMeshInstance3D = $BladeLines
 
 func _ready() -> void:
+	var lines := MultiMesh.new()
+	lines.transform_format = MultiMesh.TRANSFORM_3D
+	var line_mesh := BoxMesh.new()
+	line_mesh.size = Vector3(1.0, 0.0006, 1.0)
+	var line_material := StandardMaterial3D.new()
+	line_material.albedo_color = Color(0.1, 0.08, 0.07, 0.55)
+	line_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	line_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	line_mesh.material = line_material
+	lines.mesh = line_mesh
+	lines.instance_count = MAX_BLADE_LINES
+	lines.visible_instance_count = 0
+	_blade_lines.multimesh = lines
 	_surface.drag_plane = _top_plane()
 	_surface.pressed.connect(_on_surface_pressed)
 	_surface.dragged.connect(_on_surface_dragged)
@@ -200,17 +221,70 @@ func _add_view(piece: FoodPiece, local_position: Vector3) -> FoodPieceView:
 	_views.append(view)
 	return view
 
+## The two sides of a cut start where the whole piece was and ease apart:
+## a clean gap along the cut, or a jolt sideways when the food wasn't held
+## steady. Food that crumbled at the cut sheds crumbs.
 func _replace_with_sides(view: FoodPieceView, sides: Array[FoodPiece], axis: int, scatter: bool) -> void:
 	var origin := view.position
+	var integrity_before: float = view.piece.integrity
 	_remove_view(view)
 	var near_side := _add_view(sides[0], origin)
-	var far_origin := origin
-	far_origin[axis] += sides[0].size_mm[axis] * FoodPieceView.MM_TO_M + CUT_GAP_M
-	var far_side := _add_view(sides[1], far_origin)
+	var far_start := origin
+	far_start[axis] += sides[0].size_mm[axis] * FoodPieceView.MM_TO_M
+	var far_side := _add_view(sides[1], far_start)
+	var targets: Array[Vector3] = [origin, far_start]
+	targets[1][axis] += CUT_GAP_M
 	if scatter:
-		for side in [near_side, far_side]:
+		for index in 2:
 			var jolt := Vector3(randf_range(-SCATTER_M, SCATTER_M), 0.0, randf_range(-SCATTER_M, SCATTER_M))
-			side.position = _clamped(side.position + jolt, side.footprint_m())
+			targets[index] = targets[index] + jolt
+	var side_views: Array[FoodPieceView] = [near_side, far_side]
+	for index in 2:
+		var side := side_views[index]
+		var target := _clamped(targets[index], side.footprint_m())
+		var tween := side.create_tween()
+		tween.tween_property(side, "position", target, SLIDE_APART_S).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var lost: float = integrity_before - minf(sides[0].integrity, sides[1].integrity)
+	if lost > CRUMB_INTEGRITY_LOSS:
+		_shed_crumbs(far_start, sides[0], axis, lost)
+
+func _shed_crumbs(at: Vector3, piece: FoodPiece, axis: int, lost: float) -> void:
+	var size: Vector3 = piece.size_mm * FoodPieceView.MM_TO_M
+	var centre := at + Vector3(size.x * 0.5, size.y * 0.5, size.z * 0.5)
+	centre[axis] = at[axis]
+	_crumbs.position = centre
+	_crumbs.amount_ratio = clampf(lost * 2.0, 0.2, 1.0)
+	var material := _crumbs.draw_pass_1.surface_get_material(0) as StandardMaterial3D
+	if material:
+		material.albedo_color = piece.ingredient.flesh_color
+	_crumbs.restart()
+	_crumbs.emitting = true
+
+## Shows, on every piece the stroke would cut, the line the blade will
+## come down on - snapped exactly as the cut will be.
+func _show_blade_line(start: Vector3, end: Vector3) -> void:
+	var start_mm := Vector2(start.x, start.z) / FoodPieceView.MM_TO_M
+	var end_mm := Vector2(end.x, end.z) / FoodPieceView.MM_TO_M
+	var count: int = 0
+	for view in _views:
+		if count >= _blade_lines.multimesh.instance_count:
+			break
+		var footprint_min := Vector2(view.position.x, view.position.z) / FoodPieceView.MM_TO_M
+		var footprint_size := Vector2(view.piece.size_mm.x, view.piece.size_mm.z)
+		var intent := MezzalunaGesture.resolve(footprint_min, footprint_size, start_mm, end_mm)
+		if intent == null:
+			continue
+		var size: Vector3 = view.piece.size_mm * FoodPieceView.MM_TO_M
+		var line_centre := view.position + Vector3(size.x * 0.5, size.y + 0.0004, size.z * 0.5)
+		var scale := Vector3(size.x + 0.002, 1.0, size.z + 0.002)
+		line_centre[intent.axis] = view.position[intent.axis] + intent.offset_mm * FoodPieceView.MM_TO_M
+		scale[intent.axis] = BLADE_LINE_WIDTH_M
+		_blade_lines.multimesh.set_instance_transform(count, Transform3D(Basis.from_scale(scale), line_centre))
+		count += 1
+	_blade_lines.multimesh.visible_instance_count = count
+
+func _hide_blade_line() -> void:
+	_blade_lines.multimesh.visible_instance_count = 0
 
 ## The free spot nearest a point on the board (its middle by default), as
 ## the minimum corner of the footprint, or null if nothing fits.
@@ -320,12 +394,14 @@ func _on_surface_dragged(point: Vector3) -> void:
 		return
 	var end := to_local(point)
 	_mezzaluna.show_stroke(_stroke_start, end)
+	_show_blade_line(_stroke_start, end)
 	_steady_hand.visible = Input.is_action_pressed("kitchen_steady")
 	if _steady_hand.visible:
 		_steady_hand.position = (_stroke_start + end) * 0.5
 
 func _on_surface_cancelled() -> void:
 	_stroking = false
+	_hide_blade_line()
 	_steady_hand.visible = false
 	_mezzaluna.rest()
 
@@ -334,6 +410,7 @@ func _on_surface_released(point: Vector3) -> void:
 		return
 	_stroking = false
 	_steady_hand.visible = false
+	_hide_blade_line()
 	var steadied := Input.is_action_pressed("kitchen_steady")
 	if cut_stroke(_stroke_start, to_local(point), steadied) > 0:
 		_mezzaluna.rock()

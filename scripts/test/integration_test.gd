@@ -1121,6 +1121,23 @@ func _test_kitchen_stations() -> void:
 	var sim := kitchen.simulation
 	var pot := sim.pot
 
+	# Turning the knob by hand: a quarter circle round it, counter-clockwise
+	# as the cook sees it.
+	var knob_grip: Interactable = kitchen.stove.get_node("KnobGrip")
+	var knob: Node3D = kitchen.stove.get_node("Model/knob")
+	var centre := knob.global_position
+	knob_grip.pressed.emit(centre + Vector3(0.02, 0.0, 0.0))
+	for step in 9:
+		var angle := deg_to_rad(10.0 * (step + 1))
+		knob_grip.dragged.emit(centre + Vector3(cos(angle), sin(angle), 0.0) * 0.02)
+	knob_grip.released.emit(centre)
+	_expect_equal("a quarter circle round the knob turns it a quarter turn", absf(kitchen.stove.knob_deg - 90.0) < 0.5, true)
+	_expect_near("and opens the gas a third of the way", pot.flame_level, 90.0 / 270.0)
+	for step in 30:
+		var angle := deg_to_rad(90.0 + 15.0 * (step + 1))
+		knob_grip.dragged.emit(centre + Vector3(cos(angle), sin(angle), 0.0) * 0.02)
+	_expect_near("the knob stops at full", kitchen.stove.knob_deg, StoveView.FULL_TURN_DEG)
+
 	kitchen.stove.set_knob(135.0)
 	_expect_near("half the knob's travel is half the gas", pot.flame_level, 0.5)
 	kitchen.stove.set_knob(0.0)
@@ -1142,6 +1159,38 @@ func _test_kitchen_stations() -> void:
 	_expect_near("and push out the seed cake", sim.cake_g, 30.0)
 	sim.pour_into(sim.cup, sim.bottle, 25.0, 10.0)
 	_expect_equal("the cup pours into the bottle", is_equal_approx(sim.bottle.grams, 17.5) and sim.cup.is_empty(), true)
+
+	# Pouring by hand: lift the corked bottle over the pot, then uncork it.
+	var bottle: PourVesselView = kitchen.get_node("OilBottle")
+	var bottle_grip: Interactable = bottle.get_node("Grip")
+	var over_pot := kitchen.pot_view.global_position + Vector3(0.02, 0.0, 0.0)
+	bottle_grip.pressed.emit(bottle.global_position)
+	bottle_grip.dragged.emit(Vector3(over_pot.x, 0.0, over_pot.z))
+	for frame in 90:
+		await get_tree().process_frame
+	_expect_equal("a corked bottle held over the pot pours nothing", pot.medium == null, true)
+	bottle_grip.secondary_pressed.emit(bottle.global_position)
+	var waited: int = 0
+	while sim.bottle.grams > 0.0 and waited < 600:
+		await get_tree().process_frame
+		waited += 1
+	bottle_grip.released.emit(bottle.global_position)
+	_expect_equal("uncorked and tipped, the bottle pours its oil into the pot",
+		pot.medium == sim.oil and is_equal_approx(pot.medium_mass_g, 17.5), true)
+
+	# Cranking by hand: two full circles round the axle, clockwise on screen.
+	kitchen.seed_source.taken.emit(seeds, 50.0)
+	var crank_grip: Interactable = kitchen.press_view.get_node("CrankGrip")
+	var crank: Node3D = kitchen.press_view.get_node("Model/crank")
+	crank_grip.pressed.emit(crank.global_position + Vector3(0.03, 0.0, 0.0))
+	var plane: Plane = crank_grip.drag_plane
+	var u := plane.normal.cross(Vector3.UP).normalized()
+	var v := plane.normal.cross(u).normalized()
+	var cup_before: float = sim.cup.grams
+	for step in 72:
+		var angle := -deg_to_rad(10.0 * (step + 1))
+		crank_grip.dragged.emit(crank.global_position + (u * cos(angle) + v * sin(angle)) * 0.03)
+	_expect_equal("circling the crank presses oil into the cup", sim.cup.grams > cup_before + 10.0, true)
 
 	pot.add_medium(sim.oil, 300.0, AMBIENT_TEMP_C)
 	var board := kitchen.board
