@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="KitchenAir" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/kitchen_air.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+temp_c = 15.0
+wind_mps = 4.0
+relative_humidity = 0.8

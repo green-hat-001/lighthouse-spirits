@@ -14,38 +14,92 @@ extends RefCounted
 ## Units: mm, g, degrees C. Fractions and 0-1 levels are unitless.
 ##
 ## Mass is tracked as grams of solids, water and absorbed oil, so cooking can
-## boil water off and soak oil in without the fractions drifting. The piece
-## has two thermal nodes: a thin surface shell (SHELL_DEPTH_MM deep, capped
-## at MAX_SHELL_FRACTION of the volume) and the core. Surface quantities
-## (browning, char, surface temperature and moisture) belong to the shell;
-## a fresh cut face dilutes them with interior values.
+## boil water off and soak oil in without the fractions drifting.
+##
+## Thermally the piece is a core plus a thin surface shell (SHELL_DEPTH_MM
+## deep, capped at MAX_SHELL_FRACTION of the volume). The shell is split
+## into the box's six faces, each with its own temperature, moisture,
+## browning and char, because the faces of one piece rarely see the same
+## heat: in a shallow pan the bottom sits on hot metal, the sides are in
+## oil and the top is in the air. Each face's share of the shell is its
+## share of the surface area. The piece-wide surface values
+## (surface_temp_c, surface_moisture, surface_browning, surface_char) are
+## area-weighted means over the faces; setting one sets every face.
+##
+## A face is skin (the outside of the whole item) or flesh (a cut face).
+## Cutting makes fresh flesh faces; rolling turns the faces with the piece.
 
 const SHELL_DEPTH_MM: float = 1.0
 const MAX_SHELL_FRACTION: float = 0.5
+
+## Faces, by index: the face whose outward normal points along +X, -X, +Y
+## (top), -Y (bottom), +Z, -Z.
+enum Face { POS_X, NEG_X, POS_Y, NEG_Y, POS_Z, NEG_Z }
+const FACE_COUNT: int = 6
+const TOP: int = Face.POS_Y
+const BOTTOM: int = Face.NEG_Y
 
 var ingredient: Ingredient
 var size_mm: Vector3
 var solids_g: float
 var water_g: float
 var oil_g: float = 0.0
-## Water as a fraction of the shell's mass. Evaporation dries it; water
-## migrating out from the core wets it again.
-var surface_moisture: float
 var core_temp_c: float
-var surface_temp_c: float
 ## 0 raw, 1 cooked all the way through. Keeps rising past 1 as the piece
 ## overcooks.
 var core_doneness: float = 0.0
-## 0 pale through to 1 deeply browned.
-var surface_browning: float = 0.0
-## 0 clean through to 1 blackened.
-var surface_char: float = 0.0
 ## 1 firm and whole through to 0 fallen apart.
 var integrity: float = 1.0
 var flavour: FlavourProfile
 ## Every axis (Vector3.AXIS_*) this piece, or any piece it was cut from,
 ## has been cut along. A cut along any other axis is a perpendicular cut.
 var cut_axes: Array[int] = []
+
+## Per face, indexed by Face.
+var face_temp_c := PackedFloat64Array()
+## Water as a fraction of the face's share of the shell. Evaporation dries
+## it; water migrating out from the core wets it again.
+var face_moisture := PackedFloat64Array()
+## 0 pale through to 1 deeply browned.
+var face_browning := PackedFloat64Array()
+## 0 clean through to 1 blackened.
+var face_char := PackedFloat64Array()
+## 1 for the ingredient's own skin, 0 for cut flesh.
+var face_skin := PackedFloat64Array()
+
+## Area-weighted mean over the faces. Setting it sets every face.
+var surface_temp_c: float:
+	get:
+		return _area_mean(face_temp_c)
+	set(value):
+		face_temp_c.fill(value)
+var surface_moisture: float:
+	get:
+		return _area_mean(face_moisture)
+	set(value):
+		face_moisture.fill(value)
+var surface_browning: float:
+	get:
+		return _area_mean(face_browning)
+	set(value):
+		face_browning.fill(value)
+var surface_char: float:
+	get:
+		return _area_mean(face_char)
+	set(value):
+		face_char.fill(value)
+
+func _init() -> void:
+	face_temp_c.resize(FACE_COUNT)
+	face_moisture.resize(FACE_COUNT)
+	face_browning.resize(FACE_COUNT)
+	face_char.resize(FACE_COUNT)
+	face_skin.resize(FACE_COUNT)
+	face_temp_c.fill(0.0)
+	face_moisture.fill(0.0)
+	face_browning.fill(0.0)
+	face_char.fill(0.0)
+	face_skin.fill(0.0)
 
 ## A whole, raw item at the given ambient temperature, or null (with an
 ## error) when the ingredient is not a SOLID that can exist as a piece.
@@ -59,11 +113,30 @@ static func from_ingredient(p_ingredient: Ingredient, ambient_temp_c: float) -> 
 	var mass: float = p_ingredient.whole_mass_g()
 	piece.water_g = mass * p_ingredient.water_fraction
 	piece.solids_g = mass - piece.water_g
-	piece.surface_moisture = p_ingredient.water_fraction
 	piece.core_temp_c = ambient_temp_c
-	piece.surface_temp_c = ambient_temp_c
+	piece.face_temp_c.fill(ambient_temp_c)
+	piece.face_moisture.fill(p_ingredient.water_fraction)
+	piece.face_skin.fill(1.0)
 	piece.flavour = p_ingredient.flavour.copy() if p_ingredient.flavour else FlavourProfile.new()
 	return piece
+
+## The axis (Vector3.AXIS_*) a face is perpendicular to.
+static func face_axis(face: int) -> int:
+	return face >> 1
+
+## +1 for a face on the positive side of its axis, -1 for the negative.
+static func face_sign(face: int) -> float:
+	return 1.0 if face % 2 == 0 else -1.0
+
+## The face with the given axis and side.
+static func face_of(axis: int, positive: bool) -> int:
+	return axis * 2 + (0 if positive else 1)
+
+## Outward normal of a face in the piece's local frame.
+static func face_normal(face: int) -> Vector3:
+	var normal := Vector3.ZERO
+	normal[face_axis(face)] = face_sign(face)
+	return normal
 
 func mass_g() -> float:
 	return solids_g + water_g + oil_g
@@ -75,6 +148,10 @@ func moisture() -> float:
 func oil_fraction() -> float:
 	return oil_g / mass_g()
 
+## Overall density, in g/cm^3.
+func density_g_per_cm3() -> float:
+	return mass_g() / (volume_mm3() / 1000.0)
+
 func volume_mm3() -> float:
 	return size_mm.x * size_mm.y * size_mm.z
 
@@ -85,6 +162,13 @@ func surface_area_mm2() -> float:
 ## that axis exposes, and for AXIS_Y the face the piece rests on.
 func cross_section_mm2(axis: int) -> float:
 	return volume_mm3() / size_mm[axis]
+
+func face_area_mm2(face: int) -> float:
+	return cross_section_mm2(face_axis(face))
+
+## The face's share of the whole surface, and so of the shell.
+func face_share(face: int) -> float:
+	return face_area_mm2(face) / surface_area_mm2()
 
 func min_dimension_mm() -> float:
 	return minf(size_mm.x, minf(size_mm.y, size_mm.z))
@@ -98,42 +182,102 @@ func shell_mass_g() -> float:
 func core_mass_g() -> float:
 	return mass_g() - shell_mass_g()
 
+func face_shell_mass_g(face: int) -> float:
+	return shell_mass_g() * face_share(face)
+
+func face_water_g(face: int) -> float:
+	return face_moisture[face] * face_shell_mass_g(face)
+
 func surface_water_g() -> float:
-	return surface_moisture * shell_mass_g()
+	var total: float = 0.0
+	var shell: float = shell_mass_g()
+	var area: float = surface_area_mm2()
+	for face in FACE_COUNT:
+		total += face_moisture[face] * shell * face_area_mm2(face) / area
+	return total
+
+## Every face's water in grams, to restore after something changes the
+## shell's mass (oil soaking in, the piece shrinking) without moving water.
+func face_waters_g() -> PackedFloat64Array:
+	var waters := PackedFloat64Array()
+	waters.resize(FACE_COUNT)
+	for face in FACE_COUNT:
+		waters[face] = face_water_g(face)
+	return waters
+
+func restore_face_waters(waters: PackedFloat64Array) -> void:
+	for face in FACE_COUNT:
+		var shell: float = face_shell_mass_g(face)
+		face_moisture[face] = waters[face] / shell if shell > 0.0 else 0.0
+	clamp_surface_moisture()
 
 ## Water as a fraction of the core's mass.
 func core_moisture() -> float:
 	return maxf(water_g - surface_water_g(), 0.0) / core_mass_g()
 
-## How dry the surface is relative to the raw ingredient: 0 as wet as when
-## raw (or wetter), 1 bone dry. Browning and crisping need a dry surface.
+## How dry one face is relative to the raw ingredient: 0 as wet as when raw
+## (or wetter), 1 bone dry. Browning and crisping need a dry surface.
+func face_dryness(face: int) -> float:
+	var raw_moisture: float = ingredient.water_fraction
+	if raw_moisture <= 0.0:
+		return 1.0
+	return clampf(1.0 - face_moisture[face] / raw_moisture, 0.0, 1.0)
+
+## Area-weighted dryness of the whole surface.
 func surface_dryness() -> float:
 	var raw_moisture: float = ingredient.water_fraction
 	if raw_moisture <= 0.0:
 		return 1.0
 	return clampf(1.0 - surface_moisture / raw_moisture, 0.0, 1.0)
 
-## Keeps the shell from holding more water than the piece has. Called after
-## anything that changes the shell's size or the piece's water.
+## Area share of the surface that is still skin.
+func skin_share() -> float:
+	return _area_mean(face_skin)
+
+## Keeps every face's moisture within 0-1 and the shell from holding more
+## water than the piece has. Called after anything that changes the
+## shell's size or the piece's water.
 func clamp_surface_moisture() -> void:
 	var shell_mass: float = shell_mass_g()
 	if shell_mass <= 0.0:
-		surface_moisture = 0.0
+		face_moisture.fill(0.0)
 		return
-	surface_moisture = clampf(surface_moisture, 0.0, minf(water_g / shell_mass, 1.0))
+	for face in FACE_COUNT:
+		face_moisture[face] = clampf(face_moisture[face], 0.0, 1.0)
+	var surface_water: float = surface_water_g()
+	if surface_water > water_g and surface_water > 0.0:
+		var scale: float = maxf(water_g, 0.0) / surface_water
+		for face in FACE_COUNT:
+			face_moisture[face] *= scale
+
+## Shrinks the piece uniformly to a new volume, keeping its mass and every
+## face's water where they are. Food shrinks as it loses water.
+func shrink_to_volume(new_volume_mm3: float) -> void:
+	var volume: float = volume_mm3()
+	if new_volume_mm3 >= volume or new_volume_mm3 <= 0.0:
+		return
+	var waters := face_waters_g()
+	size_mm *= pow(new_volume_mm3 / volume, 1.0 / 3.0)
+	restore_face_waters(waters)
 
 ## Tips the piece 90 degrees onto its side, rolling it like a log about its
 ## longer horizontal axis - how a cook lays a plank flat to cut it into
-## sticks. Its cut history turns with it, so a cut that was vertical before
-## the roll is horizontal after it. Returns the axis it rolled about.
+## sticks, or turns a fry in the pan. Its cut history and its faces turn
+## with it, so a cut that was vertical before the roll is horizontal after
+## it, and the face that was on top is now a side. Returns the axis it
+## rolled about.
 func roll() -> int:
 	if size_mm.x >= size_mm.z:
-		_swap_axes(Vector3.AXIS_Y, Vector3.AXIS_Z)
+		_rotate_quarter(Vector3.AXIS_X)
 		return Vector3.AXIS_X
-	_swap_axes(Vector3.AXIS_X, Vector3.AXIS_Y)
+	_rotate_quarter(Vector3.AXIS_Z)
 	return Vector3.AXIS_Z
 
-func _swap_axes(first: int, second: int) -> void:
+## Turns the piece a quarter turn (right-handed, +90 degrees) about one
+## horizontal axis: about X, +Y goes to +Z; about Z, +X goes to +Y.
+func _rotate_quarter(about: int) -> void:
+	var first: int = Vector3.AXIS_Y if about == Vector3.AXIS_X else Vector3.AXIS_X
+	var second: int = Vector3.AXIS_Z if about == Vector3.AXIS_X else Vector3.AXIS_Y
 	var size := size_mm
 	var first_length: float = size[first]
 	size[first] = size[second]
@@ -144,9 +288,22 @@ func _swap_axes(first: int, second: int) -> void:
 			cut_axes[index] = second
 		elif cut_axes[index] == second:
 			cut_axes[index] = first
+	# +first -> +second, +second -> -first, -first -> -second, -second -> +first.
+	var mapping := {
+		face_of(first, true): face_of(second, true),
+		face_of(second, true): face_of(first, false),
+		face_of(first, false): face_of(second, false),
+		face_of(second, false): face_of(first, true),
+	}
+	for array_name in [&"face_temp_c", &"face_moisture", &"face_browning", &"face_char", &"face_skin"]:
+		var old: PackedFloat64Array = get(array_name)
+		var turned := old.duplicate()
+		for from_face in mapping:
+			turned[mapping[from_face]] = old[from_face]
+		set(array_name, turned)
 
-## Independent deep copy: the clone's flavour and cut history can change
-## without touching this piece.
+## Independent deep copy: the clone's flavour, faces and cut history can
+## change without touching this piece.
 func clone() -> FoodPiece:
 	var copy := FoodPiece.new()
 	copy.ingredient = ingredient
@@ -154,13 +311,23 @@ func clone() -> FoodPiece:
 	copy.solids_g = solids_g
 	copy.water_g = water_g
 	copy.oil_g = oil_g
-	copy.surface_moisture = surface_moisture
 	copy.core_temp_c = core_temp_c
-	copy.surface_temp_c = surface_temp_c
 	copy.core_doneness = core_doneness
-	copy.surface_browning = surface_browning
-	copy.surface_char = surface_char
 	copy.integrity = integrity
 	copy.flavour = flavour.copy()
 	copy.cut_axes = cut_axes.duplicate()
+	copy.face_temp_c = face_temp_c.duplicate()
+	copy.face_moisture = face_moisture.duplicate()
+	copy.face_browning = face_browning.duplicate()
+	copy.face_char = face_char.duplicate()
+	copy.face_skin = face_skin.duplicate()
 	return copy
+
+func _area_mean(values: PackedFloat64Array) -> float:
+	var area: float = surface_area_mm2()
+	if area <= 0.0:
+		return 0.0
+	var total: float = 0.0
+	for face in FACE_COUNT:
+		total += values[face] * face_area_mm2(face)
+	return total / area

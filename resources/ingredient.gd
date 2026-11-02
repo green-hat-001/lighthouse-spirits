@@ -76,6 +76,14 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 ## How readily a browned surface burns, relative to a potato's (1.0). Thin,
 ## sugary skins like a chilli's burn far faster.
 @export var char_susceptibility: float = 1.0
+## How freely water, fat and flavour pass through the skin, relative to cut
+## flesh (1.0). A potato's skin keeps a whole potato from drying out or
+## soaking up oil the way cut faces do. SOLID only.
+@export_range(0.0, 1.0) var skin_permeability: float = 1.0
+## Volume lost per volume of water the food loses: 0 keeps its size, 1
+## shrinks it by exactly the water that left. Fries shrink as they fry.
+## SOLID only.
+@export_range(0.0, 1.0) var shrinkage_per_water_lost: float = 0.0
 
 @export_group("As a Cooking Medium")
 ## For LIQUID ingredients food can be cooked in. 0 means the liquid does not
@@ -84,6 +92,17 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 @export var latent_heat_j_per_g: float = 0.0
 ## Heat transfer from this liquid into food submerged in it, in W/(m^2 K).
 @export var medium_heat_transfer_w_per_m2_k: float = 0.0
+## Temperature at which fresh oil starts to smoke and break down fast. 0
+## for a liquid that does not (water). Worn oil smokes sooner.
+@export var smoke_point_c: float = 0.0
+## Breakdown (0 fresh to 1 spent) per hour held at 180 degrees C, from
+## oxidation and polymerisation. Doubles every 10 degrees hotter.
+@export var breakdown_per_hour_at_180c: float = 0.0
+## Breakdown per gram of steam bubbled through each kilogram of the medium,
+## from hydrolysis - wet food wears frying oil out.
+@export var breakdown_per_g_steam_per_kg: float = 0.0
+## Colour of the medium when it is spent: fresh oil darkens toward this.
+@export var spent_color: Color = Color(0.35, 0.2, 0.08, 1.0)
 
 @export_group("Flavour")
 @export var flavour: FlavourProfile
@@ -136,11 +155,17 @@ func validate() -> PackedStringArray:
 			problems.append("ideal doneness needs 0 < min <= max")
 		if char_susceptibility < 0.0:
 			problems.append("char susceptibility cannot be negative")
+		if skin_permeability < 0.0 or skin_permeability > 1.0:
+			problems.append("skin permeability must be within 0-1")
+		if shrinkage_per_water_lost < 0.0 or shrinkage_per_water_lost > 1.0:
+			problems.append("shrinkage must be within 0-1")
 	elif physical_form == PhysicalForm.LIQUID:
 		if medium_heat_transfer_w_per_m2_k <= 0.0:
 			problems.append("a LIQUID needs a positive heat transfer into food")
 		if boiling_point_c > 0.0 and latent_heat_j_per_g <= 0.0:
 			problems.append("a LIQUID that boils needs a latent heat")
+		if smoke_point_c < 0.0 or breakdown_per_hour_at_180c < 0.0 or breakdown_per_g_steam_per_kg < 0.0:
+			problems.append("smoke point and breakdown rates cannot be negative")
 	if unsteadied_cut_integrity_loss < 0.0 or unsteadied_cut_integrity_loss > 1.0:
 		problems.append("unsteadied cut integrity loss must be within 0-1")
 

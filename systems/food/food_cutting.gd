@@ -11,9 +11,10 @@ extends RefCounted
 ##     along the cut axis, so mass is conserved exactly;
 ##   - bulk state (core temperature, doneness, flavour) is inherited
 ##     unchanged;
-##   - each side gains a fresh interior face, which dilutes surface
-##     browning and char and pulls surface temperature and moisture towards
-##     the core's;
+##   - each side gains a fresh flesh face at the cut, at the core's
+##     temperature and moisture with no browning or char, while its other
+##     faces keep theirs (the near side's new face is its +axis face, the
+##     far side's its -axis face);
 ##   - a side thinner than the ingredient's stable thickness crumbles in
 ##     proportion to how thin it is;
 ##   - a perpendicular cut made without steadying the food costs both sides
@@ -38,8 +39,8 @@ static func cut(piece: FoodPiece, axis: int, offset_mm: float, steadied: bool) -
 		return pieces
 
 	var unsteadied_perpendicular: bool = not steadied and is_perpendicular(piece, axis)
-	for side_length in [offset_mm, length - offset_mm]:
-		pieces.append(_make_side(piece, axis, side_length, length, unsteadied_perpendicular))
+	pieces.append(_make_side(piece, axis, offset_mm, length, unsteadied_perpendicular, true))
+	pieces.append(_make_side(piece, axis, length - offset_mm, length, unsteadied_perpendicular, false))
 	return pieces
 
 ## True when the piece has already been cut along some other axis, so this
@@ -52,7 +53,7 @@ static func is_perpendicular(piece: FoodPiece, axis: int) -> bool:
 
 static func _make_side(
 		parent: FoodPiece, axis: int, side_length: float, parent_length: float,
-		unsteadied_perpendicular: bool) -> FoodPiece:
+		unsteadied_perpendicular: bool, is_near_side: bool) -> FoodPiece:
 	var side := parent.clone()
 	var size := parent.size_mm
 	size[axis] = side_length
@@ -62,13 +63,15 @@ static func _make_side(
 	side.water_g = parent.water_g * share
 	side.oil_g = parent.oil_g * share
 
-	var total_area: float = side.surface_area_mm2()
-	var fresh_area: float = side.cross_section_mm2(axis)
-	var old_area: float = total_area - fresh_area
-	side.surface_browning = parent.surface_browning * old_area / total_area
-	side.surface_char = parent.surface_char * old_area / total_area
-	side.surface_temp_c = (parent.surface_temp_c * old_area + parent.core_temp_c * fresh_area) / total_area
-	side.surface_moisture = (parent.surface_moisture * old_area + parent.core_moisture() * fresh_area) / total_area
+	# The cut face is fresh flesh at the temperature and moisture of the
+	# parent's core. Every other face keeps what it had, so a browned
+	# outside stays browned beside the pale new face.
+	var fresh_face: int = FoodPiece.face_of(axis, is_near_side)
+	side.face_temp_c[fresh_face] = parent.core_temp_c
+	side.face_moisture[fresh_face] = parent.core_moisture()
+	side.face_browning[fresh_face] = 0.0
+	side.face_char[fresh_face] = 0.0
+	side.face_skin[fresh_face] = 0.0
 	side.clamp_surface_moisture()
 
 	var stable_thickness: float = parent.ingredient.stable_thickness_mm

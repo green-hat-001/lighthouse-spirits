@@ -9,3 +9,5 @@ display_name = "Gas Stove"
 available_from_start = true
 max_power_w = 1400.0
 min_flame_level = 0.15
+burner_radius_mm = 35.0
+full_flame_radius_mm = 85.0

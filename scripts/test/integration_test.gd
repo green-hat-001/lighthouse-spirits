@@ -93,6 +93,19 @@ func _ready() -> void:
 	_test_boiling_softens_and_never_browns()
 	_test_thin_slice_heating_is_stable()
 	_test_simulation_ignores_frame_rate()
+	_test_faces_cook_independently()
+	_test_cut_faces_are_flesh()
+	_test_rolling_turns_faces()
+	_test_food_dries_and_cools_in_the_wind()
+	_test_resting_fries_cook_on_and_go_limp()
+	_test_shallow_fry_browns_underneath()
+	_test_the_middle_of_the_base_is_hottest()
+	_test_buoyancy_and_displacement()
+	_test_frying_oil_wears_out()
+	_test_wind_slows_the_pot()
+	_test_open_water_evaporates()
+	_test_spoon_stirs_and_finds_food()
+	_test_full_pot_runs_in_real_time()
 	_test_shipped_transformations_validate()
 	_test_transformation_validation()
 	_test_press_turns_work_into_oil()
@@ -373,8 +386,13 @@ func _test_pot_heats_and_cools() -> void:
 	var seconds := _heat_until(pot, 180.0, 1800.0)
 	_expect_equal("oil at full flame reaches frying heat within minutes, not instantly", seconds > 120.0 and seconds < 900.0, true)
 
+	_expect_equal("the metal under the oil runs hotter than the oil", pot.base_temp_c > pot.temp_c + 10.0, true)
 	pot.set_flame(0.2)
-	pot.advance(120.0)
+	var peak: float = pot.temp_c
+	for second in 600:
+		pot.advance(1.0)
+		peak = maxf(peak, pot.temp_c)
+	_expect_equal("hot metal carries the oil on a little after the flame drops", peak > 180.5, true)
 	_expect_equal("lowering the flame lets the oil cool", pot.temp_c < 180.0, true)
 
 func _test_batch_draws_heat_from_oil() -> void:
@@ -395,8 +413,9 @@ func _test_batch_draws_heat_from_oil() -> void:
 
 	_expect_equal("a cold batch drops the oil's temperature", batch_pot.temp_c < empty_pot.temp_c - 5.0, true)
 	# The two pots differ only by the batch, so the heat the batch took is
-	# the heat the oil is missing - less the extra the cooler pot didn't lose.
-	var missing_heat_j: float = (empty_pot.temp_c - batch_pot.temp_c) * batch_pot.heat_capacity_j_per_k()
+	# the heat the oil and metal are missing - less the extra the cooler pot
+	# didn't lose to the air.
+	var missing_heat_j: float = empty_pot.thermal_energy_j() - batch_pot.thermal_energy_j()
 	_expect_equal(
 		"heat drawn by the food is heat the oil lost",
 		absf(missing_heat_j - batch_pot.energy_to_food_j) < 0.1 * batch_pot.energy_to_food_j,
@@ -440,16 +459,22 @@ func _test_frying_temperature_shapes_the_fry() -> void:
 	for temp in [130.0, 180.0, 220.0]:
 		var fry := _cut_stick(10.0)
 		var exposure := _held_exposure(_make_test_oil(), temp)
-		for step in 6000:
+		for step in 7200:
 			FoodHeating.step(fry, exposure, 0.05)
 		fries[temp] = fry
 	var cool: FoodPiece = fries[130.0]
 	var right: FoodPiece = fries[180.0]
 	var hot: FoodPiece = fries[220.0]
-	_expect_equal("fries at 180C cook through in five minutes", right.core_doneness >= 1.0, true)
-	_expect_equal("fries at 130C are still raw inside at five minutes", cool.core_doneness < 1.0, true)
+	_expect_equal("fries at 180C cook through in six minutes", right.core_doneness >= 1.0, true)
+	_expect_equal("fries at 180C are golden at six minutes", right.surface_browning > 0.4 and right.surface_browning < 0.85, true)
+	_expect_equal("fries at 180C are still moist inside at six minutes", right.core_moisture() > 0.2, true)
+	# Blanching: the first fry of a double fry cooks the inside through and
+	# leaves the outside pale.
+	_expect_equal("fries blanched at 130C cook through", cool.core_doneness >= 1.0, true)
+	_expect_equal("but stay pale", cool.surface_browning < 0.1, true)
+	_expect_equal("a wet core never passes boiling", right.core_temp_c <= 100.0 + EPSILON, true)
 	_expect_equal("hotter oil browns fries more", right.surface_browning > cool.surface_browning + 0.2, true)
-	_expect_equal("fries at 180C do not burn in five minutes", right.surface_char < 0.05, true)
+	_expect_equal("fries at 180C do not burn in six minutes", right.surface_char < 0.05, true)
 	_expect_equal("fries at 220C burn", hot.surface_char > right.surface_char + 0.1, true)
 	_expect_equal("cool oil makes greasier fries", cool.oil_fraction() > right.oil_fraction(), true)
 	_expect_equal("burning makes food bitter", hot.flavour.bitter > right.flavour.bitter, true)
@@ -465,7 +490,7 @@ func _test_boiling_softens_and_never_browns() -> void:
 
 	var fry := _cut_stick(10.0)
 	var oil := _held_exposure(_make_test_oil(), 180.0)
-	for step in 7200:
+	for step in 10800:
 		FoodHeating.step(fry, oil, 0.05)
 	_expect_equal("an overcooked fry's dry crust holds it together", fry.core_doneness > 1.5 and fry.integrity > 0.9, true)
 
@@ -496,6 +521,219 @@ func _test_simulation_ignores_frame_rate() -> void:
 	choppy.advance(CookingPot.FIXED_STEP_S * 0.5)
 	_expect_near("oil temperature is independent of frame rate", smooth.temp_c, choppy.temp_c)
 	_expect_near("food is independent of frame rate", smooth.pieces[0].core_temp_c, choppy.pieces[0].core_temp_c)
+
+# --- Per-face and pot interaction checks ---------------------------------------
+# Each face of a piece sees what it actually touches. These pin the
+# consequences: shallow frying browns underneath, turning evens it out, the
+# middle of the base is the hot spot, food sinks and floats by buoyancy,
+# displaces the oil, and the oil itself wears out when abused.
+
+func _test_faces_cook_independently() -> void:
+	var stick := _cut_stick(10.0)
+	var exposure := HeatExposure.new()
+	exposure.use_per_face()
+	exposure.air_temp_c = AMBIENT_TEMP_C
+	for face in FoodPiece.FACE_COUNT:
+		if face == FoodPiece.BOTTOM:
+			exposure.set_face(face, 0.0, 0.0, 400.0, 200.0, 0.0)
+		else:
+			exposure.set_face(face, 0.0, 0.0, 0.0, 0.0, 10.0)
+	for step in 6000:
+		FoodHeating.step(stick, exposure, 0.05)
+	_expect_equal("the face on hot metal browns", stick.face_browning[FoodPiece.BOTTOM] > 0.3, true)
+	_expect_equal("the face in the air above stays pale", stick.face_browning[FoodPiece.TOP] < 0.02, true)
+	_expect_equal("the hot face is hotter than the face in the air", stick.face_temp_c[FoodPiece.BOTTOM] > stick.face_temp_c[FoodPiece.TOP] + 30.0, true)
+	_expect_equal("heat from the one hot face still cooks the core", stick.core_temp_c > 60.0, true)
+
+func _test_cut_faces_are_flesh() -> void:
+	var whole := FoodPiece.from_ingredient(_make_test_ingredient(), AMBIENT_TEMP_C)
+	_expect_near("a whole item is all skin", whole.skin_share(), 1.0)
+	var halves := FoodCutting.cut(whole, Vector3.AXIS_X, 30.0, true)
+	_expect_near("the near half's cut face is flesh", halves[0].face_skin[FoodPiece.Face.POS_X], 0.0)
+	_expect_near("the far half's cut face is flesh", halves[1].face_skin[FoodPiece.Face.NEG_X], 0.0)
+	_expect_near("the near half's other end is still skin", halves[0].face_skin[FoodPiece.Face.NEG_X], 1.0)
+	_expect_near("its top is still skin", halves[0].face_skin[FoodPiece.TOP], 1.0)
+
+func _test_rolling_turns_faces() -> void:
+	var plank: FoodPiece = FoodCutting.cut(FoodPiece.from_ingredient(_make_test_ingredient(), AMBIENT_TEMP_C), Vector3.AXIS_Z, 10.0, true)[0]
+	plank.face_browning[FoodPiece.BOTTOM] = 1.0
+	plank.roll()
+	_expect_near("rolling turns the browned underside to a side", plank.face_browning[FoodPiece.Face.NEG_Z], 1.0)
+	_expect_near("and off the bottom", plank.face_browning[FoodPiece.BOTTOM], 0.0)
+	plank.roll()
+	_expect_near("rolling twice turns the underside to the top", plank.face_browning[FoodPiece.TOP], 1.0)
+	var total: float = 0.0
+	for face in FoodPiece.FACE_COUNT:
+		total += plank.face_browning[face]
+	_expect_near("rolling moves faces, never makes or loses them", total, 1.0)
+
+func _test_food_dries_and_cools_in_the_wind() -> void:
+	var calm_air := KitchenAir.new()
+	calm_air.temp_c = AMBIENT_TEMP_C
+	calm_air.wind_mps = 0.0
+	var gale := calm_air.duplicate() as KitchenAir
+	gale.wind_mps = 12.0
+	var still_cube := _boil(25.0, 600.0)
+	var windy_cube := still_cube.clone()
+	var water_before: float = still_cube.water_g
+	var still_rest := RestingSurface.new(calm_air)
+	var windy_rest := RestingSurface.new(gale)
+	still_rest.add_piece(still_cube)
+	windy_rest.add_piece(windy_cube)
+	still_rest.advance(120.0)
+	windy_rest.advance(120.0)
+	_expect_equal("hot boiled potato steams dry in the air", still_cube.water_g < water_before - 0.05, true)
+	_expect_equal("it dries faster in the wind", windy_cube.water_g < still_cube.water_g, true)
+	_expect_equal("and cools faster in the wind", windy_cube.core_temp_c < still_cube.core_temp_c - 2.0, true)
+
+func _test_resting_fries_cook_on_and_go_limp() -> void:
+	var fry := _fry(180.0, 150.0)
+	var doneness_out: float = fry.core_doneness
+	var rest := RestingSurface.new(KitchenAir.still(AMBIENT_TEMP_C))
+	rest.add_piece(fry)
+	rest.advance(60.0)
+	_expect_equal("a fry lifted from the oil keeps cooking from its own heat", fry.core_doneness > doneness_out + 0.02, true)
+	var crisp_soon := FoodPerception.texture_of(fry).crispness
+	rest.advance(1800.0)
+	_expect_equal("left out, it cools to the air", fry.core_temp_c < AMBIENT_TEMP_C + 5.0, true)
+	_expect_equal("and its crust goes limp as water creeps back out", FoodPerception.texture_of(fry).crispness < crisp_soon - 0.1, true)
+
+func _test_shallow_fry_browns_underneath() -> void:
+	var pot := _make_test_oil_pot_with(200.0)
+	_heat_until(pot, 180.0, 1800.0)
+	var stick := _cut_stick(10.0)
+	pot.add_piece(stick)
+	var placement := pot.placement_of(stick)
+	_expect_equal("a raw stick sinks to the bottom", placement.resting, PotPlacement.Resting.FLOOR)
+	_expect_equal("a 10mm stick stands proud of 200g of oil", placement.immersion < 1.0, true)
+	_hold_temperature(pot, 180.0, 300.0)
+	var underside: float = stick.face_browning[FoodPiece.BOTTOM]
+	var top: float = stick.face_browning[FoodPiece.TOP]
+	_expect_equal("shallow-fried food browns underneath first", underside > top + 0.2, true)
+	pot.turn(stick)
+	pot.turn(stick)
+	_hold_temperature(pot, 180.0, 300.0)
+	_expect_equal("turning it browns the other side", stick.face_browning[FoodPiece.BOTTOM] > top + 0.2, true)
+
+func _test_the_middle_of_the_base_is_hottest() -> void:
+	var pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C, KitchenAir.still(AMBIENT_TEMP_C))
+	pot.burner = _make_test_stove()
+	pot.set_flame(0.3)
+	pot.advance(240.0)
+	_expect_equal("a small flame heats the middle of a dry pot more than its rim", pot.base_temp_c > pot.rim_temp_c + 20.0, true)
+	var middle := _cut_cube(15.0)
+	var edge := _cut_cube(15.0)
+	pot.add_piece(middle, Vector2.ZERO)
+	pot.add_piece(edge, Vector2(65.0, 0.0))
+	_expect_near("food at the edge is mostly over the rim", pot.placement_of(edge).over_burner, 0.0)
+	pot.advance(60.0)
+	_expect_equal("food in the middle browns faster than food by the wall",
+		middle.face_browning[FoodPiece.BOTTOM] > edge.face_browning[FoodPiece.BOTTOM] + 0.05, true)
+
+func _test_buoyancy_and_displacement() -> void:
+	var pot := _make_test_oil_pot()
+	var level_before: float = pot.liquid_level_mm
+	var sticks: Array[FoodPiece] = []
+	for index in 6:
+		var stick := _cut_stick(10.0)
+		sticks.append(stick)
+		pot.add_piece(stick, Vector2(-30.0 + index * 12.0, 0.0))
+	_expect_equal("food lowered into oil raises the oil", pot.liquid_level_mm > level_before + 0.5, true)
+	_expect_equal("raw potato sinks in oil", pot.placement_of(sticks[0]).resting, PotPlacement.Resting.FLOOR)
+	_expect_equal("pieces dropped side by side don't overlap",
+		pot.placement_of(sticks[0]).footprint().intersects(pot.placement_of(sticks[1]).footprint()), false)
+	pot.set_flame(1.0)
+	_heat_until(pot, 175.0, 1800.0)
+	_hold_temperature(pot, 180.0, 420.0)
+	_expect_equal("a fry that has given up its water floats", pot.placement_of(sticks[0]).resting, PotPlacement.Resting.FLOATING)
+
+	var bubbling := PotPlacement.new(_cut_stick(10.0), Vector2.ZERO)
+	var density_still: float = PotLayout.effective_density(bubbling)
+	bubbling.steam_g_per_s = 0.03
+	_expect_equal("clinging steam bubbles lighten food", PotLayout.effective_density(bubbling) < density_still, true)
+
+func _test_frying_oil_wears_out() -> void:
+	var fresh_pot := _make_test_oil_pot_with(1000.0, _make_test_frying_oil())
+	var abused_pot := _make_test_oil_pot_with(1000.0, _make_test_frying_oil())
+	_heat_until(fresh_pot, 180.0, 1800.0)
+	abused_pot.set_flame(1.0)
+	var smoked := false
+	for second in 1500:
+		abused_pot.advance(1.0)
+		smoked = smoked or abused_pot.smoke > 0.5
+	_expect_equal("oil left on full flame smokes", smoked, true)
+	_expect_equal("smoking breaks the oil down", abused_pot.medium_breakdown > 0.3, true)
+	_expect_equal("broken-down oil tastes acrid", abused_pot.medium_flavour.bitter > fresh_pot.medium_flavour.bitter + 0.1, true)
+	_expect_equal("worn oil smokes at a lower temperature",
+		MediumChemistry.smoke_point_c(abused_pot.medium, abused_pot.medium_breakdown) < MediumChemistry.smoke_point_c(fresh_pot.medium, 0.0) - 20.0, true)
+
+	abused_pot.set_flame(0.0)
+	for second in 3000:
+		abused_pot.advance(1.0)
+		if abused_pot.temp_c <= 180.0:
+			break
+	var fresh_fry := _cut_stick(10.0)
+	var abused_fry := _cut_stick(10.0)
+	fresh_pot.add_piece(fresh_fry)
+	abused_pot.add_piece(abused_fry)
+	_hold_temperature(fresh_pot, 180.0, 240.0)
+	_hold_temperature(abused_pot, 180.0, 240.0)
+	_expect_equal("fries from abused oil come out bitter", abused_fry.flavour.bitter > fresh_fry.flavour.bitter + 0.05, true)
+	_expect_equal("and greasier", abused_fry.oil_fraction() > fresh_fry.oil_fraction(), true)
+
+	var water_pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
+	water_pot.burner = _make_test_stove()
+	water_pot.add_medium(_make_test_water(), 1500.0, AMBIENT_TEMP_C)
+	water_pot.set_flame(1.0)
+	water_pot.advance(1200.0)
+	_expect_near("water never smokes or breaks down", water_pot.medium_breakdown + water_pot.smoke, 0.0)
+
+func _test_wind_slows_the_pot() -> void:
+	var calm := KitchenAir.still(AMBIENT_TEMP_C)
+	var gale := KitchenAir.still(AMBIENT_TEMP_C)
+	gale.wind_mps = 14.0
+	var seconds := {}
+	for air in [calm, gale]:
+		var pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C, air)
+		pot.burner = _make_test_stove()
+		pot.add_medium(_make_test_oil(), 1000.0, AMBIENT_TEMP_C)
+		pot.set_flame(1.0)
+		seconds[air] = _heat_until(pot, 180.0, 3600.0)
+	_expect_equal("oil takes longer to heat in a gale", seconds[gale] > seconds[calm] * 1.3, true)
+
+func _test_open_water_evaporates() -> void:
+	var pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
+	pot.burner = _make_test_stove()
+	pot.add_medium(_make_test_water(), 1500.0, 85.0)
+	pot.set_flame(0.0)
+	pot.advance(120.0)
+	_expect_equal("hot water steams off before it boils", pot.boiled_off_g > 1.0, true)
+	_expect_near("steamed-off water leaves the pot", pot.medium_mass_g + pot.boiled_off_g, 1500.0)
+
+func _test_spoon_stirs_and_finds_food() -> void:
+	var pot := _make_test_oil_pot()
+	var stick := _cut_stick(10.0)
+	pot.add_piece(stick, Vector2(-40.0, 0.0))
+	_expect_equal("the spoon finds food where it is pressed", pot.pieces_near(Vector2(-40.0, 0.0), 5.0).has(stick), true)
+	_expect_equal("and not where it isn't", pot.pieces_near(Vector2(60.0, 60.0), 5.0).is_empty(), true)
+	pot.stir(Vector2(-40.0, 0.0), Vector2(0.0, 0.0), 12.0)
+	_expect_equal("a stroke of the spoon carries food along", pot.placement_of(stick).centre_mm.x > -15.0, true)
+
+func _test_full_pot_runs_in_real_time() -> void:
+	var pot := _make_test_oil_pot()
+	pot.set_flame(1.0)
+	_heat_until(pot, 180.0, 1800.0)
+	var whole := FoodPiece.from_ingredient(_make_test_ingredient(), AMBIENT_TEMP_C)
+	var count: int = 0
+	for plank in _slice_at_steps(whole, Vector3.AXIS_Z, 10.0, true):
+		for stick in _slice_at_steps(plank, Vector3.AXIS_Y, 10.0, true):
+			pot.add_piece(stick, Vector2(randf_range(-50.0, 50.0), randf_range(-50.0, 50.0)))
+			count += 1
+	var started := Time.get_ticks_usec()
+	pot.advance(10.0)
+	var cost_ms: float = (Time.get_ticks_usec() - started) / 1000.0 / 10.0
+	print("pot with %d fries: %.2f ms per simulated second" % [count, cost_ms])
+	_expect_equal("a full batch simulates many times faster than real time", cost_ms < 100.0, true)
 
 # --- Equipment and transformation checks ---------------------------------------
 
@@ -583,7 +821,7 @@ func _test_equipment_gating() -> void:
 
 func _test_texture_reads_physical_state() -> void:
 	var raw := FoodPerception.texture_of(_cut_stick(10.0))
-	var cooked := FoodPerception.texture_of(_fry(180.0, 300.0))
+	var cooked := FoodPerception.texture_of(_fry(180.0, 360.0))
 	var soggy := FoodPerception.texture_of(_fry(130.0, 300.0))
 	_expect_equal("raw food is firmer than cooked", raw.firmness > cooked.firmness + 0.5, true)
 	_expect_equal("cooked food is softer inside than raw", cooked.softness > raw.softness + 0.5, true)
@@ -592,8 +830,8 @@ func _test_texture_reads_physical_state() -> void:
 
 func _test_appearance_reads_physical_state() -> void:
 	var raw := FoodPerception.appearance_of(_cut_stick(10.0))
-	var cooked := FoodPerception.appearance_of(_fry(180.0, 300.0))
-	var burnt := FoodPerception.appearance_of(_fry(220.0, 420.0))
+	var cooked := FoodPerception.appearance_of(_fry(180.0, 360.0))
+	var burnt := FoodPerception.appearance_of(_fry(220.0, 360.0))
 	_expect_equal("frying browns food visibly", cooked.browning > raw.browning + 0.3, true)
 	_expect_equal("cooked flesh turns translucent", cooked.translucency > raw.translucency + 0.5, true)
 	_expect_equal("burnt food shows char", burnt.charring > cooked.charring + 0.1, true)
@@ -601,7 +839,7 @@ func _test_appearance_reads_physical_state() -> void:
 
 func _test_bite_sounds() -> void:
 	var raw := FoodPerception.bite_of(_cut_stick(10.0))
-	var crisp := FoodPerception.bite_of(_fry(180.0, 300.0))
+	var crisp := FoodPerception.bite_of(_fry(180.0, 360.0))
 	var soggy := FoodPerception.bite_of(_fry(130.0, 300.0))
 	var tender := FoodPerception.bite_of(_boil(25.0, 600.0))
 	var mush := FoodPerception.bite_of(_boil(25.0, 1500.0))
@@ -620,37 +858,37 @@ func _test_bite_sounds() -> void:
 	_expect_equal("thin pieces bite at a higher pitch", thin.pitch > thick.pitch, true)
 
 func _test_dish_fingerprints() -> void:
-	var first_batch := _plate([_fry(180.0, 300.0), _fry(180.0, 300.0), _fry(180.0, 300.0)])
-	var second_batch := _plate([_fry(180.0, 300.0), _fry(180.0, 300.0), _fry(180.0, 300.0)])
+	var first_batch := _plate([_fry(180.0, 360.0), _fry(180.0, 360.0), _fry(180.0, 360.0)])
+	var second_batch := _plate([_fry(180.0, 360.0), _fry(180.0, 360.0), _fry(180.0, 360.0)])
 	_expect_equal("the same dish cooked the same way is recognised", first_batch.fingerprint(), second_batch.fingerprint())
 
-	var burnt := _plate([_fry(220.0, 420.0), _fry(220.0, 420.0)])
+	var burnt := _plate([_fry(220.0, 360.0), _fry(220.0, 360.0)])
 	_expect_equal("burnt fries are a different dish", burnt.fingerprint() != first_batch.fingerprint(), true)
 	var raw := _plate([_cut_stick(10.0)])
 	_expect_equal("raw sticks are a different dish", raw.fingerprint() != first_batch.fingerprint(), true)
 
-	var one_stray := _plate([_fry(180.0, 300.0), _fry(180.0, 300.0), _cut_stick(10.0)])
+	var one_stray := _plate([_fry(180.0, 360.0), _fry(180.0, 360.0), _cut_stick(10.0)])
 	_expect_equal("one stray piece doesn't change the dish", one_stray.fingerprint(), first_batch.fingerprint())
 
 	var spicy_oil := _make_test_oil()
 	var infused := spicy_oil.flavour.copy()
 	infused.heat = 0.3
-	var with_plain_oil := _plate([_fry(180.0, 300.0)])
+	var with_plain_oil := _plate([_fry(180.0, 360.0)])
 	with_plain_oil.add_liquid(LiquidPortion.new(spicy_oil, 10.0, spicy_oil.flavour))
-	var with_chilli_oil := _plate([_fry(180.0, 300.0)])
+	var with_chilli_oil := _plate([_fry(180.0, 360.0)])
 	with_chilli_oil.add_liquid(LiquidPortion.new(spicy_oil, 10.0, infused))
 	_expect_equal("a chilli-oil drizzle makes a different dish", with_chilli_oil.fingerprint() != with_plain_oil.fingerprint(), true)
 
 func _test_dish_nourishment() -> void:
-	var perfect := DishNourishment.feeding_result_of(_plate([_fry(180.0, 300.0), _fry(180.0, 300.0)]))
-	var burnt := DishNourishment.feeding_result_of(_plate([_fry(220.0, 420.0), _fry(220.0, 420.0)]))
+	var perfect := DishNourishment.feeding_result_of(_plate([_fry(180.0, 360.0), _fry(180.0, 360.0)]))
+	var burnt := DishNourishment.feeding_result_of(_plate([_fry(220.0, 360.0), _fry(220.0, 360.0)]))
 	var raw := DishNourishment.feeding_result_of(_plate([_cut_stick(10.0), _cut_stick(10.0)]))
 	_expect_equal("perfect fries carry a spirit further than burnt ones", perfect.ascension_strength > burnt.ascension_strength + 0.2, true)
 	_expect_equal("burnt fries still beat raw potato", burnt.ascension_strength > raw.ascension_strength, true)
 	_expect_equal("burnt fries still feed a spirit", burnt.nourishment > 0.0 and burnt.ascension_strength >= DishNourishment.QUALITY_FLOOR, true)
 	_expect_equal("well-made food nourishes more", perfect.nourishment > burnt.nourishment, true)
 
-	var hot_fry := _fry(180.0, 300.0)
+	var hot_fry := _fry(180.0, 360.0)
 	var cold_fry := hot_fry.clone()
 	cold_fry.core_temp_c = AMBIENT_TEMP_C
 	cold_fry.surface_temp_c = AMBIENT_TEMP_C
@@ -932,7 +1170,6 @@ func _make_test_vessel() -> CookingVessel:
 	vessel.id = &"test_pot"
 	vessel.mass_g = 1500.0
 	vessel.specific_heat_j_per_g_k = 0.5
-	vessel.heat_loss_w_per_k = 4.0
 	vessel.capacity_ml = 3000.0
 	vessel.dry_contact_w_per_m2_k = 400.0
 	return vessel
@@ -966,6 +1203,29 @@ func _make_test_oil_pot() -> CookingPot:
 	pot.burner = _make_test_stove()
 	pot.add_medium(_make_test_oil(), 1000.0, AMBIENT_TEMP_C)
 	return pot
+
+func _make_test_oil_pot_with(grams: float, oil: Ingredient = null) -> CookingPot:
+	var pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
+	pot.burner = _make_test_stove()
+	pot.add_medium(oil if oil else _make_test_oil(), grams, AMBIENT_TEMP_C)
+	pot.set_flame(1.0)
+	return pot
+
+## Oil with a smoke point and breakdown, like sunflower oil.
+func _make_test_frying_oil() -> Ingredient:
+	var oil := _make_test_oil()
+	oil.smoke_point_c = 210.0
+	oil.breakdown_per_hour_at_180c = 0.1
+	oil.breakdown_per_g_steam_per_kg = 0.000125
+	return oil
+
+## Works the flame the way a cook would to hold the oil near a temperature.
+func _hold_temperature(pot: CookingPot, target_c: float, seconds: float) -> void:
+	var elapsed: float = 0.0
+	while elapsed < seconds:
+		pot.set_flame(1.0 if pot.temp_c < target_c - 1.0 else (0.0 if pot.temp_c > target_c + 1.0 else 0.4))
+		pot.advance(0.5)
+		elapsed += 0.5
 
 ## Seconds of simulated time until the pot reaches the temperature, or the
 ## limit if it never does.
@@ -1025,7 +1285,7 @@ func _make_test_ingredient() -> Ingredient:
 	ingredient.specific_heat_j_per_g_k = 3.5
 	ingredient.thermal_conductivity_w_per_m_k = 0.55
 	ingredient.cook_temp_c = 65.0
-	ingredient.cook_seconds = 400.0
+	ingredient.cook_seconds = 320.0
 	ingredient.overcook_softening_per_s = 0.0015
 	ingredient.ideal_doneness_min = 1.0
 	ingredient.ideal_doneness_max = 2.0

@@ -3,31 +3,40 @@ extends RefCounted
 
 ## Pure physics of one FoodPiece in a HeatExposure for a short time step.
 ## Every visible outcome of cooking - cooked through or raw in the middle,
-## pale or golden, crisp or soggy, greasy, burnt, fallen apart - emerges from
-## these rules acting on the piece's physical state. There are no recipes.
+## pale or golden, crisp or soggy, greasy, burnt, fallen apart, golden
+## underneath and pale on top - emerges from these rules acting on the
+## piece's physical state. There are no recipes.
 ##
-## Per step:
-##   1. Heat flows from the medium into the surface shell (convection, in
-##      proportion to area) and from the shell into the core (conduction,
-##      with conductance k A^2 / V, so cooking time grows with thickness
-##      squared).
-##   2. A shell above 100 degrees C that still holds water spends the excess
-##      heat boiling it off, pinning the surface at 100 until it dries.
-##   3. Water migrates from the wetter core back out to the shell.
-##   4. In a fatty medium, food soaks up fat: some replaces the water that
-##      boiled off, and more seeps in when the oil is too cool for steam to
-##      push it back.
+## Per step, for each of the piece's six faces:
+##   1. Heat flows into the face's share of the surface shell through each
+##      channel it is exposed to (liquid, contact, air), in proportion to
+##      its area, and from the shell into the core by conduction (core
+##      conductance k A^2 / V, shared out by area, so cooking time grows
+##      with thickness squared). A face that has dried to crust conducts
+##      less, insulating the core.
+##   2. A face above 100 degrees C that still holds water spends the excess
+##      heat boiling it off, pinning it at 100 until it dries. A cooler wet
+##      face in open air dries by evaporation, which cools it. The core
+##      likewise cannot pass 100 while it holds water: the excess boils it.
+## Then, for the piece:
+##   3. Water migrates from the wetter core back out to each face.
+##   4. In a fatty medium, wetted faces soak up fat: some replaces the water
+##      that boiled off, and more seeps in when the oil is too cool for
+##      steam to push it back. Skin lets less through than cut flesh.
 ##   5. The core cooks once it passes the ingredient's cook temperature, and
 ##      keeps overcooking past done. Overcooked food with a wet surface
 ##      loses integrity.
-##   6. A dry, hot surface browns (Maillard reactions and caramelisation,
-##      driven by sugar, starch and protein), and a browned surface far too
-##      hot chars. Browning adds aroma and savouriness; char adds bitterness.
-##   7. Flavour diffuses between the food and a liquid medium, faster when
-##      hot.
+##   6. A dry, hot face browns (Maillard reactions and caramelisation,
+##      driven by sugar, starch and protein), and a browned face far too
+##      hot chars. Browning adds aroma and savouriness; char adds
+##      bitterness.
+##   7. Flavour diffuses between the food and a liquid medium across its
+##      wetted faces, faster when hot.
+##   8. The piece shrinks as it loses water, by the ingredient's shrinkage.
 ##
 ## Integration is explicit, split into substeps short enough for the
-## thinnest slice's thermal time constant, so no step can overshoot.
+## fastest thermal time constant of any face or the core, so no step can
+## overshoot.
 
 const WATER_BOILING_POINT_C: float = 100.0
 const WATER_LATENT_HEAT_J_PER_G: float = 2257.0
@@ -52,12 +61,16 @@ const BROWNING_REFERENCE_C: float = 150.0
 const BROWNING_DOUBLING_C: float = 10.0
 ## Browning per second at the reference temperature, per unit of reactivity,
 ## on a fully dry surface.
-const BROWNING_RATE_AT_REFERENCE: float = 0.034
+const BROWNING_RATE_AT_REFERENCE: float = 0.012
 const SUGAR_REACTIVITY: float = 1.0
 const STARCH_REACTIVITY: float = 0.1
 const PROTEIN_REACTIVITY: float = 0.5
 const BROWNING_AROMA_GAIN: float = 0.3
 const BROWNING_UMAMI_GAIN: float = 0.15
+
+## A dry crust conducts this share of what the moist flesh does: it is
+## porous and full of air and oil.
+const CRUST_CONDUCTIVITY_SHARE: float = 0.4
 
 const CHAR_ONSET_C: float = 190.0
 const CHAR_REFERENCE_C: float = 200.0
@@ -74,7 +87,7 @@ const STEAM_BARRIER_SPAN_C: float = 60.0
 const STEAM_MIN_MOISTURE: float = 0.05
 const OIL_SEEP_G_PER_M2_S: float = 1.0
 ## Grams of fat absorbed per gram of water boiled off.
-const OIL_REPLACES_WATER_RATIO: float = 0.15
+const OIL_REPLACES_WATER_RATIO: float = 0.08
 
 ## Flavour carried across a square metre of surface per second, per unit of
 ## intensity difference, at 100 degrees C.
@@ -82,8 +95,8 @@ const FLAVOUR_TRANSFER_G_PER_M2_S_AT_100C: float = 12.0
 const FLAVOUR_TRANSFER_DOUBLING_C: float = 20.0
 
 ## Advances the piece by dt seconds of exposure and reports what it took
-## from and gave to the medium. Mutates the piece, and the exposure's
-## flavour.
+## from and gave to its surroundings. Mutates the piece, and the
+## exposure's flavour.
 static func step(piece: FoodPiece, exposure: HeatExposure, dt: float) -> HeatExchange:
 	var exchange := HeatExchange.new()
 	var remaining: float = dt
@@ -104,76 +117,190 @@ static func browning_reactivity(ingredient: Ingredient) -> float:
 		+ ingredient.starch_fraction * STARCH_REACTIVITY \
 		+ ingredient.protein_fraction * PROTEIN_REACTIVITY
 
+## Share of the flesh's conductivity a face keeps as it dries into crust.
+## A crust insulates: it slows heat into the core and lets the outside run
+## hotter.
+static func crust_factor(piece: FoodPiece, face: int) -> float:
+	return lerpf(1.0, CRUST_CONDUCTIVITY_SHARE, piece.face_dryness(face))
+
+## How freely water and flavour pass through a face: 1 for cut flesh, the
+## ingredient's skin permeability for skin.
+static func face_permeability(piece: FoodPiece, face: int) -> float:
+	return lerpf(1.0, piece.ingredient.skin_permeability, piece.face_skin[face])
+
+## How wet one face is for evaporation into air: its free water relative to
+## the raw ingredient, through the skin if it is skin.
+static func face_wetness(piece: FoodPiece, face: int) -> float:
+	return (1.0 - piece.face_dryness(face)) * face_permeability(piece, face)
+
 static func _stable_substep(piece: FoodPiece, exposure: HeatExposure) -> float:
 	var specific_heat: float = piece.ingredient.specific_heat_j_per_g_k
-	var convection: float = exposure.heat_transfer_w_per_m2_k * piece.surface_area_mm2() * 1e-6
+	var area_m2: float = piece.surface_area_mm2() * 1e-6
 	var conduction: float = core_conductance_w_per_k(piece)
-	var shell_tau: float = piece.shell_mass_g() * specific_heat / maxf(convection + conduction, 1e-9)
+	var worst_h: float = 0.0
+	for face in FoodPiece.FACE_COUNT:
+		var h: float = exposure.liquid_h(face) + exposure.contact_h(face)
+		var air_h: float = exposure.air_h(face)
+		if air_h > 0.0:
+			h += air_h + WaterVapour.evaporative_w_per_m2_k(air_h, piece.face_temp_c[face], face_wetness(piece, face))
+		worst_h = maxf(worst_h, h)
+	var shell_tau: float = piece.shell_mass_g() * specific_heat / maxf(worst_h * area_m2 + conduction, 1e-9)
 	var core_tau: float = piece.core_mass_g() * specific_heat / maxf(conduction, 1e-9)
 	return MAX_SUBSTEP_FRACTION_OF_TAU * minf(shell_tau, core_tau)
 
 static func _integrate(piece: FoodPiece, exposure: HeatExposure, dt: float, exchange: HeatExchange) -> void:
-	var specific_heat: float = piece.ingredient.specific_heat_j_per_g_k
-	var area_m2: float = piece.surface_area_mm2() * 1e-6
+	var ingredient: Ingredient = piece.ingredient
+	var specific_heat: float = ingredient.specific_heat_j_per_g_k
+	var surface_mm2: float = piece.surface_area_mm2()
+	var area_m2: float = surface_mm2 * 1e-6
 	var shell_capacity: float = piece.shell_mass_g() * specific_heat
 	var core_capacity: float = piece.core_mass_g() * specific_heat
+	var conduction: float = core_conductance_w_per_k(piece)
 
-	var heat_in_w: float = exposure.heat_transfer_w_per_m2_k * area_m2 * (exposure.temp_c - piece.surface_temp_c)
-	var heat_to_core_w: float = core_conductance_w_per_k(piece) * (piece.surface_temp_c - piece.core_temp_c)
-	exchange.energy_j += heat_in_w * dt
-	piece.core_temp_c += heat_to_core_w * dt / core_capacity
-
-	var surface_temp: float = piece.surface_temp_c + (heat_in_w - heat_to_core_w) * dt / shell_capacity
-	var evaporated_g: float = 0.0
-	if surface_temp > WATER_BOILING_POINT_C and piece.surface_water_g() > 0.0:
-		var excess_j: float = (surface_temp - WATER_BOILING_POINT_C) * shell_capacity
-		evaporated_g = minf(excess_j / WATER_LATENT_HEAT_J_PER_G, piece.surface_water_g())
-		surface_temp -= evaporated_g * WATER_LATENT_HEAT_J_PER_G / shell_capacity
-		_remove_surface_water(piece, evaporated_g)
-		exchange.evaporated_g += evaporated_g
-	piece.surface_temp_c = surface_temp
-
-	_migrate_water(piece, dt)
-	_absorb_fat(piece, exposure, area_m2, evaporated_g, dt, exchange)
-	_cook_core(piece, dt)
-	_brown_and_char(piece, dt)
-	_exchange_flavour(piece, exposure, area_m2, dt)
-
-static func _remove_surface_water(piece: FoodPiece, grams: float) -> void:
-	var surface_water: float = piece.surface_water_g() - grams
-	piece.water_g -= grams
-	piece.surface_moisture = surface_water / piece.shell_mass_g()
-	piece.clamp_surface_moisture()
-
-static func _migrate_water(piece: FoodPiece, dt: float) -> void:
-	var gradient: float = piece.core_moisture() - piece.surface_moisture
-	if gradient <= 0.0:
-		return
-	piece.surface_moisture += WATER_MIGRATION_PER_S * gradient * dt
-	piece.clamp_surface_moisture()
-
-static func _absorb_fat(
-		piece: FoodPiece, exposure: HeatExposure, area_m2: float, evaporated_g: float,
-		dt: float, exchange: HeatExchange) -> void:
-	if exposure.fat_fraction <= 0.0:
-		return
 	var steam_barrier: float = 0.0
 	if piece.moisture() > STEAM_MIN_MOISTURE:
 		steam_barrier = clampf((exposure.temp_c - WATER_BOILING_POINT_C) / STEAM_BARRIER_SPAN_C, 0.0, 1.0)
-	var seeped_g: float = OIL_SEEP_G_PER_M2_S * area_m2 * (1.0 - steam_barrier) * dt
-	var replaced_g: float = evaporated_g * OIL_REPLACES_WATER_RATIO
+
+	var heat_to_core_w: float = 0.0
+	var evaporated := PackedFloat64Array()
+	evaporated.resize(FoodPiece.FACE_COUNT)
+	var total_evaporated_g: float = 0.0
+	var seeped_g: float = 0.0
+	var replaced_g: float = 0.0
+	var wetted_area_m2: float = 0.0
+	var outer_temps := PackedFloat64Array()
+	outer_temps.resize(FoodPiece.FACE_COUNT)
+	for face in FoodPiece.FACE_COUNT:
+		var share: float = piece.face_area_mm2(face) / surface_mm2
+		var face_m2: float = area_m2 * share
+		var capacity: float = shell_capacity * share
+		var temp: float = piece.face_temp_c[face]
+		var liquid_share: float = exposure.liquid_share(face)
+		var permeability: float = face_permeability(piece, face)
+
+		var from_liquid_w: float = exposure.liquid_h(face) * face_m2 * (exposure.temp_c - temp)
+		var from_contact_w: float = exposure.contact_h(face) * face_m2 * (exposure.contact_temp_c(face) - temp)
+		var air_h: float = exposure.air_h(face)
+		var from_air_w: float = air_h * face_m2 * (exposure.air_temp_c - temp)
+		var to_core_w: float = conduction * share * crust_factor(piece, face) * (temp - piece.core_temp_c)
+		exchange.liquid_energy_j += from_liquid_w * dt
+		exchange.contact_energy_j += from_contact_w * dt
+		exchange.air_energy_j += from_air_w * dt
+		heat_to_core_w += to_core_w
+
+		var new_temp: float = temp + (from_liquid_w + from_contact_w + from_air_w - to_core_w) * dt / capacity
+		var face_water: float = piece.face_water_g(face)
+		var lost_g: float = 0.0
+		if face_water > 0.0:
+			if new_temp > WATER_BOILING_POINT_C:
+				lost_g = minf((new_temp - WATER_BOILING_POINT_C) * capacity / WATER_LATENT_HEAT_J_PER_G, face_water)
+				replaced_g += lost_g * liquid_share * OIL_REPLACES_WATER_RATIO
+				exchange.steam_through_liquid_g += lost_g * liquid_share
+			elif air_h > 0.0:
+				var rate: float = WaterVapour.evaporation_g_per_s(
+					air_h, face_m2, new_temp, face_wetness(piece, face), exposure.air_vapour_kg_m3)
+				lost_g = minf(rate * dt, face_water)
+			new_temp -= lost_g * WATER_LATENT_HEAT_J_PER_G / capacity
+		evaporated[face] = lost_g
+		total_evaporated_g += lost_g
+		piece.face_temp_c[face] = new_temp
+		outer_temps[face] = _outer_temp_c(piece, face, exposure, new_temp,
+			(from_liquid_w + from_contact_w + from_air_w) / face_m2)
+
+		seeped_g += OIL_SEEP_G_PER_M2_S * face_m2 * liquid_share * permeability * (1.0 - steam_barrier) * dt
+		wetted_area_m2 += face_m2 * liquid_share * permeability
+
+	exchange.energy_j = exchange.liquid_energy_j + exchange.contact_energy_j + exchange.air_energy_j
+	piece.core_temp_c += heat_to_core_w * dt / core_capacity
+	var core_boiled_g: float = _boil_core(piece, core_capacity, exposure, exchange)
+	total_evaporated_g += core_boiled_g
+
+	if total_evaporated_g > core_boiled_g:
+		_remove_face_water(piece, evaporated, total_evaporated_g - core_boiled_g)
+	exchange.evaporated_g += total_evaporated_g
+	_migrate_water(piece, dt)
+	_absorb_fat(piece, exposure, (seeped_g + replaced_g) * exposure.uptake_boost, exchange)
+	_cook_core(piece, dt)
+	_brown_and_char(piece, exposure, outer_temps, dt)
+	_exchange_flavour(piece, exposure, wetted_area_m2, dt)
+	if total_evaporated_g > 0.0 and ingredient.shrinkage_per_water_lost > 0.0:
+		_shrink(piece, total_evaporated_g)
+
+## Temperature of the very outside of a face, where browning happens. The
+## shell's temperature is the mean over its depth; heat flowing in has to
+## cross half of it to reach that mean, and a dry crust conducts poorly,
+## so the outside of a crisping fry runs well above the millimetre under
+## it. Never hotter than the hottest thing the face touches.
+static func _outer_temp_c(
+		piece: FoodPiece, face: int, exposure: HeatExposure, shell_temp_c: float, flux_w_per_m2: float) -> float:
+	if flux_w_per_m2 <= 0.0:
+		return shell_temp_c
+	var conductivity: float = piece.ingredient.thermal_conductivity_w_per_m_k * crust_factor(piece, face)
+	var rise: float = flux_w_per_m2 * FoodPiece.SHELL_DEPTH_MM * 0.0005 / conductivity
+	var hottest: float = -INF
+	if exposure.liquid_h(face) > 0.0:
+		hottest = maxf(hottest, exposure.temp_c)
+	if exposure.contact_h(face) > 0.0:
+		hottest = maxf(hottest, exposure.contact_temp_c(face))
+	if exposure.air_h(face) > 0.0:
+		hottest = maxf(hottest, exposure.air_temp_c)
+	return minf(shell_temp_c + rise, maxf(hottest, shell_temp_c))
+
+## Water held inside food cannot rise past boiling: heat conducted into a
+## wet core beyond 100 degrees C turns its water to steam, which escapes
+## through the surface, so the inside of a frying piece sits at 100 until
+## it dries. Returns the grams boiled.
+static func _boil_core(piece: FoodPiece, core_capacity: float, exposure: HeatExposure, exchange: HeatExchange) -> float:
+	if piece.core_temp_c <= WATER_BOILING_POINT_C:
+		return 0.0
+	var core_water: float = maxf(piece.water_g - piece.surface_water_g(), 0.0)
+	if core_water <= 0.0:
+		return 0.0
+	var boiled_g: float = minf((piece.core_temp_c - WATER_BOILING_POINT_C) * core_capacity / WATER_LATENT_HEAT_J_PER_G, core_water)
+	piece.core_temp_c -= boiled_g * WATER_LATENT_HEAT_J_PER_G / core_capacity
+	var waters := piece.face_waters_g()
+	piece.water_g -= boiled_g
+	piece.restore_face_waters(waters)
+	# The steam leaves through whichever faces it can; what leaves under
+	# the liquid bubbles through it.
+	var wetted: float = 0.0
+	for face in FoodPiece.FACE_COUNT:
+		wetted += exposure.liquid_share(face) * piece.face_share(face)
+	exchange.steam_through_liquid_g += boiled_g * wetted
+	return boiled_g
+
+static func _remove_face_water(piece: FoodPiece, evaporated: PackedFloat64Array, total_g: float) -> void:
+	var waters := piece.face_waters_g()
+	for face in FoodPiece.FACE_COUNT:
+		waters[face] -= evaporated[face]
+	piece.water_g -= total_g
+	piece.restore_face_waters(waters)
+
+static func _migrate_water(piece: FoodPiece, dt: float) -> void:
+	var core_moisture: float = piece.core_moisture()
+	var changed := false
+	for face in FoodPiece.FACE_COUNT:
+		var gradient: float = core_moisture - piece.face_moisture[face]
+		if gradient > 0.0:
+			piece.face_moisture[face] += WATER_MIGRATION_PER_S * gradient * dt
+			changed = true
+	if changed:
+		piece.clamp_surface_moisture()
+
+static func _absorb_fat(piece: FoodPiece, exposure: HeatExposure, offered_g: float, exchange: HeatExchange) -> void:
+	if exposure.fat_fraction <= 0.0 or offered_g <= 0.0:
+		return
 	var available_g: float = exposure.medium_mass_g * exposure.fat_fraction - exchange.fat_absorbed_g
-	var absorbed_g: float = minf((seeped_g + replaced_g) * exposure.fat_fraction, maxf(available_g, 0.0))
+	var absorbed_g: float = minf(offered_g * exposure.fat_fraction, maxf(available_g, 0.0))
 	if absorbed_g <= 0.0:
 		return
 
 	# The shell grows by the oil it takes in; its water stays where it is.
-	var surface_water: float = piece.surface_water_g()
+	var waters := piece.face_waters_g()
 	if exposure.flavour:
 		piece.flavour = FlavourProfile.mix_by_mass(piece.flavour, piece.mass_g(), exposure.flavour, absorbed_g)
 	piece.oil_g += absorbed_g
-	piece.surface_moisture = surface_water / piece.shell_mass_g()
-	piece.clamp_surface_moisture()
+	piece.restore_face_waters(waters)
 	exchange.fat_absorbed_g += absorbed_g
 
 static func _cook_core(piece: FoodPiece, dt: float) -> void:
@@ -188,31 +315,44 @@ static func _cook_core(piece: FoodPiece, dt: float) -> void:
 		var wetness: float = 1.0 - piece.surface_dryness()
 		piece.integrity = maxf(piece.integrity - ingredient.overcook_softening_per_s * overcooked * wetness * dt, 0.0)
 
-static func _brown_and_char(piece: FoodPiece, dt: float) -> void:
-	var dryness: float = piece.surface_dryness()
-	if dryness <= 0.0:
-		return
-	var temp: float = piece.surface_temp_c
-	if temp > BROWNING_ONSET_C and piece.surface_browning < 1.0:
-		var rate: float = BROWNING_RATE_AT_REFERENCE * browning_reactivity(piece.ingredient) \
-			* pow(2.0, (temp - BROWNING_REFERENCE_C) / BROWNING_DOUBLING_C) * dryness
-		var browned: float = minf(rate * dt, 1.0 - piece.surface_browning)
-		piece.surface_browning += browned
-		piece.flavour.aroma = minf(piece.flavour.aroma + browned * BROWNING_AROMA_GAIN, 1.0)
-		piece.flavour.umami = minf(piece.flavour.umami + browned * BROWNING_UMAMI_GAIN, 1.0)
-	if temp > CHAR_ONSET_C and piece.surface_char < 1.0:
-		var char_rate: float = CHAR_RATE_AT_REFERENCE * pow(2.0, (temp - CHAR_REFERENCE_C) / CHAR_DOUBLING_C) \
-			* dryness * piece.surface_browning * piece.ingredient.char_susceptibility
-		var charred: float = minf(char_rate * dt, 1.0 - piece.surface_char)
-		piece.surface_char += charred
-		piece.flavour.bitter = minf(piece.flavour.bitter + charred * CHAR_BITTERNESS_GAIN, 1.0)
+static func _brown_and_char(piece: FoodPiece, exposure: HeatExposure, outer_temps: PackedFloat64Array, dt: float) -> void:
+	var reactivity: float = browning_reactivity(piece.ingredient) * exposure.browning_boost
+	var surface_mm2: float = piece.surface_area_mm2()
+	var browned_total: float = 0.0
+	var charred_total: float = 0.0
+	for face in FoodPiece.FACE_COUNT:
+		var dryness: float = piece.face_dryness(face)
+		if dryness <= 0.0:
+			continue
+		var temp: float = outer_temps[face]
+		var share: float = piece.face_area_mm2(face) / surface_mm2
+		var browning: float = piece.face_browning[face]
+		if temp > BROWNING_ONSET_C and browning < 1.0:
+			var rate: float = BROWNING_RATE_AT_REFERENCE * reactivity \
+				* pow(2.0, (temp - BROWNING_REFERENCE_C) / BROWNING_DOUBLING_C) * dryness
+			var browned: float = minf(rate * dt, 1.0 - browning)
+			browning += browned
+			piece.face_browning[face] = browning
+			browned_total += browned * share
+		var char_amount: float = piece.face_char[face]
+		if temp > CHAR_ONSET_C and char_amount < 1.0:
+			var char_rate: float = CHAR_RATE_AT_REFERENCE * pow(2.0, (temp - CHAR_REFERENCE_C) / CHAR_DOUBLING_C) \
+				* dryness * browning * piece.ingredient.char_susceptibility
+			var charred: float = minf(char_rate * dt, 1.0 - char_amount)
+			piece.face_char[face] = char_amount + charred
+			charred_total += charred * share
+	if browned_total > 0.0:
+		piece.flavour.aroma = minf(piece.flavour.aroma + browned_total * BROWNING_AROMA_GAIN, 1.0)
+		piece.flavour.umami = minf(piece.flavour.umami + browned_total * BROWNING_UMAMI_GAIN, 1.0)
+	if charred_total > 0.0:
+		piece.flavour.bitter = minf(piece.flavour.bitter + charred_total * CHAR_BITTERNESS_GAIN, 1.0)
 
-static func _exchange_flavour(piece: FoodPiece, exposure: HeatExposure, area_m2: float, dt: float) -> void:
-	if exposure.flavour == null or exposure.medium_mass_g <= 0.0:
+static func _exchange_flavour(piece: FoodPiece, exposure: HeatExposure, wetted_area_m2: float, dt: float) -> void:
+	if exposure.flavour == null or exposure.medium_mass_g <= 0.0 or wetted_area_m2 <= 0.0:
 		return
 	var piece_mass: float = piece.mass_g()
 	var medium_mass: float = exposure.medium_mass_g
-	var conductance: float = FLAVOUR_TRANSFER_G_PER_M2_S_AT_100C * area_m2 \
+	var conductance: float = FLAVOUR_TRANSFER_G_PER_M2_S_AT_100C * wetted_area_m2 \
 		* pow(2.0, (exposure.temp_c - WATER_BOILING_POINT_C) / FLAVOUR_TRANSFER_DOUBLING_C)
 	for axis in FlavourProfile.AXES:
 		var in_piece: float = piece.flavour.get(axis)
@@ -224,3 +364,11 @@ static func _exchange_flavour(piece: FoodPiece, exposure: HeatExposure, area_m2:
 		carried = clampf(carried, -limit, limit)
 		piece.flavour.set(axis, in_piece - carried / piece_mass)
 		exposure.flavour.set(axis, in_medium + carried / medium_mass)
+
+## Water leaving food lets its structure close up: the piece loses volume
+## in proportion to the water's own volume, never below what its solids
+## and oil take up.
+static func _shrink(piece: FoodPiece, evaporated_g: float) -> void:
+	var lost_mm3: float = piece.ingredient.shrinkage_per_water_lost * evaporated_g * 1000.0
+	var floor_mm3: float = (piece.solids_g + piece.oil_g) * 1000.0 / maxf(piece.ingredient.density_g_per_cm3, 0.1)
+	piece.shrink_to_volume(maxf(piece.volume_mm3() - lost_mm3, floor_mm3))
