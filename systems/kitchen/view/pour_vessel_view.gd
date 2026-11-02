@@ -29,6 +29,8 @@ const FULL_STREAM_DEG: float = 25.0
 const FOLLOW_EASE: float = 10.0
 ## How close the pour point must be to another vessel to pour into it.
 const VESSEL_REACH_M: float = 0.05
+## Where a pulled cork is set down, from the bottle's resting place.
+const CORK_REST_OFFSET: Vector3 = Vector3(0.07, 0.0, 0.03)
 
 @export var simulation: KitchenSimulation
 @export var store_kind: Store = Store.JUG
@@ -102,12 +104,20 @@ func store() -> LiquidStore:
 func is_home() -> bool:
 	return state == State.RESTING and transform.origin.distance_to(_home.origin) < 0.01
 
+## Pulls the cork and sets it down on the counter beside the bottle, or
+## puts it back in.
 func toggle_cork() -> void:
 	if _cork == null:
 		return
 	corked = not corked
-	_cork.position = Vector3.ZERO if corked else Vector3(0.05, -0.2, 0.06)
-	_cork.rotation = Vector3.ZERO if corked else Vector3(0.0, 0.0, PI * 0.5)
+	_cork.top_level = not corked
+	if corked:
+		_cork.transform = Transform3D.IDENTITY
+	else:
+		var beside := (get_parent() as Node3D).global_transform * (_home.origin + CORK_REST_OFFSET)
+		# The cork's own origin is the bottle's base; its body sits at the
+		# neck, so lay it down with its body on the counter.
+		_cork.global_transform = Transform3D(Basis(Vector3.BACK, PI * 0.5), beside + Vector3(0.24, 0.012, 0.0))
 
 ## The tilt at which liquid reaches the spout, for how full it is.
 func pour_tilt_deg() -> float:

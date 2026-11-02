@@ -24,7 +24,8 @@ godot --headless --editor --quit --path .
 #     it, Space + drag to lift it with everything touching it, T to taste.
 #   Stove: drag round the knob to turn the gas.
 #   Pot: drag inside with the slotted spoon to stir, drag out over the rim
-#     to lift what the bowl caught, right-click a piece to turn it.
+#     to lift what the bowl caught, right-click a piece to turn it, right-click
+#     the pot away from food to tip the liquid out.
 #   Jug, bottle, cup: drag to lift and hold over the pot to pour;
 #     right-click the bottle to pull its cork.
 #   Press: click the sunflower head to fill the hopper, drag round the crank

@@ -99,7 +99,8 @@ godot --headless --editor --quit --path .
 # steadies), drag a piece to move it, right-click to roll it, Space + drag
 # to lift it with everything touching it, T to taste. Stove: drag round the
 # knob. Pot: drag to stir with the slotted spoon, drag out over the rim to
-# lift, right-click a piece to turn it. Jug/bottle/cup: drag over the pot
+# lift, right-click a piece to turn it, right-click the pot to tip its liquid
+# out. Jug/bottle/cup: drag over the pot
 # to pour (right-click uncorks the bottle). Press: click the sunflower head
 # for seeds, drag round the crank.
 godot --path .

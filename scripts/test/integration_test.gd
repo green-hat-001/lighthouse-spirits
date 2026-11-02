@@ -1147,8 +1147,8 @@ func _test_kitchen_stations() -> void:
 	_expect_equal("the jug pours water into the pot", poured > 0.0 and is_equal_approx(pot.medium_mass_g, poured), true)
 	_expect_near("the jug never runs dry", sim.jug.fill_fraction(), 1.0)
 	_expect_near("oil can't be poured into a pot of water", sim.pour_into_pot(sim.cup, 25.0, 1.0), 0.0)
-	pot.pour_out(pot.medium_mass_g)
-	_expect_equal("water poured off leaves the pot empty", pot.medium == null, true)
+	kitchen.pot_view.get_node("Mouth").secondary_pressed.emit(kitchen.pot_view.global_position)
+	_expect_equal("right-clicking the pot tips its water out", pot.medium == null, true)
 
 	var seeds: Ingredient = sim.seeds
 	kitchen.seed_source.taken.emit(seeds, 50.0)

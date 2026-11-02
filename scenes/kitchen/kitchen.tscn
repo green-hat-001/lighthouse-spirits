@@ -181,7 +181,7 @@ theme_override_colors/font_outline_color = Color(0.1, 0.12, 0.15, 0.55)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 15
 text = "Esc  step back     A / D  along the counter     W  look out to sea     T  taste
-drag  cut / carry / pour / stir     Space + drag  lift food together     right-click  roll · turn · cork"
+drag  cut / carry / pour / stir     Space + drag  lift food together     right-click  roll · turn · cork · empty the pot"
 
 [node name="Caption" type="Label" parent="Hud"]
 anchors_preset = 7

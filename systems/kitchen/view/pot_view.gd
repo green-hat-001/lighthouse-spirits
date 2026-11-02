@@ -13,7 +13,8 @@ extends Node3D
 ##   STIRRING --release--> IDLE
 ##   LIFTING --release--> IDLE (lifted_out reports where it was released)
 ##
-## A right-click on a piece in the pot turns it over.
+## A right-click on a piece in the pot turns it over; a right-click in the
+## pot away from food tips the liquid out, keeping the food in.
 
 ## The spoon let go of what it lifted, at this world point. The kitchen
 ## decides where it lands; whatever it doesn't place is returned with
@@ -78,6 +79,7 @@ func _ready() -> void:
 	_mouth.dragged.connect(_on_spoon_dragged)
 	_mouth.released.connect(_on_spoon_released)
 	_mouth.cancelled.connect(_on_spoon_cancelled)
+	_mouth.secondary_pressed.connect(func(_point: Vector3) -> void: empty_liquid())
 	_foam_multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	_foam_multimesh.mesh = _foam_bubble_mesh()
 	_foam_multimesh.instance_count = FOAM_INSTANCES
@@ -126,6 +128,11 @@ func drop_in(pieces: Array[FoodPiece], world_point: Vector3, held_at: Array[Vect
 		_splash(world_point, wet_g)
 		pieces_dropped_in.emit(dropped)
 	return dropped
+
+## Tips the liquid out of the pot, holding the food back with the spoon,
+## and returns the grams poured away.
+func empty_liquid() -> float:
+	return pot().pour_out(pot().medium_mass_g)
 
 ## Returns food the spoon lifted that the kitchen didn't place elsewhere.
 func return_to_pot(pieces: Array[FoodPiece]) -> void:
