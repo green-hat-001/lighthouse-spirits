@@ -9,6 +9,19 @@ extends Resource
 
 const AXES: Array[StringName] = [&"sweet", &"salty", &"sour", &"bitter", &"umami", &"heat", &"aroma"]
 
+## How readily each axis dissolves into fat and into water, 0-1. Flavour
+## only moves between food and a cooking medium as far as the medium can
+## carry it: chilli's capsaicin and many aroma compounds dissolve in oil,
+## while salt, sugar, acids and savoury compounds dissolve in water and
+## not in oil. So chilli makes chilli oil but barely flavours boiling
+## water, and salted water seasons a potato that oil never would.
+const FAT_SOLUBILITY: Dictionary[StringName, float] = {
+	&"sweet": 0.0, &"salty": 0.0, &"sour": 0.1, &"bitter": 0.5, &"umami": 0.1, &"heat": 1.0, &"aroma": 0.4,
+}
+const WATER_SOLUBILITY: Dictionary[StringName, float] = {
+	&"sweet": 1.0, &"salty": 1.0, &"sour": 1.0, &"bitter": 0.6, &"umami": 1.0, &"heat": 0.05, &"aroma": 0.3,
+}
+
 @export_range(0.0, 1.0) var sweet: float = 0.0
 @export_range(0.0, 1.0) var salty: float = 0.0
 @export_range(0.0, 1.0) var sour: float = 0.0
@@ -30,6 +43,10 @@ static func mix_by_mass(a: FlavourProfile, mass_a: float, b: FlavourProfile, mas
 	for axis in AXES:
 		mixed.set(axis, (float(a.get(axis)) * weight_a + float(b.get(axis)) * weight_b) / total)
 	return mixed
+
+## How readily a medium of this make-up carries one axis, 0-1.
+static func solubility(axis: StringName, fat_fraction: float, water_fraction: float) -> float:
+	return clampf(fat_fraction * FAT_SOLUBILITY[axis] + water_fraction * WATER_SOLUBILITY[axis], 0.0, 1.0)
 
 func copy() -> FlavourProfile:
 	return duplicate() as FlavourProfile

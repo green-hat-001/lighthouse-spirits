@@ -103,10 +103,10 @@ func counter_in_reach() -> bool:
 ## Lets food go into the pot if it was let go over it. Returns true when
 ## the pot took it; anything that would overflow the pot goes back on the
 ## board.
-func drop_into_pot(pieces: Array[FoodPiece], world_point: Vector3) -> bool:
+func drop_into_pot(pieces: Array[FoodPiece], world_point: Vector3, held_at: Array[Vector3] = []) -> bool:
 	if not pot_view.is_over(world_point):
 		return false
-	pot_view.drop_in(pieces, world_point)
+	pot_view.drop_in(pieces, world_point, held_at)
 	var spilled: Array[FoodPiece] = []
 	for piece in pieces:
 		if not simulation.pot.pieces.has(piece):

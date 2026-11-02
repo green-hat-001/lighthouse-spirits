@@ -142,7 +142,10 @@ func _process(delta: float) -> void:
 			var to_target := (target as Vector3) - global_position
 			var facing: float = atan2(-to_target.z, to_target.x)
 			rotation.y = lerp_angle(rotation.y, facing, ease)
-			tilt_deg = move_toward(tilt_deg, MAX_TILT_DEG, TILT_DEG_PER_S * delta)
+			# Tip only as far as a full, steady stream needs; as the vessel
+			# empties that angle rises and the hand follows it.
+			var wanted: float = minf(pour_tilt_deg() + FULL_STREAM_DEG, MAX_TILT_DEG)
+			tilt_deg = move_toward(tilt_deg, wanted, TILT_DEG_PER_S * delta)
 		else:
 			tilt_deg = move_toward(tilt_deg, 0.0, TILT_DEG_PER_S * 2.0 * delta)
 	_tilt.rotation = Vector3(0.0, 0.0, -deg_to_rad(tilt_deg))

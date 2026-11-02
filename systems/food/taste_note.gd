@@ -12,13 +12,17 @@ const WARM_C: float = 32.0
 ## A texture or taste below this barely registers.
 const NOTICEABLE: float = 0.3
 const STRONG: float = 0.6
+## Aroma reads at lower intensities: browning builds it slowly, and even a
+## little toastiness is the first thing the nose finds.
+const AROMA_NOTICEABLE: float = 0.2
+const AROMA_STRONG: float = 0.4
 
 static func describe(piece: FoodPiece) -> String:
 	var parts: PackedStringArray = []
 	var feel := _feel(piece)
 	if feel != "":
 		parts.append(feel)
-	var taste := _taste(piece.flavour)
+	var taste := _taste(piece)
 	if taste != "":
 		parts.append(taste)
 	parts.append(_warmth(piece))
@@ -55,15 +59,25 @@ static func _feel(piece: FoodPiece) -> String:
 		inside = "very soft inside"
 	return "%s, %s." % [outside, inside]
 
-static func _taste(flavour: FlavourProfile) -> String:
+## Browning this deep tastes toasted, whatever else the food tastes of.
+const TOASTED_BROWNING: float = 0.25
+const DEEPLY_TOASTED_BROWNING: float = 0.6
+
+static func _taste(piece: FoodPiece) -> String:
+	var flavour := piece.flavour
 	var notes: PackedStringArray = []
+	if piece.surface_char < 0.25:
+		if piece.surface_browning >= DEEPLY_TOASTED_BROWNING:
+			notes.append("deeply toasted")
+		elif piece.surface_browning >= TOASTED_BROWNING:
+			notes.append("toasty")
 	if flavour.bitter >= NOTICEABLE:
 		notes.append("bitter" if flavour.bitter >= STRONG else "a little bitter")
 	if flavour.heat >= NOTICEABLE:
 		notes.append("fiery" if flavour.heat >= STRONG else "warm with chilli")
-	if flavour.aroma >= STRONG:
+	if flavour.aroma >= AROMA_STRONG:
 		notes.append("toasty and fragrant")
-	elif flavour.aroma >= NOTICEABLE:
+	elif flavour.aroma >= AROMA_NOTICEABLE:
 		notes.append("nutty")
 	if flavour.umami >= NOTICEABLE:
 		notes.append("savoury")

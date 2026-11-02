@@ -100,7 +100,7 @@ ingredient = ExtResource("7")
 transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.6544, 0.7562, 0.0000, -0.7562, 0.6544, -0.2200, 0.5200, 0.4300)
 
 [node name="Stove" type="Marker3D" parent="Stations"]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.6996, 0.7145, 0.0000, -0.7145, 0.6996, 0.2700, 0.5600, 0.4400)
+transform = Transform3D(1, 0, 0, 0, 0.53149116, 0.84706396, 0, -0.84706396, 0.53149116, 0.27, 0.6, 0.33)
 
 [node name="Press" type="Marker3D" parent="Stations"]
 transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.7291, 0.6844, 0.0000, -0.6844, 0.7291, 0.6200, 0.5600, 0.4400)

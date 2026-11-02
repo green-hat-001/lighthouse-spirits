@@ -110,6 +110,7 @@ func _ready() -> void:
 	_test_transformation_validation()
 	_test_press_turns_work_into_oil()
 	_test_chilli_infuses_oil()
+	_test_flavour_follows_solubility()
 	_test_fried_food_picks_up_flavoured_oil()
 	_test_equipment_gating()
 	_test_texture_reads_physical_state()
@@ -797,6 +798,33 @@ func _test_chilli_infuses_oil() -> void:
 	_expect_equal("chilli held in warm oil makes chilli oil", gentle.heat > 0.1, true)
 	_expect_equal("chilli burnt in hot oil turns the oil bitter", scorching.bitter > 2.0 * gentle.bitter, true)
 
+func _test_flavour_follows_solubility() -> void:
+	var salted := _make_test_water()
+	salted.flavour.salty = 0.5
+	var in_brine := _cut_cube(20.0)
+	var brine := _held_exposure(salted, 100.0)
+	var salted_then_fried := _cut_cube(20.0)
+	salted_then_fried.flavour.salty = 0.5
+	var salted_then_boiled := _cut_cube(20.0)
+	salted_then_boiled.flavour.salty = 0.5
+	var oil := _held_exposure(_make_test_oil(), 100.0)
+	var water := _held_exposure(_make_test_water(), 100.0)
+	for step in 6000:
+		FoodHeating.step(in_brine, brine, 0.05)
+		FoodHeating.step(salted_then_fried, oil, 0.05)
+		FoodHeating.step(salted_then_boiled, water, 0.05)
+	_expect_equal("salted water seasons what boils in it", in_brine.flavour.salty > 0.1, true)
+	_expect_equal("salt stays in food cooked in oil, which can't dissolve it", salted_then_fried.flavour.salty > 0.4, true)
+	_expect_equal("but leaches out into boiling water", salted_then_boiled.flavour.salty < 0.25, true)
+
+	var chilli_in_water := _held_exposure(_make_test_water(), 100.0)
+	chilli_in_water.medium_mass_g = 50.0
+	var rings := _slice_at_steps(FoodPiece.from_ingredient(_make_test_chilli(), AMBIENT_TEMP_C), Vector3.AXIS_X, 3.0, true)
+	for step in 3600:
+		for ring in rings:
+			FoodHeating.step(ring, chilli_in_water, 0.05)
+	_expect_equal("chilli barely heats water: capsaicin dissolves in fat, not water", chilli_in_water.flavour.heat < 0.05, true)
+
 func _test_fried_food_picks_up_flavoured_oil() -> void:
 	var chilli_oil := _make_test_oil()
 	chilli_oil.flavour.heat = 0.5
@@ -1321,6 +1349,7 @@ func _held_exposure(medium: Ingredient, temp_c: float) -> HeatExposure:
 	exposure.temp_c = temp_c
 	exposure.heat_transfer_w_per_m2_k = medium.medium_heat_transfer_w_per_m2_k
 	exposure.fat_fraction = medium.fat_fraction
+	exposure.water_fraction = medium.water_fraction
 	exposure.flavour = medium.flavour.copy()
 	exposure.medium_mass_g = 1000.0
 	return exposure

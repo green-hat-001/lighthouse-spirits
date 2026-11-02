@@ -18,11 +18,15 @@ const MAX_PELLETS_SHOWN: int = 30
 ## Oil (g/s) for the fullest drip, and how fast the drip dies away.
 const FULL_DRIP_G_PER_S: float = 8.0
 const DRIP_DECAY_PER_S: float = 3.0
-## Hopper bowl, in the press's space: centre of its floor, its radius, and
-## how high a full load rises.
-const HOPPER_FLOOR: Vector3 = Vector3(0.045, 0.19, 0.0)
-const HOPPER_RADIUS_M: float = 0.045
-const HOPPER_DEPTH_M: float = 0.09
+## The hopper's funnel, in the press's space: its axis, the height and
+## radius of its narrow neck, and the height and radius of its mouth.
+const HOPPER_AXIS: Vector2 = Vector2(0.045, 0.0)
+const HOPPER_NECK_Y: float = 0.2
+const HOPPER_NECK_RADIUS_M: float = 0.012
+const HOPPER_MOUTH_Y: float = 0.295
+const HOPPER_MOUTH_RADIUS_M: float = 0.052
+## A full load fills the funnel this far up.
+const HOPPER_FULL_SHARE: float = 0.85
 
 @export var simulation: KitchenSimulation
 ## The cup that catches the oil; it has to be sitting under the spout.
@@ -99,12 +103,16 @@ func _process(delta: float) -> void:
 func _draw_seeds() -> void:
 	var count: int = mini(int(simulation.press.loaded_g * SEEDS_PER_GRAM), MAX_SEEDS_SHOWN)
 	var fill: float = simulation.press.loaded_g / simulation.hopper_capacity_g
+	var top_y: float = lerpf(HOPPER_NECK_Y, HOPPER_MOUTH_Y, fill * HOPPER_FULL_SHARE)
 	for index in count:
+		# Seeds settle into the funnel from the neck up, filling it out to
+		# its walls at each height.
 		var around: float = index * 2.39996
-		var out: float = sqrt(fmod(index * 0.618034, 1.0)) * HOPPER_RADIUS_M * (0.5 + 0.5 * fill)
-		var height: float = HOPPER_DEPTH_M * fill * fmod(index * 0.414, 1.0)
+		var y: float = lerpf(HOPPER_NECK_Y, top_y, fmod(index * 0.414, 1.0))
+		var wall: float = lerpf(HOPPER_NECK_RADIUS_M, HOPPER_MOUTH_RADIUS_M, (y - HOPPER_NECK_Y) / (HOPPER_MOUTH_Y - HOPPER_NECK_Y)) * 0.85
+		var out: float = sqrt(fmod(index * 0.618034, 1.0)) * wall
 		var turn := Basis(Vector3.UP, around) * Basis(Vector3.RIGHT, fmod(index * 1.3, 0.6))
-		_seeds_multimesh.set_instance_transform(index, Transform3D(turn, HOPPER_FLOOR + Vector3(cos(around) * out, height, sin(around) * out)))
+		_seeds_multimesh.set_instance_transform(index, Transform3D(turn, Vector3(HOPPER_AXIS.x + cos(around) * out, y, HOPPER_AXIS.y + sin(around) * out)))
 	_seeds_multimesh.visible_instance_count = count
 
 func _draw_cake() -> void:

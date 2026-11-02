@@ -48,8 +48,9 @@ const BITE_MM: float = 12.0
 
 ## The simulation the board's food rests in. Set before food arrives.
 var rest: RestingSurface
-## Offered food the player lets go of while lifted; returns true if it took
-## it (the pot, when it was let go over the pot).
+## Offered food the player lets go of while lifted, with where each piece's
+## centre was held; returns true if it took it (the pot, when it was let go
+## over the pot).
 var drop_target: Callable
 
 var _views: Array[FoodPieceView] = []
@@ -289,9 +290,11 @@ func _let_go(point: Vector3) -> void:
 	_lifted.clear()
 	_lift_offsets.clear()
 	var pieces: Array[FoodPiece] = []
+	var held_at: Array[Vector3] = []
 	for view in lifted:
 		pieces.append(view.piece)
-	if drop_target.is_valid() and drop_target.call(pieces, point):
+		held_at.append(view.to_global(view.piece.size_mm * FoodPieceView.MM_TO_M * 0.5))
+	if drop_target.is_valid() and drop_target.call(pieces, point, held_at):
 		for view in lifted:
 			_remove_view(view)
 		return

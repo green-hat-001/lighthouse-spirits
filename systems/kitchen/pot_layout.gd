@@ -16,7 +16,9 @@ extends RefCounted
 ##   3. A floating piece whose draft is deeper than the liquid grounds on
 ##      the floor. Anything taller than the liquid stands partly out of it.
 ##   4. Pieces lying at the same height push apart where they overlap, and
-##      everything is kept inside the pot's wall.
+##      everything is kept inside the pot's wall. Food lying on other food
+##      slides off it as hard as the liquid is bubbling or being stirred, so
+##      a dropped heap spreads out over the floor as it fries.
 
 ## Volume of steam per gram at about 100 degrees C, in cm^3.
 const STEAM_CM3_PER_G: float = 1670.0
@@ -28,6 +30,8 @@ const BUBBLE_RESIDENCE_S: float = 0.03
 const STACK_OVERLAP: float = 0.25
 ## Share of an overlap resolved per step, so pieces ease apart.
 const SEPARATION_RATE: float = 0.5
+## Share of a stacked overlap resolved per step at full agitation.
+const STACK_SLIDE_RATE: float = 0.08
 ## Clearance kept from the wall, in mm.
 const WALL_CLEARANCE_MM: float = 1.0
 ## Width of the blend between the base's middle and its rim, in mm.
@@ -37,8 +41,8 @@ const BURNER_EDGE_MM: float = 12.0
 ## (0 with no liquid).
 static func settle(
 		placements: Array[PotPlacement], radius_mm: float, burner_radius_mm: float,
-		liquid_volume_mm3: float, liquid_density_g_per_cm3: float) -> float:
-	_separate(placements)
+		liquid_volume_mm3: float, liquid_density_g_per_cm3: float, agitation: float = 0.0) -> float:
+	_separate(placements, agitation)
 	for placement in placements:
 		_keep_inside(placement, radius_mm)
 		placement.over_burner = 1.0 - smoothstep(
@@ -101,13 +105,17 @@ static func _overlap_share(a: PotPlacement, b: PotPlacement) -> float:
 
 ## Pieces lying at overlapping heights ease apart along whichever axis
 ## they overlap least on.
-static func _separate(placements: Array[PotPlacement]) -> void:
+static func _separate(placements: Array[PotPlacement], agitation: float) -> void:
 	for i in placements.size():
 		for j in range(i + 1, placements.size()):
 			var a := placements[i]
 			var b := placements[j]
-			if a.top_mm() <= b.bottom_mm or b.top_mm() <= a.bottom_mm:
-				continue
+			var rate: float = SEPARATION_RATE
+			if a.top_mm() <= b.bottom_mm + 0.01 or b.top_mm() <= a.bottom_mm + 0.01:
+				# One lies on the other: it only slides off when jostled.
+				rate = STACK_SLIDE_RATE * clampf(agitation, 0.0, 1.0)
+				if rate <= 0.0:
+					continue
 			var overlap := a.footprint().intersection(b.footprint())
 			if overlap.size.x <= 0.0 or overlap.size.y <= 0.0:
 				continue
@@ -117,7 +125,7 @@ static func _separate(placements: Array[PotPlacement]) -> void:
 				push.x = overlap.size.x * (1.0 if apart.x >= 0.0 else -1.0)
 			else:
 				push.y = overlap.size.y * (1.0 if apart.y >= 0.0 else -1.0)
-			push *= 0.5 * SEPARATION_RATE
+			push *= 0.5 * rate
 			a.centre_mm -= push
 			b.centre_mm += push
 

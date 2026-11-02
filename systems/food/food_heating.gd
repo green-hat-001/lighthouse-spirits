@@ -31,7 +31,9 @@ extends RefCounted
 ##      hot chars. Browning adds aroma and savouriness; char adds
 ##      bitterness.
 ##   7. Flavour diffuses between the food and a liquid medium across its
-##      wetted faces, faster when hot.
+##      wetted faces, faster when hot, as far as the medium dissolves each
+##      flavour (fat carries chilli heat and aroma; water carries salt,
+##      sweetness, acidity and savouriness).
 ##   8. The piece shrinks as it loses water, by the ingredient's shrinkage.
 ##
 ## Integration is explicit, split into substeps short enough for the
@@ -65,8 +67,8 @@ const BROWNING_RATE_AT_REFERENCE: float = 0.012
 const SUGAR_REACTIVITY: float = 1.0
 const STARCH_REACTIVITY: float = 0.1
 const PROTEIN_REACTIVITY: float = 0.5
-const BROWNING_AROMA_GAIN: float = 0.3
-const BROWNING_UMAMI_GAIN: float = 0.15
+const BROWNING_AROMA_GAIN: float = 0.6
+const BROWNING_UMAMI_GAIN: float = 0.3
 
 ## A dry crust conducts this share of what the moist flesh does: it is
 ## porous and full of air and oil.
@@ -92,7 +94,7 @@ const OIL_REPLACES_WATER_RATIO: float = 0.08
 ## Flavour carried across a square metre of surface per second, per unit of
 ## intensity difference, at 100 degrees C.
 const FLAVOUR_TRANSFER_G_PER_M2_S_AT_100C: float = 12.0
-const FLAVOUR_TRANSFER_DOUBLING_C: float = 20.0
+const FLAVOUR_TRANSFER_DOUBLING_C: float = 40.0
 
 ## Advances the piece by dt seconds of exposure and reports what it took
 ## from and gave to its surroundings. Mutates the piece, and the
@@ -355,11 +357,14 @@ static func _exchange_flavour(piece: FoodPiece, exposure: HeatExposure, wetted_a
 	var conductance: float = FLAVOUR_TRANSFER_G_PER_M2_S_AT_100C * wetted_area_m2 \
 		* pow(2.0, (exposure.temp_c - WATER_BOILING_POINT_C) / FLAVOUR_TRANSFER_DOUBLING_C)
 	for axis in FlavourProfile.AXES:
+		var solubility: float = FlavourProfile.solubility(axis, exposure.fat_fraction, exposure.water_fraction)
+		if solubility <= 0.0:
+			continue
 		var in_piece: float = piece.flavour.get(axis)
 		var in_medium: float = exposure.flavour.get(axis)
 		var equilibrium: float = (in_piece * piece_mass + in_medium * medium_mass) / (piece_mass + medium_mass)
 		# Never carry more than it takes to reach equilibrium in one substep.
-		var carried: float = conductance * (in_piece - in_medium) * dt
+		var carried: float = conductance * solubility * (in_piece - in_medium) * dt
 		var limit: float = absf(in_piece - equilibrium) * piece_mass
 		carried = clampf(carried, -limit, limit)
 		piece.flavour.set(axis, in_piece - carried / piece_mass)

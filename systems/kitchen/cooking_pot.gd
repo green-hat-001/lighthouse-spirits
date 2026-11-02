@@ -361,6 +361,7 @@ func _exposure_for(placement: PotPlacement, pool: bool, agitation: float) -> Hea
 		var contact_h: float = vessel.wet_contact_w_per_m2_k if film else vessel.dry_contact_w_per_m2_k
 		if film:
 			exposure.fat_fraction = medium.fat_fraction
+			exposure.water_fraction = medium.water_fraction
 			exposure.flavour = medium_flavour
 			exposure.medium_mass_g = medium_mass_g
 			exposure.temp_c = temp_c
@@ -373,6 +374,7 @@ func _exposure_for(placement: PotPlacement, pool: bool, agitation: float) -> Hea
 
 	exposure.temp_c = temp_c
 	exposure.fat_fraction = medium.fat_fraction
+	exposure.water_fraction = medium.water_fraction
 	exposure.flavour = medium_flavour
 	exposure.medium_mass_g = medium_mass_g
 	exposure.browning_boost = MediumChemistry.browning_boost(medium_breakdown)
@@ -410,7 +412,8 @@ func _settle() -> void:
 		volume_mm3 = medium_mass_g / medium.density_g_per_cm3 * 1000.0
 		density = medium.density_g_per_cm3
 	var burner_radius: float = _base_disc_radius_mm()
-	liquid_level_mm = PotLayout.settle(placements, vessel.interior_radius_mm(), burner_radius, volume_mm3, density)
+	liquid_level_mm = PotLayout.settle(placements, vessel.interior_radius_mm(), burner_radius, volume_mm3, density,
+		maxf(bubbling, _stirring) if has_pool() else _stirring)
 
 ## Radius of the base disc over the burner, in mm.
 func _base_disc_radius_mm() -> float:

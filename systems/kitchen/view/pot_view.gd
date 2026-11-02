@@ -39,8 +39,8 @@ const LIFT_HEIGHT_M: float = 0.06
 const VIEW_EASE: float = 12.0
 const FOAM_INSTANCES: int = 700
 ## Foam bubbles drawn per g/s of steam off a piece.
-const FOAM_PER_G_PER_S: float = 2600.0
-const FOAM_PER_PIECE: int = 40
+const FOAM_PER_G_PER_S: float = 8000.0
+const FOAM_PER_PIECE: int = 50
 const BOIL_BUBBLES: int = 160
 ## Steam (g/s) for full steam, and oil temperature for full shimmer.
 const FULL_STEAM_G_PER_S: float = 0.6
@@ -99,19 +99,27 @@ func is_over(world_point: Vector3) -> bool:
 func view_of(piece: FoodPiece) -> FoodPieceView:
 	return _views.get(piece)
 
-## Drops food in at a world point. Wet food in hot oil spatters.
-func drop_in(pieces: Array[FoodPiece], world_point: Vector3) -> int:
+## Drops food in at a world point. A handful falls as it was held: give
+## each piece's world centre in `held_at` and they land in the same layout
+## around the point where they were let go. Wet food in hot oil spatters.
+func drop_in(pieces: Array[FoodPiece], world_point: Vector3, held_at: Array[Vector3] = []) -> int:
 	var centre := to_pot_mm(world_point)
 	var radius: float = pot().vessel.interior_radius_mm() * 0.7
 	if centre.length() > radius:
 		centre = centre.normalized() * radius
+	var middle := Vector2.ZERO
+	if held_at.size() == pieces.size() and not held_at.is_empty():
+		for spot in held_at:
+			middle += Vector2(spot.x, spot.z)
+		middle /= held_at.size()
 	var dropped: int = 0
 	var wet_g: float = 0.0
 	for index in pieces.size():
 		var piece := pieces[index]
-		# A handful spreads a little as it falls.
-		var spread := Vector2(fmod(index * 7.3, 5.0) - 2.5, fmod(index * 3.7, 5.0) - 2.5) * 4.0
-		if pot().add_piece(piece, centre + spread):
+		var offset := Vector2(fmod(index * 7.3, 5.0) - 2.5, fmod(index * 3.7, 5.0) - 2.5) * 4.0
+		if held_at.size() == pieces.size():
+			offset = (Vector2(held_at[index].x, held_at[index].z) - middle) / MM_TO_M
+		if pot().add_piece(piece, centre + offset):
 			dropped += 1
 			wet_g += piece.surface_water_g()
 	if dropped > 0:
@@ -222,7 +230,7 @@ func _draw_foam() -> void:
 				var edge := _perimeter_point(Vector2(size.x, size.z), around)
 				var out: float = 0.001 + life * 0.004
 				var position := centre + Vector3(edge.x * (1.0 + out / maxf(size.x, 0.001)), 0.0, edge.y * (1.0 + out / maxf(size.z, 0.001)))
-				var scale: float = (0.0007 + 0.0012 * fmod(seed * 0.33, 1.0)) * sin(life * PI)
+				var scale: float = (0.0009 + 0.0014 * fmod(seed * 0.33, 1.0)) * sin(life * PI)
 				_foam_multimesh.set_instance_transform(count, Transform3D(Basis.from_scale(Vector3(scale, scale * 0.6, scale)), position))
 				count += 1
 		# A rolling boil bubbles over the whole surface.
@@ -377,7 +385,7 @@ static func _foam_bubble_mesh() -> Mesh:
 	sphere.radial_segments = 8
 	sphere.rings = 4
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(1.0, 0.97, 0.88, 0.7)
+	material.albedo_color = Color(1.0, 1.0, 0.97, 0.85)
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	sphere.material = material
