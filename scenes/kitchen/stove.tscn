@@ -1,0 +1,56 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://systems/kitchen/view/stove_view.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/equipment/gas_stove.glb" id="2"]
+[ext_resource type="Script" path="res://systems/kitchen/view/interactable.gd" id="3"]
+[ext_resource type="Script" path="res://systems/kitchen/view/gas_flame.gd" id="4"]
+
+[sub_resource type="SphereShape3D" id="knob_shape"]
+radius = 0.03
+
+[sub_resource type="ParticleProcessMaterial" id="spark_process"]
+direction = Vector3(0, 1, 0)
+spread = 180.0
+initial_velocity_min = 0.25
+initial_velocity_max = 0.6
+gravity = Vector3(0, 0, 0)
+damping_min = 2.0
+damping_max = 4.0
+
+[sub_resource type="StandardMaterial3D" id="spark_material"]
+shading_mode = 0
+albedo_color = Color(0.85, 0.9, 1, 1)
+emission_enabled = true
+emission = Color(0.7, 0.8, 1, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="SphereMesh" id="spark_mesh"]
+material = SubResource("spark_material")
+radius = 0.0008
+height = 0.0016
+radial_segments = 4
+rings = 2
+
+[node name="Stove" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Model" parent="." instance=ExtResource("2")]
+
+[node name="KnobGrip" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.038, 0.165)
+script = ExtResource("3")
+
+[node name="Shape" type="CollisionShape3D" parent="KnobGrip"]
+shape = SubResource("knob_shape")
+
+[node name="Flame" type="MeshInstance3D" parent="Model/flame_anchor"]
+script = ExtResource("4")
+
+[node name="Spark" type="GPUParticles3D" parent="Model/flame_anchor"]
+emitting = false
+amount = 14
+lifetime = 0.2
+one_shot = true
+explosiveness = 1.0
+process_material = SubResource("spark_process")
+draw_pass_1 = SubResource("spark_mesh")

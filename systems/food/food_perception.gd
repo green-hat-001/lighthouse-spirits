@@ -46,6 +46,12 @@ static func appearance_of(piece: FoodPiece) -> FoodAppearance:
 	)
 	appearance.translucency = clampf(piece.core_doneness, 0.0, 1.0)
 	appearance.crumble = 1.0 - piece.integrity
+	appearance.face_browning = piece.face_browning.duplicate()
+	appearance.face_char = piece.face_char.duplicate()
+	appearance.face_skin = piece.face_skin.duplicate()
+	appearance.face_wetness.resize(FoodPiece.FACE_COUNT)
+	for face in FoodPiece.FACE_COUNT:
+		appearance.face_wetness[face] = 1.0 - piece.face_dryness(face)
 	return appearance
 
 ## Crisp crusts crackle and raw vegetables crunch. Soft food is quiet

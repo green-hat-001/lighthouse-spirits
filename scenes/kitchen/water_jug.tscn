@@ -1,0 +1,28 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://systems/kitchen/view/pour_vessel_view.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/equipment/water_jug.glb" id="2"]
+[ext_resource type="Script" path="res://systems/kitchen/view/interactable.gd" id="3"]
+
+[sub_resource type="BoxShape3D" id="grip_shape"]
+size = Vector3(0.12, 0.2, 0.1)
+
+[node name="WaterJug" type="Node3D"]
+script = ExtResource("1")
+store_kind = 0
+max_pour_g_per_s = 80.0
+
+[node name="Tilt" type="Node3D" parent="."]
+
+[node name="Model" parent="Tilt" instance=ExtResource("2")]
+
+[node name="Grip" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+script = ExtResource("3")
+
+[node name="Shape" type="CollisionShape3D" parent="Grip"]
+shape = SubResource("grip_shape")
+
+[node name="Stream" type="MeshInstance3D" parent="."]
+top_level = true
+cast_shadow = 0

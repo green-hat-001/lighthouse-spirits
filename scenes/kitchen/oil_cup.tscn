@@ -1,0 +1,30 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://systems/kitchen/view/pour_vessel_view.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/equipment/oil_cup.glb" id="2"]
+[ext_resource type="Script" path="res://systems/kitchen/view/interactable.gd" id="3"]
+
+[sub_resource type="BoxShape3D" id="grip_shape"]
+size = Vector3(0.09, 0.075, 0.08)
+
+[node name="OilCup" type="Node3D" node_paths=PackedStringArray("fill_surface")]
+script = ExtResource("1")
+store_kind = 2
+max_pour_g_per_s = 25.0
+fill_surface = NodePath("Tilt/Model/oil_surface")
+fill_rise_m = 0.055
+
+[node name="Tilt" type="Node3D" parent="."]
+
+[node name="Model" parent="Tilt" instance=ExtResource("2")]
+
+[node name="Grip" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.037, 0)
+script = ExtResource("3")
+
+[node name="Shape" type="CollisionShape3D" parent="Grip"]
+shape = SubResource("grip_shape")
+
+[node name="Stream" type="MeshInstance3D" parent="."]
+top_level = true
+cast_shadow = 0

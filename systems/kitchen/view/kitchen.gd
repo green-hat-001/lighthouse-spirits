@@ -18,8 +18,13 @@ extends Node3D
 ## every frame while the window has focus, because a capture requested
 ## before the window is focused can be dropped. Esc while walking is the one
 ## deliberate way to free it, so the window and editor stay reachable; a
-## click locks it again. Also wires the pantry baskets to
-## the board and sets the kitchen's ambient temperature.
+## click locks it again.
+##
+## It also wires the stations together, routing food between them without
+## knowing anything about cooking: baskets put whole items on the board,
+## food lifted off the board can be let go into the pot, the spoon's catch
+## is set down on the board, the sunflower head fills the press's hopper,
+## and "kitchen_taste" bites whatever piece on the board is under the hand.
 
 const GLIDE_SPEED: float = 5.0
 const PEEK_EASE: float = 6.0
@@ -31,7 +36,10 @@ const COUNTER_FOV_DEG: float = 62.0
 const ARRIVED_M: float = 0.005
 const ARRIVED_DEG: float = 0.8
 
-@export var ambient_temp_c: float = 15.0
+## How long a taste caption stays up, in seconds.
+const CAPTION_SECONDS: float = 6.0
+const CAPTION_FADE_SECONDS: float = 1.2
+
 ## The counter's footprint on the ground, relative to the Counter prop.
 @export var counter_footprint: Rect2 = Rect2(-0.8, -0.3, 1.6, 0.6)
 
@@ -41,7 +49,15 @@ var _peek_deg: float = 0.0
 ## Set when the player frees the mouse with Esc while walking.
 var _mouse_freed: bool = false
 
+var _caption_left_s: float = 0.0
+
+@onready var simulation: KitchenSimulation = $Simulation
 @onready var board: CuttingBoard = $CuttingBoard
+@onready var stove: StoveView = $Stove
+@onready var pot_view: PotView = $Pot
+@onready var press_view: PressView = $OilPress
+@onready var seed_source: SeedSource = $SunflowerHead
+@onready var _caption: Label = $Hud/Caption
 @onready var camera: Camera3D = $Camera3D
 @onready var caretaker: Caretaker = $Caretaker
 @onready var counter_views: CounterViews = $CounterViews
@@ -52,9 +68,15 @@ var _mouse_freed: bool = false
 @onready var _crosshair: Control = $Hud/Crosshair
 
 func _ready() -> void:
-	board.ambient_temp_c = ambient_temp_c
+	board.ambient_temp_c = simulation.air.temp_c
+	board.rest = simulation.board
+	board.drop_target = drop_into_pot
+	board.piece_tasted.connect(show_caption)
+	pot_view.lifted_out.connect(_on_lifted_out)
+	seed_source.taken.connect(func(_ingredient: Ingredient, grams: float) -> void: simulation.load_seeds(grams))
 	for source in find_children("*", "IngredientSource", true, false):
 		(source as IngredientSource).taken.connect(func(ingredient: Ingredient) -> void: board.add_whole(ingredient))
+	_caption.modulate.a = 0.0
 	pointer.enabled = false
 	counter_views.active = false
 	camera.fov = WALK_FOV_DEG
@@ -77,6 +99,48 @@ func counter_in_reach() -> bool:
 	var footprint := Rect2(counter_footprint.position + Vector2(origin.x, origin.z), counter_footprint.size)
 	var feet := Vector2(caretaker.global_position.x, caretaker.global_position.z)
 	return KitchenViewMode.within_reach(feet, caretaker.facing(), footprint)
+
+## Lets food go into the pot if it was let go over it. Returns true when
+## the pot took it; anything that would overflow the pot goes back on the
+## board.
+func drop_into_pot(pieces: Array[FoodPiece], world_point: Vector3) -> bool:
+	if not pot_view.is_over(world_point):
+		return false
+	pot_view.drop_in(pieces, world_point)
+	var spilled: Array[FoodPiece] = []
+	for piece in pieces:
+		if not simulation.pot.pieces.has(piece):
+			spilled.append(piece)
+	if not spilled.is_empty():
+		board.receive.call_deferred(spilled, board.global_position)
+	return true
+
+## Bites whatever piece on the board is under the hand.
+func taste_under_hand() -> String:
+	var hit := pointer.pick_under_mouse()
+	if hit.interactable == null or not (hit.interactable.get_parent() is FoodPieceView):
+		return ""
+	var view := hit.interactable.get_parent() as FoodPieceView
+	if board.views().has(view):
+		return board.taste(view)
+	if pot_view.view_of(view.piece) == view:
+		show_caption("Too hot to reach into the pot. Lift it out with the spoon first.")
+	return ""
+
+func show_caption(text: String) -> void:
+	_caption.text = text
+	_caption_left_s = CAPTION_SECONDS
+
+## The spoon let go of what it lifted: on the board if it was over the
+## board, otherwise it slides back into the pot.
+func _on_lifted_out(pieces: Array[FoodPiece], world_point: Vector3) -> void:
+	for piece in pieces:
+		simulation.held.remove_piece(piece)
+	var local := board.to_local(world_point)
+	var half := CuttingBoard.SIZE_M * 0.5
+	var over_board: bool = absf(local.x) <= half.x and absf(local.z) <= half.y
+	var leftover: Array[FoodPiece] = board.receive(pieces, world_point) if over_board else pieces
+	pot_view.return_to_pot(leftover)
 
 func step_in() -> bool:
 	if not view_mode.step_in(counter_in_reach()):
@@ -103,6 +167,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("leave_view"):
 		if not step_out() and view_mode.mode == KitchenViewMode.Mode.WALKING:
 			_mouse_freed = true
+	elif event.is_action_pressed("kitchen_taste") and view_mode.mode == KitchenViewMode.Mode.AT_COUNTER:
+		taste_under_hand()
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
 			and view_mode.mode == KitchenViewMode.Mode.WALKING and _mouse_freed:
 		_mouse_freed = false
@@ -120,6 +186,8 @@ func _lock_mouse() -> void:
 
 func _process(delta: float) -> void:
 	_lock_mouse()
+	_caption_left_s = maxf(_caption_left_s - delta, 0.0)
+	_caption.modulate.a = clampf(_caption_left_s / CAPTION_FADE_SECONDS, 0.0, 1.0)
 	var walking := view_mode.mode == KitchenViewMode.Mode.WALKING
 	_prompt.visible = walking and counter_in_reach()
 	_crosshair.visible = walking

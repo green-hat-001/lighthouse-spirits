@@ -943,7 +943,7 @@ func _test_mezzaluna_gesture() -> void:
 		MezzalunaGesture.resolve(footprint_min, footprint_size, Vector2(140.0, 230.0), Vector2(142.0, 230.0)) == null, true)
 
 func _test_kitchen_input_actions() -> void:
-	for action in [&"kitchen_steady", &"camera_pan_left", &"camera_pan_right", &"camera_look_out", &"camera_look_back",
+	for action in [&"kitchen_steady", &"kitchen_taste", &"camera_pan_left", &"camera_pan_right", &"camera_look_out", &"camera_look_back",
 			&"move_forward", &"move_back", &"move_left", &"move_right", &"interact", &"leave_view"]:
 		_expect_equal("input action %s is defined" % action, InputMap.has_action(action) and not InputMap.action_get_events(action).is_empty(), true)
 
@@ -1082,6 +1082,84 @@ func _test_caretaker_in_the_kitchen() -> void:
 	await _wait_for_mode(kitchen, KitchenViewMode.Mode.WALKING)
 	_expect_equal("the view returns to the caretaker's eyes",
 		kitchen.view_mode.mode == KitchenViewMode.Mode.WALKING and kitchen.caretaker.control_enabled and not kitchen.pointer.enabled, true)
+	kitchen.queue_free()
+
+## The working stations in the real kitchen scene, driven through the same
+## signals and calls the player's hands produce.
+func _test_kitchen_stations() -> void:
+	var kitchen: Kitchen = load("res://scenes/kitchen/kitchen.tscn").instantiate()
+	add_child(kitchen)
+	await get_tree().process_frame
+	var sim := kitchen.simulation
+	var pot := sim.pot
+
+	kitchen.stove.set_knob(135.0)
+	_expect_near("half the knob's travel is half the gas", pot.flame_level, 0.5)
+	kitchen.stove.set_knob(0.0)
+	_expect_near("turning the knob back to off puts the flame out", pot.flame_level, 0.0)
+
+	var poured := sim.pour_into_pot(sim.jug, 80.0, 5.0)
+	_expect_equal("the jug pours water into the pot", poured > 0.0 and is_equal_approx(pot.medium_mass_g, poured), true)
+	_expect_near("the jug never runs dry", sim.jug.fill_fraction(), 1.0)
+	_expect_near("oil can't be poured into a pot of water", sim.pour_into_pot(sim.cup, 25.0, 1.0), 0.0)
+	pot.pour_out(pot.medium_mass_g)
+	_expect_equal("water poured off leaves the pot empty", pot.medium == null, true)
+
+	var seeds: Ingredient = sim.seeds
+	kitchen.seed_source.taken.emit(seeds, 50.0)
+	_expect_near("rubbing the sunflower head fills the hopper", sim.press.loaded_g, 50.0)
+	_expect_near("turning the crank backwards presses nothing", kitchen.press_view.turn_crank(-1.0), 0.0)
+	kitchen.press_view.turn_crank(2.5)
+	_expect_near("two and a half turns press 50g of seed into 17.5g of oil in the cup", sim.cup.grams, 17.5)
+	_expect_near("and push out the seed cake", sim.cake_g, 30.0)
+	sim.pour_into(sim.cup, sim.bottle, 25.0, 10.0)
+	_expect_equal("the cup pours into the bottle", is_equal_approx(sim.bottle.grams, 17.5) and sim.cup.is_empty(), true)
+
+	pot.add_medium(sim.oil, 300.0, AMBIENT_TEMP_C)
+	var board := kitchen.board
+	var whole := board.add_whole(KITCHEN_INGREDIENTS[0])
+	_expect_equal("food on the board rests in the board's simulation", sim.board.pieces.has(whole.piece), true)
+	var across := whole.position.z + whole.footprint_m().y * 0.5
+	board.cut_stroke(Vector3(whole.position.x - 0.02, 0.0, across), Vector3(whole.position.x + whole.footprint_m().x + 0.02, 0.0, across), true)
+	var halves := board.touching_cluster(board.views()[0])
+	_expect_equal("a freshly cut potato's halves lift together", halves.size(), 2)
+	var lifted: Array[FoodPiece] = []
+	for view in halves:
+		lifted.append(view.piece)
+	_expect_equal("food let go beside the pot stays out of it", kitchen.drop_into_pot(lifted, board.global_position), false)
+	_expect_equal("food let go over the pot is taken", kitchen.drop_into_pot(lifted, kitchen.pot_view.global_position + Vector3(0.0, 0.2, 0.0)), true)
+	_expect_equal("and lands in it", pot.pieces.size(), 2)
+	for frame in 3:
+		await get_tree().process_frame
+	_expect_equal("the pot draws the food in it", kitchen.pot_view.view_of(lifted[0]) != null, true)
+
+	# The spoon: press in the pot over a piece, drag out over the rim, let
+	# go over the board.
+	var mouth: Interactable = kitchen.pot_view.get_node("Mouth")
+	var placement := pot.placement_of(lifted[0])
+	var in_pot := kitchen.pot_view.to_global(Vector3(placement.centre_mm.x * 0.001, PotView.RIM_Y_M, placement.centre_mm.y * 0.001))
+	mouth.pressed.emit(in_pot)
+	mouth.dragged.emit(kitchen.pot_view.to_global(Vector3(0.2, PotView.RIM_Y_M, 0.0)))
+	_expect_equal("dragging the spoon out over the rim lifts what it caught", kitchen.pot_view.lifted.size() >= 1, true)
+	_expect_equal("lifted food drains in the air", sim.held.pieces.has(kitchen.pot_view.lifted[0]), true)
+	var on_board_before := board.views().size()
+	mouth.released.emit(board.global_position)
+	_expect_equal("letting the spoon go over the board sets the food down there",
+		board.views().size() > on_board_before and pot.pieces.size() < 2 and sim.held.pieces.is_empty(), true)
+
+	var taste_view: FoodPieceView = board.views()[board.views().size() - 1]
+	var mass_before := taste_view.piece.mass_g()
+	var note := board.taste(taste_view)
+	_expect_equal("tasting raw potato says it's raw", note.contains("raw"), true)
+	_expect_equal("and says how hot it is", note.contains("Cold"), true)
+	var bitten: FoodPieceView = board.views()[board.views().size() - 1]
+	_expect_equal("a bite comes off the piece", bitten.piece.mass_g() < mass_before - 1.0, true)
+
+	kitchen.stove.set_knob(270.0)
+	var oil_before: float = pot.temp_c
+	for frame in 30:
+		await get_tree().physics_frame
+	_expect_equal("the kitchen's simulation runs while you play", pot.temp_c > oil_before, true)
 	kitchen.queue_free()
 
 func _wait_for_mode(kitchen: Kitchen, mode: KitchenViewMode.Mode) -> void:
@@ -1481,6 +1559,7 @@ func _finish() -> void:
 	)
 
 	await _test_caretaker_in_the_kitchen()
+	await _test_kitchen_stations()
 
 	print("")
 	print("fed path:       ", _fed_transitions, " -> ", _fed_outcome)

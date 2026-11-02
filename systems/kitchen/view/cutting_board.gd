@@ -8,7 +8,15 @@ extends Node3D
 ##
 ## Each piece on the board is in one of two states:
 ##   RESTING --press on the piece--> CARRIED --drag--> CARRIED --release--> RESTING
-## A right press on a RESTING piece rolls it onto its side.
+## A right press on a RESTING piece rolls it onto its side. Pressed while
+## steadying (holding "kitchen_steady"), a piece is lifted together with
+## every piece touching it - a whole cut potato at once - and carried in the
+## hand above the counter:
+##   RESTING --steady press--> LIFTED --drag--> LIFTED --release over the pot--> (gone)
+##   LIFTED --release anywhere else--> RESTING, set down below where it was
+##
+## Food on the board is in the board's RestingSurface, so it keeps cooking
+## from its own heat, cools and dries in the air while it sits here.
 ##
 ## The mezzaluna stroke is its own two-state machine:
 ##   IDLE --press on the bare board--> STROKING --drag--> STROKING --release--> IDLE
@@ -17,6 +25,7 @@ extends Node3D
 
 signal piece_placed(view: FoodPieceView)
 signal pieces_cut(count: int, steadied: bool)
+signal piece_tasted(note: String)
 
 const SIZE_M: Vector2 = Vector2(0.40, 0.28)
 ## Space between the two halves of a fresh cut, so the cut shows.
@@ -27,10 +36,25 @@ const SCATTER_M: float = 0.006
 ## Gap kept between a newly placed whole item and anything already here.
 const PLACEMENT_MARGIN_M: float = 0.01
 const PLACEMENT_STEP_M: float = 0.01
+## Height above the board that lifted food is carried at: clear of the
+## pot's rim.
+const CARRY_HEIGHT_M: float = 0.22
+## Pieces closer than this count as touching, for lifting together.
+const TOUCHING_M: float = 0.003
+## A bite takes this much off the end of a piece, in mm.
+const BITE_MM: float = 12.0
 
 @export var ambient_temp_c: float = 15.0
 
+## The simulation the board's food rests in. Set before food arrives.
+var rest: RestingSurface
+## Offered food the player lets go of while lifted; returns true if it took
+## it (the pot, when it was let go over the pot).
+var drop_target: Callable
+
 var _views: Array[FoodPieceView] = []
+var _lifted: Array[FoodPieceView] = []
+var _lift_offsets: Array[Vector3] = []
 var _carried: FoodPieceView
 var _carry_offset: Vector3
 var _stroking: bool = false
@@ -66,6 +90,62 @@ func add_whole(ingredient: Ingredient) -> FoodPieceView:
 	piece_placed.emit(view)
 	return view
 
+## Sets food down on the board as near a world point as there is room for,
+## and returns whatever didn't fit.
+func receive(pieces: Array[FoodPiece], world_point: Vector3) -> Array[FoodPiece]:
+	var rejected: Array[FoodPiece] = []
+	var target := to_local(world_point)
+	for piece in pieces:
+		var footprint := Vector2(piece.size_mm.x, piece.size_mm.z) * FoodPieceView.MM_TO_M
+		var spot: Variant = _free_spot(footprint, Vector2(target.x, target.z))
+		if spot == null:
+			rejected.append(piece)
+			continue
+		piece_placed.emit(_add_view(piece, Vector3(spot.x, 0.0, spot.y)))
+	return rejected
+
+## Takes a piece off the board and hands it over.
+func take(view: FoodPieceView) -> FoodPiece:
+	_remove_view(view)
+	return view.piece
+
+## Takes a bite of a piece: the caretaker notices how it is, and the bite
+## comes off the end of it - a real cut, so what is left has a fresh face.
+## A piece too small to bite twice is eaten whole. Returns what they
+## noticed.
+func taste(view: FoodPieceView) -> String:
+	if not _views.has(view):
+		return ""
+	var piece := view.piece
+	var note := TasteNote.describe(piece)
+	var axis: int = Vector3.AXIS_X
+	for candidate in [Vector3.AXIS_Y, Vector3.AXIS_Z]:
+		if piece.size_mm[candidate] > piece.size_mm[axis]:
+			axis = candidate
+	var origin := view.position
+	_remove_view(view)
+	var sides := FoodCutting.cut(piece, axis, piece.size_mm[axis] - BITE_MM, true)
+	if not sides.is_empty():
+		_add_view(sides[0], origin)
+	piece_tasted.emit(note)
+	return note
+
+## The pieces touching a piece, and the pieces touching those, and so on -
+## everything that lifts with it.
+func touching_cluster(view: FoodPieceView) -> Array[FoodPieceView]:
+	var cluster: Array[FoodPieceView] = [view]
+	var index: int = 0
+	while index < cluster.size():
+		var rect := _footprint_rect(cluster[index]).grow(TOUCHING_M)
+		for other in _views:
+			if not cluster.has(other) and rect.intersects(_footprint_rect(other)):
+				cluster.append(other)
+		index += 1
+	return cluster
+
+func is_lifting() -> bool:
+	return not _lifted.is_empty()
+
 ## Cuts every piece a mezzaluna stroke from start to end crosses, both in
 ## board-local metres. Returns how many pieces were cut.
 func cut_stroke(start: Vector3, end: Vector3, steadied: bool) -> int:
@@ -93,7 +173,20 @@ func roll(view: FoodPieceView) -> void:
 	view.rolled_about(view.piece.roll())
 	view.position = _clamped(view.position, view.footprint_m())
 
+func _remove_view(view: FoodPieceView) -> void:
+	_views.erase(view)
+	if rest:
+		rest.remove_piece(view.piece)
+	if _carried == view:
+		_carried = null
+	view.queue_free()
+
+func _footprint_rect(view: FoodPieceView) -> Rect2:
+	return Rect2(Vector2(view.position.x, view.position.z), view.footprint_m())
+
 func _add_view(piece: FoodPiece, local_position: Vector3) -> FoodPieceView:
+	if rest:
+		rest.add_piece(piece)
 	var view := FoodPieceView.new(piece)
 	_pieces.add_child(view)
 	view.position = _clamped(local_position, view.footprint_m())
@@ -102,14 +195,13 @@ func _add_view(piece: FoodPiece, local_position: Vector3) -> FoodPieceView:
 	view.grip.dragged.connect(_on_piece_dragged.bind(view))
 	view.grip.released.connect(_on_piece_released.bind(view))
 	view.grip.secondary_pressed.connect(func(_point: Vector3) -> void: roll(view))
-	view.grip.cancelled.connect(func() -> void: _carried = null)
+	view.grip.cancelled.connect(func() -> void: _on_piece_cancelled(view))
 	_views.append(view)
 	return view
 
 func _replace_with_sides(view: FoodPieceView, sides: Array[FoodPiece], axis: int, scatter: bool) -> void:
 	var origin := view.position
-	_views.erase(view)
-	view.queue_free()
+	_remove_view(view)
 	var near_side := _add_view(sides[0], origin)
 	var far_origin := origin
 	far_origin[axis] += sides[0].size_mm[axis] * FoodPieceView.MM_TO_M + CUT_GAP_M
@@ -119,9 +211,9 @@ func _replace_with_sides(view: FoodPieceView, sides: Array[FoodPiece], axis: int
 			var jolt := Vector3(randf_range(-SCATTER_M, SCATTER_M), 0.0, randf_range(-SCATTER_M, SCATTER_M))
 			side.position = _clamped(side.position + jolt, side.footprint_m())
 
-## The free spot nearest the middle of the board, as the minimum corner of
-## the footprint, or null if nothing fits.
-func _free_spot(footprint: Vector2) -> Variant:
+## The free spot nearest a point on the board (its middle by default), as
+## the minimum corner of the footprint, or null if nothing fits.
+func _free_spot(footprint: Vector2, near: Vector2 = Vector2.ZERO) -> Variant:
 	var half := SIZE_M * 0.5
 	var candidates: Array[Vector2] = []
 	var z := -half.y
@@ -132,7 +224,7 @@ func _free_spot(footprint: Vector2) -> Variant:
 			x += PLACEMENT_STEP_M
 		z += PLACEMENT_STEP_M
 	candidates.sort_custom(func(a: Vector2, b: Vector2) -> bool:
-		return (a + footprint * 0.5).length_squared() < (b + footprint * 0.5).length_squared())
+		return (a + footprint * 0.5 - near).length_squared() < (b + footprint * 0.5 - near).length_squared())
 	for corner in candidates:
 		var candidate := Rect2(corner, footprint).grow(PLACEMENT_MARGIN_M)
 		var clear := true
@@ -157,16 +249,63 @@ func _top_plane() -> Plane:
 	return Plane(Vector3.UP, global_position.y)
 
 func _on_piece_pressed(point: Vector3, view: FoodPieceView) -> void:
+	if Input.is_action_pressed("kitchen_steady"):
+		_lift(view, point)
+		return
+	view.grip.drag_plane = _top_plane()
 	_carried = view
 	_carry_offset = view.position - to_local(point)
 
 func _on_piece_dragged(point: Vector3, view: FoodPieceView) -> void:
-	if view == _carried:
+	if not _lifted.is_empty() and _lifted[0] == view:
+		var hand := to_local(point)
+		for index in _lifted.size():
+			var offset: Vector3 = _lift_offsets[index]
+			_lifted[index].position = Vector3(hand.x + offset.x, CARRY_HEIGHT_M, hand.z + offset.z)
+	elif view == _carried:
 		view.position = _clamped(to_local(point) + _carry_offset, view.footprint_m())
 
-func _on_piece_released(_point: Vector3, view: FoodPieceView) -> void:
-	if view == _carried:
+func _on_piece_released(point: Vector3, view: FoodPieceView) -> void:
+	if not _lifted.is_empty() and _lifted[0] == view:
+		_let_go(point)
+	elif view == _carried:
 		_carried = null
+
+## Lifts a piece and everything touching it into the hand.
+func _lift(view: FoodPieceView, point: Vector3) -> void:
+	_lifted = touching_cluster(view)
+	_lift_offsets.clear()
+	var lift_plane := Plane(Vector3.UP, global_position.y + CARRY_HEIGHT_M)
+	view.grip.drag_plane = lift_plane
+	var hand := to_local(point)
+	for lifted in _lifted:
+		_lift_offsets.append(Vector3(lifted.position.x - hand.x, 0.0, lifted.position.z - hand.z))
+		lifted.position.y = CARRY_HEIGHT_M
+
+## Lets go of what is lifted: into the pot if it takes it, otherwise
+## straight down onto the board.
+func _let_go(point: Vector3) -> void:
+	var lifted := _lifted.duplicate()
+	_lifted.clear()
+	_lift_offsets.clear()
+	var pieces: Array[FoodPiece] = []
+	for view in lifted:
+		pieces.append(view.piece)
+	if drop_target.is_valid() and drop_target.call(pieces, point):
+		for view in lifted:
+			_remove_view(view)
+		return
+	for view in lifted:
+		view.grip.drag_plane = _top_plane()
+		view.position = _clamped(Vector3(view.position.x, 0.0, view.position.z), view.footprint_m())
+
+func _on_piece_cancelled(view: FoodPieceView) -> void:
+	if not _lifted.is_empty() and _lifted[0] == view:
+		for lifted in _lifted:
+			lifted.position = _clamped(Vector3(lifted.position.x, 0.0, lifted.position.z), lifted.footprint_m())
+		_lifted.clear()
+		_lift_offsets.clear()
+	_carried = null
 
 func _on_surface_pressed(point: Vector3) -> void:
 	_stroking = true

@@ -50,7 +50,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif not button.pressed and state == State.HOLDING:
 				_release(button.position)
 		elif button.button_index == MOUSE_BUTTON_RIGHT and button.pressed and state == State.IDLE:
-			var hit := _pick(button.position)
+			var hit := pick(button.position)
 			if hit.interactable:
 				hit.interactable.secondary_pressed.emit(hit.point)
 	elif event is InputEventMouseMotion and state == State.HOLDING:
@@ -59,7 +59,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_held.dragged.emit(point)
 
 func _press(screen_position: Vector2) -> void:
-	var hit := _pick(screen_position)
+	var hit := pick(screen_position)
 	if hit.interactable == null:
 		return
 	state = State.HOLDING
@@ -75,7 +75,8 @@ func _release(screen_position: Vector2) -> void:
 	var point: Variant = _project(screen_position, held.drag_plane)
 	held.released.emit(point if point != null else held.global_position)
 
-func _pick(screen_position: Vector2) -> PointerHit:
+## The Interactable under a point on the screen, and where the ray meets it.
+func pick(screen_position: Vector2) -> PointerHit:
 	var hit := PointerHit.new()
 	var origin := camera.project_ray_origin(screen_position)
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + camera.project_ray_normal(screen_position) * RAY_LENGTH_M)
@@ -87,6 +88,10 @@ func _pick(screen_position: Vector2) -> PointerHit:
 	hit.interactable = result.collider as Interactable
 	hit.point = result.position
 	return hit
+
+## What is under the mouse right now.
+func pick_under_mouse() -> PointerHit:
+	return pick(camera.get_viewport().get_mouse_position())
 
 func _project(screen_position: Vector2, plane: Plane) -> Variant:
 	return plane.intersects_ray(camera.project_ray_origin(screen_position), camera.project_ray_normal(screen_position))

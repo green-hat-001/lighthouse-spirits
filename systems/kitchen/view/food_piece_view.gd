@@ -14,8 +14,6 @@ extends Node3D
 
 const MM_TO_M: float = 0.001
 const FOOD_SHADER: Shader = preload("res://shaders/food_cel.gdshader")
-## Share of a cut piece's surface drawn as flesh rather than skin.
-const CUT_FLESH_SHARE: float = 0.85
 ## Once a whole item browns, chars or cooks this much, its model switches
 ## to the food shader so the change shows.
 const VISIBLE_COOKING: float = 0.02
@@ -86,7 +84,6 @@ func refresh_shape() -> void:
 	_box_instance.position = size_m * 0.5
 	_shape.size = size_m
 	_collision.position = size_m * 0.5
-	_material.set_shader_parameter("cut_share", 0.0 if piece.cut_axes.is_empty() else CUT_FLESH_SHARE)
 
 	var show_model: bool = _model != null and piece.cut_axes.is_empty()
 	_box_instance.visible = not show_model
@@ -98,6 +95,12 @@ func refresh_shape() -> void:
 			_model.transform = Transform3D(_model_basis, Vector3.ZERO)
 			var bounds := _model_bounds()
 			_model.position = -bounds.position
+
+## Hands one per-face value to the shader as its (+X, +Y, +Z) and
+## (-X, -Y, -Z) pair.
+func _set_faces(name: String, values: PackedFloat64Array) -> void:
+	_material.set_shader_parameter(name + "_pos", Vector3(values[FoodPiece.Face.POS_X], values[FoodPiece.Face.POS_Y], values[FoodPiece.Face.POS_Z]))
+	_material.set_shader_parameter(name + "_neg", Vector3(values[FoodPiece.Face.NEG_X], values[FoodPiece.Face.NEG_Y], values[FoodPiece.Face.NEG_Z]))
 
 ## The model's bounds in this view's space, with its current turn applied.
 func _model_bounds() -> AABB:
@@ -116,8 +119,10 @@ func _model_bounds() -> AABB:
 
 func _process(_delta: float) -> void:
 	var appearance := FoodPerception.appearance_of(piece)
-	_material.set_shader_parameter("browning", appearance.browning)
-	_material.set_shader_parameter("char_amount", appearance.charring)
+	_set_faces("browning", appearance.face_browning)
+	_set_faces("char", appearance.face_char)
+	_set_faces("skin", appearance.face_skin)
+	_set_faces("wet", appearance.face_wetness)
 	_material.set_shader_parameter("gloss", appearance.gloss)
 	_material.set_shader_parameter("translucency", appearance.translucency)
 	_material.set_shader_parameter("crumble", appearance.crumble)

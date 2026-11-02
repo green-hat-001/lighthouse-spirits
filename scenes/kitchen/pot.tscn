@@ -1,0 +1,151 @@
+[gd_scene load_steps=24 format=3]
+
+[ext_resource type="Script" path="res://systems/kitchen/view/pot_view.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/equipment/pot.glb" id="2"]
+[ext_resource type="Script" path="res://systems/kitchen/view/interactable.gd" id="3"]
+[ext_resource type="PackedScene" path="res://assets/models/equipment/slotted_spoon.glb" id="4"]
+
+[sub_resource type="CylinderShape3D" id="mouth_shape"]
+height = 0.12
+radius = 0.09
+
+[sub_resource type="Gradient" id="soft_gradient"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="soft_texture"]
+gradient = SubResource("soft_gradient")
+width = 64
+height = 64
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[sub_resource type="Gradient" id="steam_ramp_gradient"]
+offsets = PackedFloat32Array(0, 0.2, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 0.32, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="steam_ramp"]
+gradient = SubResource("steam_ramp_gradient")
+
+[sub_resource type="Curve" id="grow_curve"]
+_data = [Vector2(0, 0.4), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="grow_texture"]
+curve = SubResource("grow_curve")
+
+[sub_resource type="ParticleProcessMaterial" id="steam_process"]
+emission_shape = 3
+emission_box_extents = Vector3(0.07, 0.002, 0.07)
+direction = Vector3(0, 1, 0)
+spread = 12.0
+initial_velocity_min = 0.03
+initial_velocity_max = 0.08
+gravity = Vector3(0, 0.04, 0)
+scale_min = 0.6
+scale_max = 1.3
+scale_curve = SubResource("grow_texture")
+color_ramp = SubResource("steam_ramp")
+
+[sub_resource type="StandardMaterial3D" id="steam_material"]
+transparency = 1
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_texture = SubResource("soft_texture")
+billboard_mode = 3
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="QuadMesh" id="steam_mesh"]
+material = SubResource("steam_material")
+size = Vector2(0.06, 0.06)
+
+[sub_resource type="Gradient" id="smoke_ramp_gradient"]
+offsets = PackedFloat32Array(0, 0.25, 1)
+colors = PackedColorArray(0.6, 0.62, 0.68, 0, 0.55, 0.57, 0.63, 0.45, 0.6, 0.62, 0.68, 0)
+
+[sub_resource type="GradientTexture1D" id="smoke_ramp"]
+gradient = SubResource("smoke_ramp_gradient")
+
+[sub_resource type="ParticleProcessMaterial" id="smoke_process"]
+emission_shape = 3
+emission_box_extents = Vector3(0.06, 0.002, 0.06)
+direction = Vector3(0, 1, 0)
+spread = 20.0
+initial_velocity_min = 0.02
+initial_velocity_max = 0.05
+gravity = Vector3(0, 0.02, 0)
+scale_min = 0.8
+scale_max = 1.6
+scale_curve = SubResource("grow_texture")
+color_ramp = SubResource("smoke_ramp")
+
+[sub_resource type="QuadMesh" id="smoke_mesh"]
+material = SubResource("steam_material")
+size = Vector2(0.1, 0.1)
+
+[sub_resource type="ParticleProcessMaterial" id="spatter_process"]
+emission_shape = 1
+emission_sphere_radius = 0.02
+direction = Vector3(0, 1, 0)
+spread = 55.0
+initial_velocity_min = 0.35
+initial_velocity_max = 0.9
+gravity = Vector3(0, -9.8, 0)
+
+[sub_resource type="StandardMaterial3D" id="spatter_material"]
+shading_mode = 0
+albedo_color = Color(1, 0.86, 0.45, 1)
+
+[sub_resource type="SphereMesh" id="spatter_mesh"]
+material = SubResource("spatter_material")
+radius = 0.0012
+height = 0.0024
+radial_segments = 4
+rings = 2
+
+[node name="Pot" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Model" parent="." instance=ExtResource("2")]
+
+[node name="Mouth" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.064, 0)
+script = ExtResource("3")
+
+[node name="Shape" type="CollisionShape3D" parent="Mouth"]
+shape = SubResource("mouth_shape")
+
+[node name="Pieces" type="Node3D" parent="."]
+
+[node name="Foam" type="MultiMeshInstance3D" parent="."]
+cast_shadow = 0
+
+[node name="Steam" type="GPUParticles3D" parent="."]
+emitting = false
+amount = 48
+lifetime = 2.2
+visibility_aabb = AABB(-0.4, -0.1, -0.4, 0.8, 0.8, 0.8)
+process_material = SubResource("steam_process")
+draw_pass_1 = SubResource("steam_mesh")
+
+[node name="Smoke" type="GPUParticles3D" parent="."]
+emitting = false
+amount = 40
+lifetime = 4.0
+visibility_aabb = AABB(-0.5, -0.1, -0.5, 1, 1.2, 1)
+process_material = SubResource("smoke_process")
+draw_pass_1 = SubResource("smoke_mesh")
+
+[node name="Spatter" type="GPUParticles3D" parent="."]
+emitting = false
+amount = 40
+lifetime = 0.6
+one_shot = true
+explosiveness = 1.0
+process_material = SubResource("spatter_process")
+draw_pass_1 = SubResource("spatter_mesh")
+
+[node name="Spoon" parent="." instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.17, -0.099, 0.215)

@@ -197,13 +197,14 @@ func pieces_near(at_mm: Vector2, reach_mm: float) -> Array[FoodPiece]:
 		found.append(placement.piece)
 	return found
 
-## Turns a piece over where it lies (a quarter roll, as on the board).
-func turn(piece: FoodPiece) -> bool:
+## Turns a piece over where it lies (a quarter roll, as on the board), and
+## returns the axis it rolled about, or -1 if it isn't in the pot.
+func turn(piece: FoodPiece) -> int:
 	if not pieces.has(piece):
-		return false
-	piece.roll()
+		return -1
+	var axis: int = piece.roll()
 	_settle()
-	return true
+	return axis
 
 ## A stroke of the spoon through the pot from one point to another, in mm:
 ## the pieces it passes through are carried along, and the liquid is
