@@ -4,7 +4,15 @@ Read this first, then `CLAUDE.md` (vision, cooking model, architecture, commands
 
 ## State in one paragraph
 
-Work is on branch **`kitchen-simulation`** (not merged to `main`), and everything is committed. The game's main scene is the **outdoor kitchen** (`scenes/kitchen/kitchen.tscn`): a first-person caretaker walks a cliff top beside a lighthouse and steps up to a counter to work. The only interactive cooking so far is the **cutting board**: baskets, mezzaluna cuts, steadying and rolling. Under it sits a complete, tested **food simulation** (cutting, heat, frying, boiling, browning, charring, oil uptake, the oil press, flavour, texture, bite sounds, dish fingerprints, nourishment), not yet wired to the stove or to serving. The integration suite passes with **234 checks**.
+*Updated at the end of the session that built the working counter.* Work is on branch **`claude/youthful-pascal-25llfn`**, and everything is committed and pushed. The main scene is the **outdoor kitchen**, and the whole counter works:
+- cutting on the board;
+- lighting and setting the stove by hand;
+- pouring oil and water;
+- lifting cut food into the pot, and stirring, turning and lifting it out with the slotted spoon;
+- pressing sunflower seeds into oil;
+- tasting (T).
+
+The simulation is now **per face**. Each face of each piece cooks by what it touches: hot metal, oil, water or wind. The pot has three thermal masses, buoyancy, displacement and oil chemistry, and flavour partitions by solubility. The integration suite passes with **320 checks**. **None of the counter has been play-tested by the user yet.** See the latest `CHANGELOG.md` entry for everything that changed and why.
 
 ## Files to read, in order
 
@@ -69,8 +77,8 @@ A condensed copy of `docs/kitchen_plan.md`, which has the full pass/fail check f
 
 **6. The 3D kitchen**, built in three checkpoints
 - Checkpoint 1 🟡: scene, camera, pointer, interaction framework (6.1, 6.2), the mezzaluna board (6.3), food shader (6.7, first pass). Plus, beyond the plan: the outdoor setting ✅ and the first-person caretaker with step-in/out and edge-peek 🟡
-- Checkpoint 2 ⬜ **next**: stove knob (6.4); pot with pouring, pieces in and slotted-spoon lift-out (6.5); the frying loop on screen
-- Checkpoint 3 ⬜: oil press crank (6.6), food shader polish (6.7), taste test with bite captions and later audio (6.8)
+- Checkpoint 2 🟡 built, not yet play-tested: stove knob (6.4); pot with pouring, pieces in and slotted-spoon lift-out (6.5); the frying loop on screen, with per-face heat transfer
+- Checkpoint 3 🟡 built, not yet play-tested: oil press crank (6.6), food shader polish (6.7), taste test with captions (6.8; audio waits on recorded samples)
 - 6.9 Scene–simulation bridge: views wrap sim objects and no scene script holds food logic. This is the rule for every checkpoint; the board already follows it.
 - The **cut-piece kit** (halves, planks, sticks, dice) models are deferred until the rule for matching a cut piece to a mesh is written. Cut pieces are boxes for now.
 
@@ -83,12 +91,15 @@ A condensed copy of `docs/kitchen_plan.md`, which has the full pass/fail check f
 
 ## Next up
 
-1. **Ask how the cutting and the walking feel.** The user hasn't reported on either since the fixes. Tune `walk_speed_mps` and `mouse_sensitivity` on the Caretaker if asked.
-2. **Checkpoint 2 of Section 6:** stove knob (drag to set the flame; `knob` pivot on `gas_stove.glb`), pot (pouring oil and water, dropping pieces in, lifting them out with the slotted spoon), and the frying loop, visually using `FoodPieceView` plus the food shader. `CookingPot` and `FoodHeating` already do the physics. The pot's `liquid_surface` and the cup's `oil_surface` are hidden in `kitchen.tscn` until this checkpoint drives them.
-3. **Checkpoint 3:** taste test (bite captions now, audio later from recorded samples), oil press crank (`crank` pivot; 0.05 turns per gram), food shader polish.
-4. **Waiting on the user:**
+1. **Ask how the counter feels.** These have never been play-tested:
+   - cutting, and lifting food (Space + drag) into the pot;
+   - the knob, the spoon, pouring and the crank.
+
+   Tuning lives in constants: `PourVesselView.TILT_DEG_PER_S`, `PotView.SPOON_REACH_MM`, `CuttingBoard.CARRY_HEIGHT_M`, `StoveView.FULL_TURN_DEG`, and `CircularDrag` for the knob and crank.
+2. **Bite audio** once recorded samples exist (see `docs/models_needed.md`).
+3. **Waiting on the user:**
    - **4.6:** retiring `CulinaryCraftingMatrix` and the technique `.tres` files deletes working code and changes the spirit test harness. Get an explicit go-ahead.
-   - **Section 5:** falling and catching spirits, and the moon. It's blocked on the open questions in `CLAUDE.md`: what happens to an uncaught spirit, chance vs a readable outcome, how catching works, and whether the moon replaces kindled light.
+   - **Section 5:** falling and catching spirits, and the moon. It's blocked on the open questions in `CLAUDE.md`.
    - **7.3:** is the service menu recipes cooked to order, or cooked stock?
 
 ## Decisions the user made (already in CLAUDE.md or the plan)
@@ -104,14 +115,14 @@ A condensed copy of `docs/kitchen_plan.md`, which has the full pass/fail check f
 - **Code first, section by section, straight on to the next section**; stop only where a section is blocked on the user's decision. Models are batched into `docs/models_needed.md` for a Blender session.
 - **Keep `CHANGELOG.md` current** (every completed piece), `README.md` (only confirmed-working features), and `docs/models_needed.md`.
 - **The mouse is always locked in games**: captured for mouse look, confined when a cursor is needed, re-asserted every focused frame.
-- Commits go on `kitchen-simulation`, and each commit message ends with the Co-Authored-By line.
+- Commits go on the session's branch (`kitchen-simulation` before, `claude/youthful-pascal-25llfn` now), and each commit message ends with the Co-Authored-By line.
 - Give the user something they can **play** (the main scene), not just tests.
 
 ## Commands
 
 ```sh
 godot --path .                                                    # play (main scene: the kitchen)
-godot --headless --path . res://scenes/integration_test.tscn      # the suite (~25 s, exits 0/1)
+godot --headless --path . res://scenes/integration_test.tscn      # the suite (~90 s, exits 0/1)
 godot --headless --editor --quit --path .                         # after adding/renaming a class_name, or to reimport assets
 blender --background --factory-startup --python tools/blender/build_models.py -- <name>        # kitchen kit
 blender --background --factory-startup --python tools/blender/build_environment.py -- <name>   # environment
@@ -129,3 +140,5 @@ blender --background --factory-startup --python tools/blender/validate_models.py
 - **In bash heredocs with `'EOF'`**, write GDScript line continuations as a single `\`. A doubled one broke parsing once.
 - **When slicing in tests or scripts**, stop while a full step plus `FoodCutting.MIN_PIECE_THICKNESS_MM` still fits. `FoodCutting.cut` correctly refuses thinner remainders and returns an empty array.
 - **Every section so far was mutation-checked:** break the central rule on purpose and confirm the suite fails. One mutant survived at first (conduction ignoring thickness) until a stronger test was added.
+- **Screenshots from a cloud container** work under `xvfb-run` (Godot falls back to OpenGL on llvmpipe, so the lighting is flatter than Forward+). The kitchen's `docs/screenshots/kitchen_*.png` were made that way.
+- **Warnings are errors** in this project: a `:=` that infers a Variant fails to parse. Type it explicitly (`var x: Variant = ...`).

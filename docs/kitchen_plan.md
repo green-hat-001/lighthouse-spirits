@@ -31,8 +31,12 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 *Changed from the first draft:*
 - Browning speed comes from each ingredient's sugar, starch and protein, not a separate authored browning-rate field.
 - Boiled food keeps its water rather than gaining more; softening comes from overcooking with a wet surface.
-- Oil has no smoke point yet: at full flame it keeps getting hotter (about 350°C at equilibrium), so the player has to manage the flame. Smoking and burnt oil are not modelled.
-- Water migration, oil uptake and browning constants were tuned against realistic targets. 10mm fries at 180°C are cooked through in about 3.5 minutes and golden at 4–5. At 130°C they're pale, greasy and still raw at 5. At 220°C they burn. 25mm potato cubes boil tender in about 9 minutes and fall apart after 15–20.
+- At full flame oil keeps getting hotter (about 340°C at equilibrium), so the player has to manage the flame. *Superseded in checkpoint 2:* oil now smokes past its smoke point and breaks down (`MediumChemistry`).
+- Water migration, oil uptake and browning constants were tuned against realistic targets. *Recalibrated in checkpoint 2,* once a wet core was capped at 100°C and crust was made to insulate:
+  - 10mm fries at 180°C are cooked through and golden at about six minutes, and still moist inside.
+  - Blanched at 130°C they cook through but stay pale and greasy.
+  - At 220°C they burn.
+  - 25mm potato cubes boil tender in about 8 minutes and fall apart after 15–20.
 
 - **2.1 Gas stove:** flame level 0–1 → heat output. Equipment is a `.tres`.
 - **2.2 Pot and medium:** the pot holds oil, water or nothing. The medium heats from the flame, loses heat, and drops when cold food goes in. *Check:* oil at full flame reaches about 180°C in the expected time, cools when the flame is lowered, and dips when a batch is added.
@@ -88,7 +92,22 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 
 *Outdoor mockup (between checkpoints 1 and 2):* the greybox is replaced by the model kit, and the kitchen stands in its outdoor setting on the cliff top: sky, sea, cliff, lighthouse, sea stacks and grass. The camera opens on a sea vista (W/↑ to look out again, S/↓ to come back). The stove, pot, press, bottle, jug, spoon and sunflower are set dressing until checkpoints 2 and 3 make them work.
 
-*Status: checkpoint 1 of 3 built and awaiting the user's play-test: the kitchen scene (`scenes/kitchen/kitchen.tscn`), three-quarter camera rig, pointer and interaction framework, and the cutting board with the mezzaluna, steadying and rolling. Checkpoint 2 (stove, pot, frying) waits on the oil-supply decision below. Checkpoint 3 is the food shader polish, taste captions and the press.*
+*Status: checkpoints 1–3 built and covered by the integration suite, awaiting the user's play-test.*
+- **Checkpoint 1:** the scene, camera, pointer and the cutting board.
+- **Checkpoint 2:** the stove knob and flame, the pot with pouring, food in and the slotted spoon, and the frying loop on screen.
+- **Checkpoint 3:**
+  - the oil press crank, hopper, cup and seed cake;
+  - per-face food shader polish;
+  - the taste test with captions;
+  - cutting polish.
+- **Waiting on assets:** bite audio (recorded samples) and the cut-piece kit. Cut pieces are still boxes.
+
+*Changed in checkpoints 2 and 3:*
+- **Per-face heat transfer.** The simulation went further than the first draft. Each face of each piece is exposed to what it touches in the pot: the metal through a film of oil, the oil, or the air above it. The pot is three thermal masses (the base over the burner, the rim and walls, the liquid) out in the cliff-top wind. Food sinks or floats by buoyancy and displaces the oil. With hand-pressed oil the fry is shallow, so food browns underneath and must be turned. See the latest `CHANGELOG.md` entry.
+- **Moving food between stations:** carry it in the hand by steadying while pressing a piece (the whole touching cluster lifts), then let go over the pot. The slotted spoon lifts food out onto the board. A plate is Section 7.
+- **The oil bottle and cup:** both are pressed-oil stores. The cup fills under the press and pours into the pot or the bottle. The bottle is corked, and right-click pulls the cork. The water jug never runs dry.
+- **The sunflower head** is the seed source for the press, 50 g a click.
+- **Taste:** T on a piece on the board bites the end off it, a real cut. The caption describes texture, flavour and warmth in words.
 
 *Changed from the first draft:*
 - A cut is a drag across the bare board through the food. Pressing on a piece picks it up to move it, and right-clicking a piece rolls it onto its side. `kitchen_steady` (Space or Shift) holds the food during a cut.
@@ -108,7 +127,7 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 - **6.8 Taste test** 🎨: plays the layered bite sound from 4.3, using recorded crunch, crisp, soft, squelch and chew samples.
 - **6.9 Scene–simulation bridge:** scene nodes wrap simulation objects, and the simulation steps in `_physics_process`. *Check:* no scene script contains food logic.
 
-**Acceptance:** make fries by hand, and see them brown and hear them crunch.
+**Acceptance:** make fries by hand, and see them brown and hear them crunch. *Everything but the crunch is built; the bite is a caption until recorded samples exist.*
 
 ## 7. Dishes, naming and service
 

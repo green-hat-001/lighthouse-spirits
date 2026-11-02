@@ -66,7 +66,7 @@ The spirit rendered in-game today is a procedurally built sphere with an emissiv
 
 ## Status and open questions
 
-Phase 1 — spirit FSM, culinary crafting, lighthouse progression — is complete and covered by the integration suite. The next piece of work is the simulated 3D kitchen described in Cooking model, built section by section from `docs/kitchen_plan.md`. Sections 1–3 and 4.1–4.5 are done. 4.6 (retiring the crafting matrix) waits for the user's go-ahead, and Section 5 waits on the open questions below. The kitchen replaces `CulinaryCraftingMatrix` and the technique `.tres` files as the source of dishes. Until 4.6, the Architecture section below describes both the live serving path and the kitchen modules that are not yet connected to it. `FeedingResult` stays the only contract with the spirit FSM.
+Phase 1 — spirit FSM, culinary crafting, lighthouse progression — is complete and covered by the integration suite. The next piece of work is the simulated 3D kitchen described in Cooking model, built section by section from `docs/kitchen_plan.md`. Sections 1–3, 4.1–4.5 and all three checkpoints of Section 6 are done and covered by the suite. The counter (board, stove, pot, spoon, vessels, press, tasting) hasn't been play-tested yet. Bite audio and the cut-piece kit wait on assets. 4.6 (retiring the crafting matrix) waits for the user's go-ahead, and Section 5 waits on the open questions below. The kitchen replaces `CulinaryCraftingMatrix` and the technique `.tres` files as the source of dishes. Until 4.6, the Architecture section below describes both the live serving path and the kitchen modules that are not yet connected to it. `FeedingResult` stays the only contract with the spirit FSM.
 
 - **Patience is currently a real-time countdown** (`patience_seconds` 25s, then a 10s recovery window, then an `UNFED` outcome). This sits in tension with "coastal rhythm rather than a ticking clock." The loop has been played and approved as-is, so don't quietly re-time it — raise the question if the area comes up. Volatile weather is now the intended source of pressure, which strengthens the case for replacing the timer.
 - **What happens to a spirit that falls and isn't caught.** The stated stake is "don't let them die"; the actual mechanic is undecided.
@@ -90,13 +90,18 @@ godot --headless --path . res://scenes/integration_test.tscn
 # new type fails to parse.
 godot --headless --editor --quit --path .
 
-# Play the game (the main scene: the outdoor kitchen, work in progress).
+# Play the game (the main scene: the outdoor kitchen).
 # Walking: WASD to walk, mouse to look, E at the counter to step in, Esc to
 # free the mouse (click to take it back).
-# At the counter: click a basket, drag across the board to cut, hold Space
-# to steady, right-click to roll a piece, A/D along the counter, W/S to look
+# At the counter: A/D along the counter (board, stove, press), W/S to look
 # out to sea and back, mouse to a screen edge to glance sideways, Esc to
-# step back.
+# step back. Board: click a basket, drag across the board to cut (Space
+# steadies), drag a piece to move it, right-click to roll it, Space + drag
+# to lift it with everything touching it, T to taste. Stove: drag round the
+# knob. Pot: drag to stir with the slotted spoon, drag out over the rim to
+# lift, right-click a piece to turn it. Jug/bottle/cup: drag over the pot
+# to pour (right-click uncorks the bottle). Press: click the sunflower head
+# for seeds, drag round the crank.
 godot --path .
 
 # Model kit: rebuild (all, or the named models), validate against
@@ -117,7 +122,7 @@ godot --path . res://scenes/test_sanctuary.tscn
 
 There are no separate unit tests and no single-test runner. `scripts/test/integration_test.gd` runs pure checks first (crafting math, affinity, the kitchen simulation, progression economy/unlocks/persistence), then runs a two-spirit lifecycle simulation at `Engine.time_scale = 10`. To add a check, write a `_test_*` function that uses `_expect_equal`/`_expect_near` and call it from `_ready()`. Call `LighthouseProgression.reset()` before the lifecycle run so the station multipliers stay at 1.0. The persistence test writes to the real `user://progression.cfg`.
 
-The food model checks are the exception to what follows. They build their ingredients in code, and only the validation check reads the shipped potato, chilli and sunflower seeds; it is meant to fail if those files break.
+The food model checks are the exception to what follows. They build their ingredients in code, and only the validation check reads the shipped potato, chilli and sunflower seeds; it is meant to fail if those files break. The kitchen station checks (`_test_kitchen_stations`) run in the real scene with the shipped pot, stove, press and oil, and expect 0.05 turns per gram and a 0.35 oil yield.
 
 The rest of the suite asserts against the shipped `data/` content, not fixtures, so some content-only changes break it:
 - `_test_crafting_math` hardcodes the sea kelp, tide pool clam, simmered and raw stats.
@@ -154,19 +159,28 @@ Spirit FSM ──SpiritEventBus.spirit_lifecycle_complete("ASCENDED")──> Lig
   - Only ingredients and techniques with `available_from_start` are usable before an upgrade unlocks them.
   - Upgrade `prerequisites` are upgrade `id` StringNames, and their multipliers stack multiplicatively.
 - **Food** (`systems/food/`) and **Kitchen** (`systems/kitchen/`) are the kitchen simulation. They aren't wired into serving yet.
-  - `FoodPiece` is the physical state of one piece of a SOLID ingredient: grams of solids, water and oil, a surface shell and a core. `FoodCutting` is the pure geometry of axis-aligned mezzaluna cuts.
-  - `FoodHeating` is the pure physics of one piece in a `HeatExposure`. It returns a `HeatExchange` so whoever owns the medium can conserve energy and mass.
-  - `CookingPot` owns a `CookingVessel`, an optional `HeatSource`, the liquid and the pieces, and advances in fixed steps.
-  - `Ingredient` carries the physical, thermal and cooking-medium data all of these need, plus a `validate()`. The older ingredients (kelp, clam, herb, ember root) have no physical data yet and don't validate.
-  - Equipment resources extend `KitchenEquipment` and live in `data/equipment/`. `LighthouseProgression.is_equipment_unlocked` gates them.
-  - `FoodPerception` maps a piece's state to `FoodTexture`, `FoodAppearance` and `BiteSound`. `Dish` holds plated pieces and `LiquidPortion`s and has a `fingerprint()` (via `DishDescriber`). `DishNourishment` turns a `Dish` into a `FeedingResult`, including `ascension_strength`.
+  - `FoodPiece` is the physical state of one piece of a SOLID ingredient: grams of solids, water and oil, a core, and a surface shell split into six **faces** (`FoodPiece.Face`: ±X, ±Y, ±Z, indexed per face in `face_temp_c`, `face_moisture`, `face_browning`, `face_char`, `face_skin`). Each face's share of the shell is its share of the area. `surface_*` are area-weighted means; setting one sets every face. Cutting makes fresh flesh faces, and `roll()` rotates the faces with the piece.
+  - `FoodCutting` is the pure geometry of axis-aligned mezzaluna cuts.
+  - `FoodHeating` is the pure physics of one piece in a `HeatExposure`. Every face draws heat through three channels: the liquid it's wetted by, contact (hot metal, the board), and air (which also dries it, via `WaterVapour`). A wet core never passes 100°C, and dry crust insulates and runs hotter at its outside, where browning happens. Flavour exchange follows `FlavourProfile` fat and water solubility. It returns a `HeatExchange`, split by channel, so whoever owns each source can conserve energy and mass. Uniform exposure (no per-face values) is a piece fully immersed in a stirred medium; the tests use it.
+  - `CookingPot` owns a `CookingVessel`, an optional `HeatSource`, the `KitchenAir`, the liquid and the pieces, and advances in fixed steps. Its heat sits in three thermal masses: the base over the burner, the rim and walls, and the liquid.
+    - `PotLayout` places each piece (a `PotPlacement`): it sinks or floats by buoyancy, displaces the liquid, and is wetted below the liquid line.
+    - The pot builds each piece's per-face exposure from its placement.
+    - `MediumChemistry` wears frying oil out: breakdown, the smoke point, acrid flavour, and boosts to browning and uptake.
+  - `RestingSurface` is food out in the air: the board, or held on the spoon.
+  - `LiquidStore` is a pourable store: cup, bottle, jug.
+  - `KitchenAir` (`resources/`, data in `data/air/`) is the open air: temperature, wind, humidity. Weather will be authored as instances of it.
+  - `Ingredient` carries the physical, thermal and cooking-medium data all of these need, plus a `validate()`. This includes skin permeability, shrinkage and, for oils, smoke point and breakdown rates. The older ingredients (kelp, clam, herb, ember root) have no physical data yet and don't validate.
+  - Equipment resources extend `KitchenEquipment` and live in `data/equipment/`. `LighthouseProgression.is_equipment_unlocked` gates them. `CookingVessel` carries the pot's real geometry and metal; `HeatSource` carries how far the flame spreads.
+  - `FoodPerception` maps a piece's state to `FoodTexture`, `FoodAppearance` (with per-face values) and `BiteSound`. `TasteNote` puts a bite into words.
+  - `Dish` holds plated pieces and `LiquidPortion`s and has a `fingerprint()` (via `DishDescriber`). `DishNourishment` turns a `Dish` into a `FeedingResult`, including `ascension_strength`.
   - A `Transformation` in `data/transformations/` (loaded automatically) describes what one piece of equipment does to one bulk ingredient, e.g. pressing seeds into oil. `ManualProcessor` runs it from the player's work. Transformations are the only authored recipes, and they never describe a finished dish.
-  - A piece's local Y axis is height, matching Godot.
+  - A piece's local Y axis is height, matching Godot. Food is never rotated off the world's axes in the kitchen, so the food shader picks a face by the world normal.
 - **Kitchen scene** (`scenes/kitchen/`, scripts in `systems/kitchen/view/`) is the playable view layer and the main scene.
-  - `Kitchen` owns the one camera and a flat `KitchenViewMode` FSM: WALKING → STEPPING_IN → AT_COUNTER → STEPPING_OUT → WALKING. It gates every input by mode.
+  - `Kitchen` owns the one camera and a flat `KitchenViewMode` FSM: WALKING → STEPPING_IN → AT_COUNTER → STEPPING_OUT → WALKING. It gates every input by mode. It also routes food between the stations: board to pot, spoon to board, sunflower head to press. Tasting goes through it too.
+  - `KitchenSimulation` owns every simulation object (pot, board and held `RestingSurface`s, press, liquid stores) and steps them in `_physics_process`. The views (`CuttingBoard`, `StoveView`, `PotView`, `PourVesselView`, `PressView`, `SeedSource`) only draw state and turn the player's hands into calls. No scene script holds food logic.
   - The `Caretaker` (`systems/player/`, `scenes/player/`) is the first-person body. It has a ledge guard so it never walks off the cliff.
   - `CounterViews` supplies the station poses, the sea vista and the edge-peek.
-  - `KitchenPointer` raycasts mouse input into `Interactable` areas, and their owners (`CuttingBoard`, `IngredientSource`) turn it into simulation calls. The pointer is live only at the counter, and cancels any hold when the player steps away.
+  - `KitchenPointer` raycasts mouse input into `Interactable` areas, and their owners turn it into simulation calls. Knobs and the crank read circular drags through `CircularDrag`. The pointer is live only at the counter, and cancels any hold when the player steps away.
 - **World** (`scenes/world/coast.tscn`, `systems/world/coast.gd`) is the outdoor setting: a painted sky shader, the sea shader, sun, fog and glow, the cliff top, the lighthouse, sea stacks and a wind-blown grass field. Imported `.glb` models get the toon look from `tools/godot/toon_post_import.gd`, which is set as each model's import script. The terrain, lighthouse and sea stacks get trimesh collision at import time through the per-node physics settings in their `.glb.import` files. That also works in headless runs, where building collision from a mesh at runtime does not. The terrain's faces must stay wound upward (see `build_environment.py`), or its collision is one-sided from below.
 - `ElementalAffinity.Type` is the shared tag enum. Ingredients and archetypes both use it, so neither module depends on the other's scripts.
 

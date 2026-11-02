@@ -13,13 +13,22 @@ godot --headless --path . res://scenes/integration_test.tscn
 # Rebuild the global class cache after adding or renaming a class_name script.
 godot --headless --editor --quit --path .
 
-# Play the game (the main scene: the outdoor kitchen, work in progress).
+# Play the game (the main scene: the outdoor kitchen).
 # Walking: WASD to walk, mouse to look, E at the counter to step in, Esc to
 # free the mouse (click to take it back).
-# At the counter: click a basket, drag across the board to cut, hold Space
-# to steady, right-click to roll a piece, A/D along the counter, W/S to look
+# At the counter: A/D along the counter (board, stove, press), W/S to look
 # out to sea and back, mouse to a screen edge to glance sideways, Esc to
 # step back.
+#   Board: click a basket for a whole item, drag across the board to cut
+#     (hold Space to steady), drag a piece to move it, right-click to roll
+#     it, Space + drag to lift it with everything touching it, T to taste.
+#   Stove: drag round the knob to turn the gas.
+#   Pot: drag inside with the slotted spoon to stir, drag out over the rim
+#     to lift what the bowl caught, right-click a piece to turn it.
+#   Jug, bottle, cup: drag to lift and hold over the pot to pour;
+#     right-click the bottle to pull its cork.
+#   Press: click the sunflower head to fill the hopper, drag round the crank
+#     to press oil into the cup.
 godot --path .
 
 # Manual play harness: F serves a dish, U buys the cheapest retrofit,
@@ -41,11 +50,18 @@ Everything listed here is covered by the integration suite and passes.
 - Walking about in first person with WASD and the mouse. The caretaker never walks off the cliff.
 - Stepping up to the counter with E and back with Esc, moving between stations, looking out to sea, and glancing sideways by moving the mouse to a screen edge.
 
-The cutting board (baskets, mezzaluna cuts, steadying, rolling) is in the scene and covered by the suite, but hasn't been play-tested yet. The stove, pot and press are set dressing until the next checkpoints.
+- Cooking at the counter, all covered by the suite but not yet play-tested:
+  - cutting with the mezzaluna, with the cut line shown on the food as you draw;
+  - lighting the stove and setting the flame by hand;
+  - pouring oil or water into the pot;
+  - lifting cut food into the pot, stirring and turning it, and lifting it out with the slotted spoon;
+  - pressing sunflower seeds into oil;
+  - tasting.
+- Watching food cook: fries ringed by sizzle foam, oil that shimmers as it heats and smokes when abused, steam and smoke in the wind, and food that browns face by face, shrinks, and steams as it rests.
 
-**Simulation only (not yet in the scene)**
+**The simulation underneath**
 
-The rest of the kitchen is built simulation-first. These systems work and are tested, but have no input or visuals until later in Section 6 of the kitchen plan.
+The kitchen is built simulation-first; these are the systems the counter drives.
 
 - Food pieces with physical state: size, mass, water, oil, temperature, doneness, browning, char, integrity and flavour.
 - Mezzaluna cutting: precise axis-aligned cuts that conserve mass, thin slices that crumble, and damage when a perpendicular cut is made without holding the food steady.
@@ -56,5 +72,18 @@ The rest of the kitchen is built simulation-first. These systems work and are te
 - Reading food like a cook: texture, look (browning, char, gloss, translucency) and the sound of a bite all come from the food's physical state. A good fry crackles; greasy or mushy food squelches.
 - Dishes with an identity: a plate's fingerprint recognises the same dish made the same way, and tells burnt, raw or differently cut versions apart.
 - Nourishment from real food: energy content feeds a spirit, flavour and warmth calm it, and how well the food was made sets how surely it carries the spirit toward the moon. Not yet connected to serving.
-- Cooking on the gas stove: a pot of oil or water heats by the flame level you set, loses heat to the kitchen, and drops when cold food goes in. Water stops at 100°C and boils away.
-- Food cooking physically in oil, water or a dry pot: thickness decides how fast the middle cooks, the surface browns only once it dries, cool oil makes greasy food, too much heat burns it, and overcooked boiled food falls apart.
+- Cooking on the gas stove:
+  - A pot of oil or water heats through its metal by the flame you set, and loses heat to the wind and the sky. It drops when cold food goes in.
+  - A small flame heats only the middle of the base, which is the hot spot.
+  - The metal carries the oil on a little after the flame is turned down.
+  - Water evaporates as it heats, stops at 100°C and boils away.
+- Food cooking physically, face by face:
+  - Every face of a piece cooks by what it touches: hot metal, oil, water or air.
+  - Thickness decides how fast the middle cooks, and a wet core never passes 100°C.
+  - Surfaces brown only once they dry, cool oil makes greasy food, too much heat burns it, and overcooked boiled food falls apart.
+  - Shallow-fried food browns underneath and needs turning.
+  - Raw potato sinks in oil, and dried-out fries float.
+  - Food shrinks as it loses water.
+  - Food left out keeps cooking from its own heat, cools in the wind and goes limp.
+- Frying oil wears out: it smokes past 210°C, breaks down faster once smoking, and then tastes acrid and makes greasier, more bitter food.
+- Flavour follows solubility: chilli makes chilli oil but not chilli water, and salted water seasons what boils in it.
