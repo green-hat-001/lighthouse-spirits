@@ -98,9 +98,9 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 - **Checkpoint 3:**
   - the oil press crank, hopper, cup and seed cake;
   - per-face food shader polish;
-  - the taste test with captions;
+  - the taste test with captions and synthesised bite sounds;
   - cutting polish.
-- **Waiting on assets:** bite audio (recorded samples) and the cut-piece kit. Cut pieces are still boxes.
+- **Waiting on assets:** the cut-piece kit (cut pieces are still boxes). Recorded bite samples are optional, since synthesised layers stand in.
 
 *Changed in checkpoints 2 and 3:*
 - **Per-face heat transfer.** The simulation went further than the first draft. Each face of each piece is exposed to what it touches in the pot: the metal through a film of oil, the oil, or the air above it. The pot is three thermal masses (the base over the burner, the rim and walls, the liquid) out in the cliff-top wind. Food sinks or floats by buoyancy and displaces the oil. With hand-pressed oil the fry is shallow, so food browns underneath and must be turned. See the latest `CHANGELOG.md` entry.
@@ -127,7 +127,7 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 - **6.8 Taste test** 🎨: plays the layered bite sound from 4.3, using recorded crunch, crisp, soft, squelch and chew samples.
 - **6.9 Scene–simulation bridge:** scene nodes wrap simulation objects, and the simulation steps in `_physics_process`. *Check:* no scene script contains food logic.
 
-**Acceptance:** make fries by hand, and see them brown and hear them crunch. *Everything but the crunch is built; the bite is a caption until recorded samples exist.*
+**Acceptance:** make fries by hand, and see them brown and hear them crunch. *Built: the crunch is synthesised until recorded samples replace it.*
 
 ## 7. Dishes, naming and service
 

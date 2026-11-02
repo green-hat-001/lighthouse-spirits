@@ -118,6 +118,7 @@ func _ready() -> void:
 	_test_bite_sounds()
 	_test_dish_fingerprints()
 	_test_dish_nourishment()
+	_test_synthesised_sounds()
 	_test_rolling_a_piece()
 	_test_mezzaluna_gesture()
 	_test_kitchen_input_actions()
@@ -930,6 +931,20 @@ func _test_dish_nourishment() -> void:
 
 # --- Kitchen scene checks -------------------------------------------------------
 
+func _test_synthesised_sounds() -> void:
+	for bed in SoundSynth.Bed.values():
+		var wav := SoundSynth.bed(bed)
+		_expect_equal("sound bed %d loops" % bed, wav.loop_mode == AudioStreamWAV.LOOP_FORWARD and wav.loop_end > SoundSynth.MIX_RATE / 2, true)
+		_expect_equal("sound bed %d isn't silent" % bed, _peak(wav) > 0.5, true)
+	for layer in BiteSound.Layer.values():
+		_expect_equal("bite layer %d sounds" % layer, _peak(SoundSynth.bite(layer)) > 0.5, true)
+
+func _peak(wav: AudioStreamWAV) -> float:
+	var peak: int = 0
+	for offset in range(0, wav.data.size(), 2):
+		peak = maxi(peak, absi(wav.data.decode_s16(offset)))
+	return peak / 32767.0
+
 func _test_rolling_a_piece() -> void:
 	var whole := FoodPiece.from_ingredient(_make_test_ingredient(), AMBIENT_TEMP_C)
 	var plank: FoodPiece = FoodCutting.cut(whole, Vector3.AXIS_Z, 10.0, false)[0]
@@ -1237,6 +1252,13 @@ func _test_kitchen_stations() -> void:
 	for frame in 30:
 		await get_tree().physics_frame
 	_expect_equal("the kitchen's simulation runs while you play", pot.temp_c > oil_before, true)
+	_expect_equal("the burner roars while it's lit", kitchen.audio.gas.playing, true)
+	kitchen.stove.set_knob(0.0)
+	# process_frame fires before nodes process, so give the sound a frame.
+	for frame in 2:
+		await get_tree().process_frame
+	_expect_equal("and falls quiet when it's out", kitchen.audio.gas.playing, false)
+	_expect_equal("cold oil doesn't sizzle", kitchen.audio.sizzle.playing, false)
 	kitchen.queue_free()
 
 func _wait_for_mode(kitchen: Kitchen, mode: KitchenViewMode.Mode) -> void:

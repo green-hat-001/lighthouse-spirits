@@ -26,6 +26,8 @@ extends Node3D
 signal piece_placed(view: FoodPieceView)
 signal pieces_cut(count: int, steadied: bool)
 signal piece_tasted(note: String)
+## A bite was taken, sounding like this.
+signal bitten(sound: BiteSound)
 
 const SIZE_M: Vector2 = Vector2(0.40, 0.28)
 ## Space between the two halves of a fresh cut, so the cut shows.
@@ -140,6 +142,7 @@ func taste(view: FoodPieceView) -> String:
 		return ""
 	var piece := view.piece
 	var note := TasteNote.describe(piece)
+	bitten.emit(FoodPerception.bite_of(piece))
 	var axis: int = Vector3.AXIS_X
 	for candidate in [Vector3.AXIS_Y, Vector3.AXIS_Z]:
 		if piece.size_mm[candidate] > piece.size_mm[axis]:

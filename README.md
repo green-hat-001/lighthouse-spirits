@@ -58,6 +58,7 @@ Everything listed here is covered by the integration suite and passes.
   - lifting cut food into the pot, stirring and turning it, and lifting it out with the slotted spoon;
   - pressing sunflower seeds into oil;
   - tasting.
+- Hearing it cook: synthesised sizzle and crackle that follow the steaming and bubbling, the burner's roar, the spark, the press's ratchet, the blade on the board, pouring, and bites layered from the food's texture.
 - Watching food cook: fries ringed by sizzle foam, oil that shimmers as it heats and smokes when abused, steam and smoke in the wind, and food that browns face by face, shrinks, and steams as it rests.
 
 **The simulation underneath**

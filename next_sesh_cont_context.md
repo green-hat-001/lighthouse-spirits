@@ -12,7 +12,7 @@ Read this first, then `CLAUDE.md` (vision, cooking model, architecture, commands
 - pressing sunflower seeds into oil;
 - tasting (T).
 
-The simulation is now **per face**. Each face of each piece cooks by what it touches: hot metal, oil, water or wind. The pot has three thermal masses, buoyancy, displacement and oil chemistry, and flavour partitions by solubility. The integration suite passes with **320 checks**. **None of the counter has been play-tested by the user yet.** See the latest `CHANGELOG.md` entry for everything that changed and why.
+The simulation is now **per face**. Each face of each piece cooks by what it touches: hot metal, oil, water or wind. The pot has three thermal masses, buoyancy, displacement and oil chemistry, and flavour partitions by solubility. The integration suite passes with **338 checks**. All sound is synthesised from the simulation (`KitchenAudio`, `SoundSynth`). **None of the counter has been play-tested by the user yet.** See the latest `CHANGELOG.md` entry for everything that changed and why.
 
 ## Files to read, in order
 
@@ -96,7 +96,7 @@ A condensed copy of `docs/kitchen_plan.md`, which has the full pass/fail check f
    - the knob, the spoon, pouring and the crank.
 
    Tuning lives in constants: `PourVesselView.TILT_DEG_PER_S`, `PotView.SPOON_REACH_MM`, `CuttingBoard.CARRY_HEIGHT_M`, `StoveView.FULL_TURN_DEG`, and `CircularDrag` for the knob and crank.
-2. **Bite audio** once recorded samples exist (see `docs/models_needed.md`).
+2. **Recorded bite samples**, if wanted, go in `KitchenAudio.recorded_bites`; until then the bites are synthesised.
 3. **Waiting on the user:**
    - **4.6:** retiring `CulinaryCraftingMatrix` and the technique `.tres` files deletes working code and changes the spirit test harness. Get an explicit go-ahead.
    - **Section 5:** falling and catching spirits, and the moon. It's blocked on the open questions in `CLAUDE.md`.

@@ -54,17 +54,27 @@ Completed work, newest first. Section numbers refer to `docs/kitchen_plan.md`.
   - Cuts that crumble shed crumbs onto the board.
   - While you draw the mezzaluna, the line it will cut is shown on every piece, snapped exactly as the cut will be.
 - **Food shader (6.7):** per face, so skin, cut flesh, browning and char each show where they are. A crisping crust blisters, wet and oily food shines, and hot, wet food in the air gives off wisps of steam.
-- **Taste (6.8, captions):** T over a piece on the board takes a real bite (the bitten end is cut off) and says, in words, how it feels, tastes and how hot it is, e.g. "Crisp outside, fluffy and tender inside. Toasty. Scalding hot." No scores. Bite audio still waits on recorded samples.
+- **Taste (6.8):** T over a piece on the board takes a real bite (the bitten end is cut off) and says, in words, how it feels, tastes and how hot it is, e.g. "Crisp outside, fluffy and tender inside. Toasty. Scalding hot." No scores. The bite is heard as well, layered from the five bite sounds by the piece's `BiteSound` weights and pitched by its size.
+- **Sound (`KitchenAudio`, `SoundSynth`):** every sound is synthesised at startup, with no samples needed. The simulation then drives loudness and pitch:
+  - frying oil hisses as hard as the food is steaming and crackles as hard as it bubbles, rising in pitch with the oil's temperature;
+  - water burbles toward and at the boil;
+  - the burner roars with its gas, and the spark clicks when it lights;
+  - the press ratchets every eighth of a turn;
+  - the blade knocks the board on each cut;
+  - pouring gurgles.
+
+  Recorded bite samples can replace the synthesised layers through `KitchenAudio.recorded_bites`. A fresh 10 mm stick in 154°C oil takes about 10 s to start sizzling, the time its faces take to reach boiling.
 - **Controls hint:** moved to the top of the screen.
 
 **Checks**
-- Integration suite: 234 → 320 checks. New coverage:
+- Integration suite: 234 → 338 checks. New coverage:
   - per-face cooking, cut faces as flesh, and rolling turning the faces;
   - drying and cooling in the wind, and resting fries cooking on and going limp;
   - shallow frying browning underneath, and the hot spot over the burner;
   - buoyancy and displacement, and oil breakdown and smoke;
   - wind slowing the pot, and open water evaporating;
   - solubility, the spoon, and the cost of a full pot;
+  - the synthesised sounds, and the burner sound following the gas;
   - every station driven through its own grips in the real scene.
 - **Mutation-checked:** removing core boiling, putting the top face of shallow-fried food under the oil, and turning buoyancy off each fail the suite.
 - **Screenshots** in `docs/screenshots/kitchen_*.png`. They were rendered in a cloud container on the OpenGL fallback with a software rasteriser, so the lighting is flatter and paler than the Forward+ game.

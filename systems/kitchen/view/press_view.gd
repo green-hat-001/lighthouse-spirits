@@ -10,6 +10,8 @@ extends Node3D
 ## still in it, and the cake piles up where it falls.
 
 signal pressed_oil(grams: float)
+## The crank turned forward this many turns.
+signal cranked(turns: float)
 
 const SEEDS_PER_GRAM: float = 0.5
 const MAX_SEEDS_SHOWN: int = 140
@@ -76,6 +78,7 @@ func turn_crank(turns: float) -> float:
 	_crank.rotation = Vector3(crank_angle, 0.0, 0.0)
 	if turns <= 0.0:
 		return 0.0
+	cranked.emit(turns)
 	var oil_g: float = simulation.crank(turns, cup != null and cup.is_home())
 	if oil_g > 0.0:
 		pressed_oil.emit(oil_g)

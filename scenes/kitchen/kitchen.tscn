@@ -26,6 +26,7 @@
 [ext_resource type="Resource" path="res://data/ingredients/water.tres" id="33"]
 [ext_resource type="Resource" path="res://data/ingredients/sunflower_seeds.tres" id="34"]
 [ext_resource type="Resource" path="res://data/ingredients/sunflower_seed_cake.tres" id="35"]
+[ext_resource type="Script" path="res://systems/kitchen/view/kitchen_audio.gd" id="36"]
 
 [sub_resource type="BoxShape3D" id="counter_shape"]
 size = Vector3(1.6, 0.9, 0.6)
@@ -93,6 +94,15 @@ ingredient = ExtResource("6")
 [node name="ChilliBasket" parent="." instance=ExtResource("3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6200, 0.0000, 0.1000)
 ingredient = ExtResource("7")
+
+[node name="Audio" type="Node" parent="." node_paths=PackedStringArray("simulation", "stove", "pot_view", "press_view", "board", "vessels")]
+script = ExtResource("36")
+simulation = NodePath("../Simulation")
+stove = NodePath("../Stove")
+pot_view = NodePath("../Pot")
+press_view = NodePath("../OilPress")
+board = NodePath("../CuttingBoard")
+vessels = [NodePath("../WaterJug"), NodePath("../OilBottle"), NodePath("../OilCup")]
 
 [node name="Stations" type="Node3D" parent="."]
 

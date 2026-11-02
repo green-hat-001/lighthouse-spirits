@@ -10,6 +10,8 @@ extends Node3D
 ##   OFF --knob turned past off--> LIT --knob turned back to off--> OFF
 
 signal flame_changed(level: float)
+## The burner caught: the spark lit it from off.
+signal lit
 
 const FULL_TURN_DEG: float = 270.0
 ## Knob travel below which the gas is off.
@@ -49,6 +51,7 @@ func set_knob(degrees: float) -> void:
 	if was_off and level > 0.0:
 		_spark.restart()
 		_spark.emitting = true
+		lit.emit()
 	flame_changed.emit(level)
 
 func _on_pressed(point: Vector3) -> void:

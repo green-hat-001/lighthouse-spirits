@@ -57,6 +57,7 @@ var _caption_left_s: float = 0.0
 @onready var pot_view: PotView = $Pot
 @onready var press_view: PressView = $OilPress
 @onready var seed_source: SeedSource = $SunflowerHead
+@onready var audio: KitchenAudio = $Audio
 @onready var _caption: Label = $Hud/Caption
 @onready var camera: Camera3D = $Camera3D
 @onready var caretaker: Caretaker = $Caretaker
