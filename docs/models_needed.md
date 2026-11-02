@@ -172,7 +172,20 @@ These replace greybox shapes in `scenes/kitchen/`. Keep the node names and pivot
 Section 4 needs no models. It defines what the food shader and bite audio will be driven by:
 
 - **Food material parameters** (for the cut-piece kit and whole ingredients): `browning`, `char`, `gloss`, `translucency`, `crumble`, each 0–1. Every food mesh needs its `flesh` and `skin` slots so the shader can brown and char them.
-- **Bite sounds (audio, not models):** five recorded layers, `crisp`, `crunch`, `soft`, `squelch` and `chew`. Each is a short (0.2–0.5 s) close-miked bite, mixed by weight and pitched from 0.85 to 1.25 in Godot. They go in `assets/audio/bite/`.
+- **Bite sounds (audio, not models):** five recorded layers, `crisp`, `crunch`, `soft`, `squelch` and `chew`. Each is a short (0.2–0.5 s) close-miked bite, mixed by weight and pitched from 0.85 to 1.25 in Godot. They go in `assets/audio/bite/`. *Optional now:* `SoundSynth` synthesises all five. Recordings replace them through `KitchenAudio.recorded_bites`, in that order.
+
+## From Section 6, checkpoints 2 and 3: the stove, pot, spoon, vessels and press
+
+No new models. These checkpoints drive the existing kit by the node names and pivots above:
+- `gas_stove.glb`: `knob` and `flame_anchor`.
+- `pot.glb`: `liquid_surface`.
+- `oil_bottle.glb`: `cork`, `pour_point`, and the `oil` surface of `body`, cut off at the fill by a shader.
+- `oil_cup.glb`: `oil_surface` and `pour_point`.
+- `water_jug.glb`: `pour_point`.
+- `oil_press.glb`: `crank`, `oil_spout` and `cake_outlet`.
+- The seed and seed-cake models, now each ingredient's `whole_model`.
+
+The flame, foam, steam, smoke, spatter and crumbs are effects in Godot. Keep those names and pivots if any of these models is rebuilt.
 
 ## The outdoor setting (built)
 
