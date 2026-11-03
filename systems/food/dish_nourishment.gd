@@ -9,15 +9,15 @@ extends RefCounted
 ## the moon.
 ##
 ## Affinity matching against a particular spirit is not done here; the
-## serving station applies it, as with the legacy crafting matrix.
+## serving station applies it.
 
 const KCAL_PER_G_STARCH: float = 4.0
 const KCAL_PER_G_SUGAR: float = 4.0
 const KCAL_PER_G_PROTEIN: float = 4.0
 const KCAL_PER_G_FAT: float = 9.0
 
-## Spirit hunger relieved per kilocalorie. Pacing against spirit deficits is
-## tuned when the kitchen replaces the crafting matrix (Section 4.6).
+## Spirit hunger relieved per kilocalorie. A whole potato's worth of good
+## fries (about 300 kcal) all but stills a basic spirit's hunger.
 const NOURISHMENT_PER_KCAL: float = 0.2
 const CALMING_PER_GRAM: float = 0.35
 const BUOYANCY_PER_DISH: float = 0.15

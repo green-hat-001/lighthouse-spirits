@@ -3,7 +3,6 @@
 [ext_resource type="Script" path="res://resources/lighthouse_upgrade.gd" id="1_ua6ns"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="2_52hjb"]
 [ext_resource type="Resource" path="res://data/ingredients/driftwood_ember_root.tres" id="3_oxfby"]
-[ext_resource type="Script" path="res://resources/preparation_technique.gd" id="4_la8cu"]
 
 [resource]
 script = ExtResource("1_ua6ns")

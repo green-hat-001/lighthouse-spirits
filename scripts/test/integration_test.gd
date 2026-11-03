@@ -1,7 +1,7 @@
 extends Node3D
 
 ## Automated headless integration test for the full pipeline:
-##   LighthouseProgression -> CulinaryCraftingMatrix -> DishServingStation
+##   kitchen food -> Dish -> DishNourishment -> DishServingStation
 ##   -> SpiritEventBus -> Spirit FSM -> light awarded back to the lighthouse
 ##
 ## Run with:
@@ -20,9 +20,6 @@ const TEST_ARCHETYPE: SpiritArchetype = preload("res://data/archetypes/example_s
 const SEA_KELP: Ingredient = preload("res://data/ingredients/sea_kelp.tres")
 const TIDE_POOL_CLAM: Ingredient = preload("res://data/ingredients/tide_pool_clam.tres")
 const CLIFF_GARDEN_HERB: Ingredient = preload("res://data/ingredients/cliff_garden_herb.tres")
-const SIMMERED: PreparationTechnique = preload("res://data/techniques/simmered.tres")
-const RAW: PreparationTechnique = preload("res://data/techniques/raw.tres")
-const SEASONED: PreparationTechnique = preload("res://data/techniques/seasoned.tres")
 
 const KITCHEN_INGREDIENTS: Array[Ingredient] = [
 	preload("res://data/ingredients/potato.tres"),
@@ -52,6 +49,8 @@ const SAFETY_TIMEOUT: float = 90.0
 const EPSILON: float = 0.001
 
 var _serving_station := DishServingStation.new()
+## The plate served to the fed spirit, cooked once and copied per serving.
+var _tide_plate: Array[FoodPiece] = []
 
 var _fed_spirit: SpiritController
 var _neglected_spirit: SpiritController
@@ -75,7 +74,8 @@ func _ready() -> void:
 	Engine.time_scale = TIME_SCALE
 
 	LighthouseProgression.reset()
-	_test_crafting_math()
+	_tide_plate = _tide_plate_pieces()
+	_test_serving_math()
 	_test_dominant_affinity()
 	_test_ingredient_validation()
 	_test_flavour_mixing()
@@ -158,8 +158,7 @@ func _process(delta: float) -> void:
 			and _fed_spirit.state_machine.current_state == SpiritState.State.WAITING:
 		if not _tested_locked_rejection:
 			_tested_locked_rejection = true
-			var locked_dish := CraftedDish.new()
-			locked_dish.add_component(CLIFF_GARDEN_HERB, SEASONED)
+			var locked_dish := CookedPlates.plate([FoodPiece.from_ingredient(CLIFF_GARDEN_HERB, AMBIENT_TEMP_C)])
 			_expect_equal(
 				"a dish using un-foraged content is refused at the pass",
 				_serving_station.serve(locked_dish, _fed_spirit),
@@ -172,50 +171,33 @@ func _process(delta: float) -> void:
 	if _fed_outcome != "" and _neglected_outcome != "":
 		_finish()
 
-# --- Pure unit checks on the crafting matrix ----------------------------------
+# --- Serving checks ---------------------------------------------------------
 
-func _test_crafting_math() -> void:
-	var dish := CraftedDish.new()
-	dish.add_component(SEA_KELP, SIMMERED)
-	dish.add_component(TIDE_POOL_CLAM, RAW)
-	var result: FeedingResult = CulinaryCraftingMatrix.compute_feeding_result(dish)
-
-	# kelp: 10*1.3+0 = 13   | clam: 20*1.0+0 = 20   -> 33
-	_expect_near("crafting nourishment", result.nourishment, 33.0)
-	# kelp: 25*1.5+5 = 42.5 | clam: 10*1.0+0 = 10   -> 52.5
-	_expect_near("crafting calming", result.calming, 52.5)
-	# kelp: 0.05           | clam: 0.1             -> 0.15
-	_expect_near("crafting buoyancy_delta", result.buoyancy_delta, 0.15)
-
-	var empty := CraftedDish.new()
-	var empty_result: FeedingResult = CulinaryCraftingMatrix.compute_feeding_result(empty)
-	_expect_near("empty dish nourishment", empty_result.nourishment, 0.0)
+func _test_serving_math() -> void:
+	var plate := CookedPlates.plate(_tide_plate_pieces())
+	var result := DishNourishment.feeding_result_of(plate)
+	_expect_equal("a cooked plate nourishes", result.nourishment > 20.0, true)
+	_expect_equal("and calms", result.calming > 20.0, true)
+	_expect_near("an empty plate feeds nothing at the pass", DishNourishment.feeding_result_of(Dish.new()).nourishment, 0.0)
+	_expect_equal("an empty plate can't be served", _serving_station.serve(Dish.new(), null), false)
 
 func _test_dominant_affinity() -> void:
-	var tide_dish := CraftedDish.new()
-	tide_dish.add_component(SEA_KELP, RAW)
-	tide_dish.add_component(TIDE_POOL_CLAM, RAW)
-	tide_dish.add_component(CLIFF_GARDEN_HERB, RAW)
-	_expect_equal(
-		"dominant affinity favours the majority tag",
-		CulinaryCraftingMatrix.dominant_affinity(tide_dish),
-		ElementalAffinity.Type.TIDE
-	)
-
-	var wind_dish := CraftedDish.new()
-	wind_dish.add_component(CLIFF_GARDEN_HERB, RAW)
-	_expect_equal(
-		"dominant affinity of a single-herb dish",
-		CulinaryCraftingMatrix.dominant_affinity(wind_dish),
-		ElementalAffinity.Type.WIND
-	)
-
-	var empty := CraftedDish.new()
-	_expect_equal(
-		"dominant affinity of an empty dish is NONE",
-		CulinaryCraftingMatrix.dominant_affinity(empty),
-		ElementalAffinity.Type.NONE
-	)
+	var tide := _make_test_ingredient()
+	tide.id = &"test_tide"
+	tide.elemental_affinity = ElementalAffinity.Type.TIDE
+	var wind := _make_test_ingredient()
+	wind.id = &"test_wind"
+	wind.elemental_affinity = ElementalAffinity.Type.WIND
+	var big_tide := FoodPiece.from_ingredient(tide, AMBIENT_TEMP_C)
+	var two_small_wind: Array[FoodPiece] = FoodCutting.cut(FoodPiece.from_ingredient(wind, AMBIENT_TEMP_C), Vector3.AXIS_X, 20.0, true)
+	var mixed := CookedPlates.plate([big_tide, two_small_wind[0], two_small_wind[1]])
+	_expect_equal("a plate's affinity is the one carrying the most food", mixed.dominant_affinity(), ElementalAffinity.Type.TIDE)
+	var only_wind := CookedPlates.plate([two_small_wind[0]])
+	_expect_equal("a plate of one ingredient carries its affinity", only_wind.dominant_affinity(), ElementalAffinity.Type.WIND)
+	_expect_equal("an empty plate carries none", Dish.new().dominant_affinity(), ElementalAffinity.Type.NONE)
+	var oil_drizzle := Dish.new()
+	oil_drizzle.add_liquid(LiquidPortion.new(_make_test_oil(), 20.0, null))
+	_expect_equal("a plate of something with no affinity carries none", oil_drizzle.dominant_affinity(), ElementalAffinity.Type.NONE)
 
 # --- Food model checks --------------------------------------------------------
 # These build their ingredients in code, so tuning the shipped .tres files
@@ -1560,19 +1542,8 @@ func _test_progression_unlocks() -> void:
 		LighthouseProgression.is_ingredient_unlocked(CLIFF_GARDEN_HERB),
 		false
 	)
-	_expect_equal(
-		"seasoning is gated behind the burner",
-		LighthouseProgression.is_technique_unlocked(SEASONED),
-		false
-	)
-
 	LighthouseProgression.add_light(100)
 	LighthouseProgression.purchase(&"restored_burner")
-	_expect_equal(
-		"the burner unlocks seasoning",
-		LighthouseProgression.is_technique_unlocked(SEASONED),
-		true
-	)
 	LighthouseProgression.purchase(&"cliff_garden_terrace")
 	_expect_equal(
 		"the terrace unlocks cliff herbs",
@@ -1609,11 +1580,21 @@ func _spawn(spawn_position: Vector3) -> SpiritController:
 	add_child(spirit)
 	return spirit
 
+## Half a potato's fries with simmered kelp and clams: mostly tide by mass,
+## so it matches the test spirit, and two plates carry it to the moon.
+func _tide_plate_pieces() -> Array[FoodPiece]:
+	var pieces: Array[FoodPiece] = []
+	var fries := CookedPlates.cooked_sticks(KITCHEN_INGREDIENTS[0], 10.0, _make_test_oil(), 180.0, 360.0)
+	pieces.append_array(fries.slice(0, fries.size() / 2))
+	pieces.append_array(CookedPlates.cooked_whole(SEA_KELP, 2, KITCHEN_INGREDIENTS[3], 100.0, 150.0))
+	pieces.append_array(CookedPlates.cooked_whole(TIDE_POOL_CLAM, 2, KITCHEN_INGREDIENTS[3], 100.0, 180.0))
+	return pieces
+
 func _serve_tide_dish(spirit: SpiritController) -> bool:
-	var dish := CraftedDish.new()
-	dish.add_component(SEA_KELP, SIMMERED)
-	dish.add_component(TIDE_POOL_CLAM, RAW)
-	return _serving_station.serve(dish, spirit)
+	var copies: Array[FoodPiece] = []
+	for piece in _tide_plate:
+		copies.append(piece.clone())
+	return _serving_station.serve(CookedPlates.plate(copies), spirit)
 
 func _on_state_changed(spirit_id: StringName, old_state: int, new_state: int) -> void:
 	var label := "%s->%s" % [STATE_NAMES[old_state], STATE_NAMES[new_state]]

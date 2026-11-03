@@ -2,8 +2,6 @@
 
 [ext_resource type="Script" path="res://resources/lighthouse_upgrade.gd" id="1_cppbg"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="2_a3ye1"]
-[ext_resource type="Script" path="res://resources/preparation_technique.gd" id="3_r368b"]
-[ext_resource type="Resource" path="res://data/techniques/seasoned.tres" id="4_b6dh2"]
 
 [resource]
 script = ExtResource("1_cppbg")
@@ -11,5 +9,4 @@ id = &"restored_burner"
 display_name = "Restored Burner"
 description = "Relight the old cast-iron burner. Everything you cook on it holds its warmth longer."
 light_cost = 6
-unlocked_techniques = Array[ExtResource("3_r368b")]([ExtResource("4_b6dh2")])
 nourishment_multiplier = 1.15

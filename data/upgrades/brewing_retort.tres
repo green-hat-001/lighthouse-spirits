@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" path="res://resources/lighthouse_upgrade.gd" id="1_4esvj"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="2_3gv02"]
-[ext_resource type="Script" path="res://resources/preparation_technique.gd" id="3_4rn45"]
 
 [resource]
 script = ExtResource("1_4esvj")

@@ -16,7 +16,6 @@ extends Resource
 
 @export_group("Unlocked Content")
 @export var unlocked_ingredients: Array[Ingredient] = []
-@export var unlocked_techniques: Array[PreparationTechnique] = []
 ## Kitchen equipment this retrofit installs.
 @export var unlocked_equipment: Array[KitchenEquipment] = []
 

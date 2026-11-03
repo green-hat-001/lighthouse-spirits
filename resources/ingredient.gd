@@ -23,11 +23,6 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 ## kit, origin at the centre of its base. Cut pieces are drawn separately.
 @export var whole_model: PackedScene
 
-@export_group("Base Restorative Properties")
-@export var base_nourishment: float = 0.0
-@export var base_calming: float = 0.0
-@export var base_buoyancy_delta: float = 0.0
-
 @export_group("Affinity")
 @export var elemental_affinity: ElementalAffinity.Type = ElementalAffinity.Type.NONE
 

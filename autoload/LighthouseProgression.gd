@@ -65,14 +65,6 @@ func is_ingredient_unlocked(ingredient: Ingredient) -> bool:
 			return true
 	return false
 
-func is_technique_unlocked(technique: PreparationTechnique) -> bool:
-	if technique.available_from_start:
-		return true
-	for upgrade_id in _purchased:
-		if _catalog[upgrade_id].unlocked_techniques.has(technique):
-			return true
-	return false
-
 func is_equipment_unlocked(equipment: KitchenEquipment) -> bool:
 	if equipment.available_from_start:
 		return true

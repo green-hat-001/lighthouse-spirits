@@ -1,25 +1,26 @@
 class_name DishServingStation
 extends RefCounted
 
-## The only point of contact between the Culinary module and the Spirit
-## FSM. Reads the target spirit's archetype to resolve affinity matching,
-## applies the lighthouse's current station quality, then submits the
-## result exclusively through SpiritEventBus - it never calls into
-## SpiritController directly, same as any other feeding source.
+## The only point of contact between the kitchen and the Spirit FSM. Takes a
+## plated Dish, turns it into a FeedingResult through DishNourishment (real
+## food, judged against each ingredient's own ideal, never a recipe), adds
+## the affinity bonus when the dish's dominant affinity matches the spirit,
+## applies the lighthouse's station quality, then submits the result
+## exclusively through SpiritEventBus - it never calls into
+## SpiritController directly.
 
 const AFFINITY_MATCH_BONUS: float = 1.25
 
-## Returns false if the dish could not be served: nothing in it, no valid
-## recipient, or it uses content the lighthouse has not unlocked yet.
-func serve(dish: CraftedDish, target_spirit: SpiritController) -> bool:
-	if dish.is_empty() or not is_instance_valid(target_spirit):
+## Returns false if the dish could not be served: nothing on the plate, no
+## valid recipient, or it uses ingredients the lighthouse has not unlocked.
+func serve(dish: Dish, target_spirit: SpiritController) -> bool:
+	if dish == null or dish.is_empty() or not is_instance_valid(target_spirit):
 		return false
-	if not _is_dish_unlocked(dish):
+	if not is_dish_unlocked(dish):
 		return false
 
-	var result: FeedingResult = CulinaryCraftingMatrix.compute_feeding_result(dish)
-	var dominant: ElementalAffinity.Type = CulinaryCraftingMatrix.dominant_affinity(dish)
-
+	var result: FeedingResult = DishNourishment.feeding_result_of(dish)
+	var dominant: ElementalAffinity.Type = dish.dominant_affinity()
 	result.matched_affinity = dominant != ElementalAffinity.Type.NONE \
 		and target_spirit.archetype != null \
 		and dominant == target_spirit.archetype.elemental_affinity
@@ -33,10 +34,11 @@ func serve(dish: CraftedDish, target_spirit: SpiritController) -> bool:
 	SpiritEventBus.feed_spirit_requested.emit(target_spirit.spirit_id, result)
 	return true
 
-func _is_dish_unlocked(dish: CraftedDish) -> bool:
-	for component in dish.components:
-		if not LighthouseProgression.is_ingredient_unlocked(component.ingredient):
+static func is_dish_unlocked(dish: Dish) -> bool:
+	for piece in dish.pieces:
+		if not LighthouseProgression.is_ingredient_unlocked(piece.ingredient):
 			return false
-		if not LighthouseProgression.is_technique_unlocked(component.technique):
+	for portion in dish.liquids:
+		if not LighthouseProgression.is_ingredient_unlocked(portion.ingredient):
 			return false
 	return true

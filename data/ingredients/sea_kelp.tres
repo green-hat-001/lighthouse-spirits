@@ -1,14 +1,39 @@
-[gd_resource type="Resource" script_class="Ingredient" format=3 uid="uid://bg73ulrubpbgk"]
+[gd_resource type="Resource" script_class="Ingredient" load_steps=4 format=3]
 
-[ext_resource type="Script" uid="uid://bm2ko4lkd3vg2" path="res://resources/ingredient.gd" id="1"]
+[ext_resource type="Script" path="res://resources/flavour_profile.gd" id="1"]
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="2"]
+
+[sub_resource type="Resource" id="flavour"]
+script = ExtResource("1")
+salty = 0.35
+umami = 0.45
+aroma = 0.2
 
 [resource]
-script = ExtResource("1")
+script = ExtResource("2")
 id = &"sea_kelp"
 display_name = "Sea Kelp"
 tint_color = Color(0.2, 0.5, 0.3, 1)
-base_nourishment = 10.0
-base_calming = 25.0
-base_buoyancy_delta = 0.05
+flesh_color = Color(0.35, 0.6, 0.38, 1)
 elemental_affinity = 1
+physical_form = 0
+whole_size_mm = Vector3(220.0, 3.0, 70.0)
+density_g_per_cm3 = 1.04
+water_fraction = 0.88
+sugar_fraction = 0.06
+fat_fraction = 0.005
+protein_fraction = 0.02
+specific_heat_j_per_g_k = 3.7
+thermal_conductivity_w_per_m_k = 0.5
+stable_thickness_mm = 1.0
+unsteadied_cut_integrity_loss = 0.05
+cook_temp_c = 60.0
+cook_seconds = 90.0
+overcook_softening_per_s = 0.002
+ideal_doneness_min = 0.6
+ideal_doneness_max = 2.0
+char_susceptibility = 3.0
+skin_permeability = 0.7
+shrinkage_per_water_lost = 0.7
 available_from_start = true
+flavour = SubResource("flavour")

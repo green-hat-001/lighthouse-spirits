@@ -18,6 +18,24 @@ func add_liquid(portion: LiquidPortion) -> void:
 func is_empty() -> bool:
 	return pieces.is_empty() and liquids.is_empty()
 
+## The affinity carrying the most mass on the plate, pieces and liquids
+## together, or NONE for an empty plate or one where nothing carries one.
+func dominant_affinity() -> ElementalAffinity.Type:
+	var mass_by_affinity: Dictionary[ElementalAffinity.Type, float] = {}
+	for piece in pieces:
+		var affinity: ElementalAffinity.Type = piece.ingredient.elemental_affinity
+		mass_by_affinity[affinity] = mass_by_affinity.get(affinity, 0.0) + piece.mass_g()
+	for portion in liquids:
+		var affinity: ElementalAffinity.Type = portion.ingredient.elemental_affinity
+		mass_by_affinity[affinity] = mass_by_affinity.get(affinity, 0.0) + portion.grams
+	var best: ElementalAffinity.Type = ElementalAffinity.Type.NONE
+	var best_mass: float = 0.0
+	for affinity in mass_by_affinity:
+		if affinity != ElementalAffinity.Type.NONE and mass_by_affinity[affinity] > best_mass:
+			best = affinity
+			best_mass = mass_by_affinity[affinity]
+	return best
+
 ## The same dish cooked the same way again gives the same fingerprint;
 ## cutting it differently, cooking it to a different degree or burning it
 ## gives a different one. Each ingredient contributes the most common

@@ -1,9 +1,0 @@
-[gd_resource type="Resource" script_class="PreparationTechnique" format=3 uid="uid://jllmwavj17ch"]
-
-[ext_resource type="Script" uid="uid://54nxscoptd0j" path="res://resources/preparation_technique.gd" id="1"]
-
-[resource]
-script = ExtResource("1")
-id = &"raw"
-display_name = "Raw"
-available_from_start = true

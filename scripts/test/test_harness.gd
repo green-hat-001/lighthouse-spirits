@@ -1,7 +1,8 @@
 extends Node3D
 
 ## Manual play harness for the three foundational systems together.
-##   F - craft a simmered-kelp + raw-clam dish and serve it to the spirit
+##   F - serve a plate of simmered kelp and clams with fries, cooked by the
+##       food simulation, to the spirit
 ##   U - spend kindled light on the cheapest available lighthouse retrofit
 ##   R - call in another spirit once the current one has departed
 
@@ -10,8 +11,9 @@ const TEST_ARCHETYPE: SpiritArchetype = preload("res://data/archetypes/example_s
 
 const SEA_KELP: Ingredient = preload("res://data/ingredients/sea_kelp.tres")
 const TIDE_POOL_CLAM: Ingredient = preload("res://data/ingredients/tide_pool_clam.tres")
-const SIMMERED: PreparationTechnique = preload("res://data/techniques/simmered.tres")
-const RAW: PreparationTechnique = preload("res://data/techniques/raw.tres")
+const POTATO: Ingredient = preload("res://data/ingredients/potato.tres")
+const WATER: Ingredient = preload("res://data/ingredients/water.tres")
+const OIL: Ingredient = preload("res://data/ingredients/sunflower_oil.tres")
 
 const STATE_NAMES: Array[String] = [
 	"ARRIVING", "SEEKING", "WAITING", "FED", "ASCENDING", "DISTRESSED", "DEPARTED"
@@ -22,6 +24,7 @@ const STATE_NAMES: Array[String] = [
 
 var _spirit: SpiritController
 var _serving_station := DishServingStation.new()
+var _plate: Array[FoodPiece] = []
 var _last_action: String = "waiting for the first spirit"
 
 func _ready() -> void:
@@ -85,11 +88,16 @@ func _spawn_spirit() -> void:
 func _feed_active_spirit() -> void:
 	if not is_instance_valid(_spirit):
 		return
-	var dish := CraftedDish.new()
-	dish.add_component(SEA_KELP, SIMMERED)
-	dish.add_component(TIDE_POOL_CLAM, RAW)
-	if _serving_station.serve(dish, _spirit):
-		_last_action = "served simmered kelp with clam"
+	if _plate.is_empty():
+		var fries := CookedPlates.cooked_sticks(POTATO, 10.0, OIL, 180.0, 360.0)
+		_plate.append_array(fries.slice(0, fries.size() / 2))
+		_plate.append_array(CookedPlates.cooked_whole(SEA_KELP, 2, WATER, 100.0, 150.0))
+		_plate.append_array(CookedPlates.cooked_whole(TIDE_POOL_CLAM, 2, WATER, 100.0, 180.0))
+	var copies: Array[FoodPiece] = []
+	for piece in _plate:
+		copies.append(piece.clone())
+	if _serving_station.serve(CookedPlates.plate(copies), _spirit):
+		_last_action = "served simmered kelp and clams with fries"
 	else:
 		_last_action = "that dish cannot be served yet"
 

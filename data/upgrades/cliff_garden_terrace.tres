@@ -3,7 +3,6 @@
 [ext_resource type="Script" path="res://resources/lighthouse_upgrade.gd" id="1_75vrj"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="2_yd5pr"]
 [ext_resource type="Resource" path="res://data/ingredients/cliff_garden_herb.tres" id="3_yox21"]
-[ext_resource type="Script" path="res://resources/preparation_technique.gd" id="4_rnnlm"]
 
 [resource]
 script = ExtResource("1_75vrj")
