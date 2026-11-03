@@ -1,9 +1,10 @@
-[gd_scene load_steps=41 format=3]
+[gd_scene load_steps=44 format=3]
 
 [ext_resource type="Script" path="res://systems/kitchen/view/kitchen.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/kitchen/cutting_board.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/kitchen/pantry_dresser.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://assets/models/tools/serving_plate.glb" id="37"]
+[ext_resource type="Shader" path="res://shaders/ink_outline.gdshader" id="38"]
 [ext_resource type="Script" path="res://systems/kitchen/view/counter_views.gd" id="4"]
 [ext_resource type="Script" path="res://systems/kitchen/view/kitchen_pointer.gd" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/world/coast.tscn" id="8"]
@@ -26,6 +27,13 @@
 [ext_resource type="Resource" path="res://data/ingredients/sunflower_seeds.tres" id="34"]
 [ext_resource type="Resource" path="res://data/ingredients/sunflower_seed_cake.tres" id="35"]
 [ext_resource type="Script" path="res://systems/kitchen/view/kitchen_audio.gd" id="36"]
+
+[sub_resource type="ShaderMaterial" id="ink_material"]
+render_priority = 10
+shader = ExtResource("38")
+
+[sub_resource type="QuadMesh" id="ink_quad"]
+material = SubResource("ink_material")
 
 [sub_resource type="BoxShape3D" id="counter_shape"]
 size = Vector3(1.6, 0.9, 0.6)
@@ -151,6 +159,11 @@ current = true
 fov = 80.0
 near = 0.02
 far = 2000.0
+
+[node name="Ink" type="MeshInstance3D" parent="Camera3D"]
+cast_shadow = 0
+extra_cull_margin = 16384.0
+mesh = SubResource("ink_quad")
 
 [node name="Caretaker" parent="." instance=ExtResource("18")]
 transform = Transform3D(0.9659, 0.0000, 0.2588, 0.0000, 1.0000, 0.0000, -0.2588, 0.0000, 0.9659, 0.9000, -0.9000, 1.3000)

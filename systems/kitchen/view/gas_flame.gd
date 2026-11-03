@@ -14,7 +14,10 @@ const SHADER: Shader = preload("res://shaders/gas_flame.gdshader")
 ## rather than growing taller.
 const LOW_HEIGHT_M: float = 0.006
 const FULL_HEIGHT_M: float = 0.014
-const LIGHT_ENERGY_AT_FULL: float = 1.4
+## Toon shading lights anything in range at full strength, so the flame's
+## glow is kept small and close: it should blue the burner and the pot's
+## base, not bleach the whole stove.
+const LIGHT_ENERGY_AT_FULL: float = 0.12
 
 var source: HeatSource
 var air: KitchenAir
@@ -30,7 +33,9 @@ func _ready() -> void:
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	extra_cull_margin = 0.2
 	_light.light_color = Color(0.45, 0.6, 1.0)
-	_light.omni_range = 0.35
+	_light.omni_range = 0.12
+	_light.omni_attenuation = 2.2
+	_light.light_specular = 0.1
 	_light.shadow_enabled = false
 	_light.position = Vector3(0.0, 0.01, 0.0)
 	add_child(_light)

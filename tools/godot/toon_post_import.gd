@@ -11,6 +11,10 @@ const RIM_TINT: float = 0.6
 ## Fully metallic surfaces turn black without strong reflections; cel
 ## shading reads metal from colour and highlight instead.
 const MAX_METALLIC: float = 0.35
+## Glossy surfaces mirror the bright coastal sky and wash out to white; a
+## cel look reads gloss from its highlight band, not from reflections.
+const MIN_ROUGHNESS: float = 0.62
+const SPECULAR: float = 0.3
 
 func _post_import(scene: Node) -> Object:
 	_toon(scene)
@@ -29,6 +33,8 @@ func _toon(node: Node) -> void:
 			material.rim = RIM
 			material.rim_tint = RIM_TINT
 			material.metallic = minf(material.metallic, MAX_METALLIC)
+			material.roughness = maxf(material.roughness, MIN_ROUGHNESS)
+			material.metallic_specular = SPECULAR
 			# Larder models carry their painted shading as vertex colour.
 			var arrays := mesh.surface_get_arrays(surface)
 			var colours: Variant = arrays[Mesh.ARRAY_COLOR]
