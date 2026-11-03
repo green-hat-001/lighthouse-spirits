@@ -33,8 +33,11 @@ extends RefCounted
 ##   7. Flavour diffuses between the food and a liquid medium across its
 ##      wetted faces, faster when hot, as far as the medium dissolves each
 ##      flavour (fat carries chilli heat and aroma; water carries salt,
-##      sweetness, acidity and savouriness).
+##      sweetness, acidity and savouriness). Mystical essences infuse the
+##      same way, by their own solubility.
 ##   8. The piece shrinks as it loses water, by the ingredient's shrinkage.
+##   9. Awake essences act (TraitEffects): embers heat the core, frost
+##      chills it, blooms draw out flavour; a char ward slows burning.
 ##
 ## Integration is explicit, split into substeps short enough for the
 ## fastest thermal time constant of any face or the core, so no step can
@@ -172,8 +175,10 @@ static func _integrate(piece: FoodPiece, exposure: HeatExposure, dt: float, exch
 	var wetted_area_m2: float = 0.0
 	var outer_temps := PackedFloat64Array()
 	outer_temps.resize(FoodPiece.FACE_COUNT)
+	var shell_mass: float = piece.shell_mass_g()
+	var volume: float = piece.volume_mm3()
 	for face in FoodPiece.FACE_COUNT:
-		var share: float = piece.face_area_mm2(face) / surface_mm2
+		var share: float = volume / piece.size_mm[face >> 1] / surface_mm2
 		var face_m2: float = area_m2 * share
 		var capacity: float = shell_capacity * share
 		var temp: float = piece.face_temp_c[face]
@@ -191,7 +196,7 @@ static func _integrate(piece: FoodPiece, exposure: HeatExposure, dt: float, exch
 		heat_to_core_w += to_core_w
 
 		var new_temp: float = temp + (from_liquid_w + from_contact_w + from_air_w - to_core_w) * dt / capacity
-		var face_water: float = piece.face_water_g(face)
+		var face_water: float = piece.face_moisture[face] * shell_mass * share
 		var lost_g: float = 0.0
 		if face_water > 0.0:
 			if new_temp > WATER_BOILING_POINT_C:
@@ -225,6 +230,7 @@ static func _integrate(piece: FoodPiece, exposure: HeatExposure, dt: float, exch
 	_cook_core(piece, dt)
 	_brown_and_char(piece, exposure, outer_temps, dt)
 	_exchange_flavour(piece, exposure, wetted_area_m2, dt)
+	TraitEffects.act(piece, dt, core_capacity)
 	if total_evaporated_g > 0.0 and ingredient.shrinkage_per_water_lost > 0.0:
 		_shrink(piece, total_evaporated_g)
 
@@ -301,6 +307,8 @@ static func _absorb_fat(piece: FoodPiece, exposure: HeatExposure, offered_g: flo
 	var waters := piece.face_waters_g()
 	if exposure.flavour:
 		piece.flavour = FlavourProfile.mix_by_mass(piece.flavour, piece.mass_g(), exposure.flavour, absorbed_g)
+	if exposure.traits:
+		piece.traits.mix_in(piece.mass_g(), exposure.traits, absorbed_g)
 	piece.oil_g += absorbed_g
 	piece.restore_face_waters(waters)
 	exchange.fat_absorbed_g += absorbed_g
@@ -319,6 +327,7 @@ static func _cook_core(piece: FoodPiece, dt: float) -> void:
 
 static func _brown_and_char(piece: FoodPiece, exposure: HeatExposure, outer_temps: PackedFloat64Array, dt: float) -> void:
 	var reactivity: float = browning_reactivity(piece.ingredient) * exposure.browning_boost
+	var unwarded: float = 1.0 - TraitEffects.char_ward(piece)
 	var surface_mm2: float = piece.surface_area_mm2()
 	var browned_total: float = 0.0
 	var charred_total: float = 0.0
@@ -339,7 +348,7 @@ static func _brown_and_char(piece: FoodPiece, exposure: HeatExposure, outer_temp
 		var char_amount: float = piece.face_char[face]
 		if temp > CHAR_ONSET_C and char_amount < 1.0:
 			var char_rate: float = CHAR_RATE_AT_REFERENCE * pow(2.0, (temp - CHAR_REFERENCE_C) / CHAR_DOUBLING_C) \
-				* dryness * browning * piece.ingredient.char_susceptibility
+				* dryness * browning * piece.ingredient.char_susceptibility * unwarded
 			var charred: float = minf(char_rate * dt, 1.0 - char_amount)
 			piece.face_char[face] = char_amount + charred
 			charred_total += charred * share
@@ -369,6 +378,26 @@ static func _exchange_flavour(piece: FoodPiece, exposure: HeatExposure, wetted_a
 		carried = clampf(carried, -limit, limit)
 		piece.flavour.set(axis, in_piece - carried / piece_mass)
 		exposure.flavour.set(axis, in_medium + carried / medium_mass)
+	if exposure.traits == null or (exposure.traits.is_empty() and piece.traits.is_empty()):
+		return
+	# Essences infuse the same way, as far as the medium dissolves each.
+	var all_traits := piece.traits.traits()
+	for mystic_trait in exposure.traits.traits():
+		if not all_traits.has(mystic_trait):
+			all_traits.append(mystic_trait)
+	for mystic_trait in all_traits:
+		var solubility: float = clampf(exposure.fat_fraction * mystic_trait.fat_solubility
+			+ exposure.water_fraction * mystic_trait.water_solubility, 0.0, 1.0)
+		if solubility <= 0.0:
+			continue
+		var in_piece: float = piece.traits.get_dose(mystic_trait)
+		var in_medium: float = exposure.traits.get_dose(mystic_trait)
+		var equilibrium: float = (in_piece * piece_mass + in_medium * medium_mass) / (piece_mass + medium_mass)
+		var carried: float = conductance * solubility * (in_piece - in_medium) * dt
+		var limit: float = absf(in_piece - equilibrium) * piece_mass
+		carried = clampf(carried, -limit, limit)
+		piece.traits.set_dose(mystic_trait, in_piece - carried / piece_mass)
+		exposure.traits.set_dose(mystic_trait, in_medium + carried / medium_mass)
 
 ## Water leaving food lets its structure close up: the piece loses volume
 ## in proportion to the water's own volume, never below what its solids

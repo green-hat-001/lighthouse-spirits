@@ -31,6 +31,9 @@ var water_fraction: float = 0.0
 ## Null when there is no liquid medium to exchange with.
 var flavour: FlavourProfile
 var medium_mass_g: float = 0.0
+## The medium's mystical essences, mutated as they infuse in and out of
+## food. Null when there is no liquid medium.
+var traits: TraitDoses
 ## Chemistry of a worn medium: oil that has broken down browns food faster
 ## and soaks into it more readily. 1 for a fresh medium.
 var browning_boost: float = 1.0

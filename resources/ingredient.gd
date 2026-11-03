@@ -15,6 +15,8 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 
 @export var id: StringName = &""
 @export var display_name: String = ""
+## Where it comes from and what it is, in the world's own words.
+@export_multiline var lore: String = ""
 ## Colour of the outside - skin, peel, shell.
 @export var tint_color: Color = Color.WHITE
 ## Colour of the inside, shown on fresh cut faces.
@@ -99,13 +101,36 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 ## Colour of the medium when it is spent: fresh oil darkens toward this.
 @export var spent_color: Color = Color(0.35, 0.2, 0.08, 1.0)
 
+## Share of it that can be eaten. Bones, shell and horn are 0: they give
+## their flavour and essence to what they cook with, and feed no one
+## themselves.
+@export_range(0.0, 1.0) var edible_share: float = 1.0
+
 @export_group("Flavour")
 @export var flavour: FlavourProfile
+
+@export_group("Mystical")
+## The essences this ingredient carries of itself.
+@export var traits: Array[TraitDose] = []
+
+## Essences it carries from what it ate, worked out from the food web by
+## FoodWeb at load time. Not authored.
+var inherited_traits: Dictionary[MysticTrait, float] = {}
 
 @export_group("Availability")
 ## Foraged from the start. Everything else is gated behind the lighthouse
 ## upgrade that opens its foraging zone.
 @export var available_from_start: bool = false
+
+## Everything it carries, authored and inherited, as a fresh copy.
+func trait_doses() -> TraitDoses:
+	var doses := TraitDoses.new()
+	for dose in traits:
+		if dose and dose.mystic_trait:
+			doses.add_dose(dose.mystic_trait, dose.concentration)
+	for mystic_trait in inherited_traits:
+		doses.add_dose(mystic_trait, inherited_traits[mystic_trait])
+	return doses
 
 ## Mass of one whole SOLID item, from its box volume and density.
 func whole_mass_g() -> float:
@@ -164,6 +189,13 @@ func validate() -> PackedStringArray:
 	if unsteadied_cut_integrity_loss < 0.0 or unsteadied_cut_integrity_loss > 1.0:
 		problems.append("unsteadied cut integrity loss must be within 0-1")
 
+	for dose in traits:
+		if dose == null or dose.mystic_trait == null:
+			problems.append("a trait dose names no trait")
+		elif dose.concentration < 0.0:
+			problems.append("trait doses cannot be negative")
+		elif not dose.mystic_trait.validate().is_empty():
+			problems.append("trait %s is invalid: %s" % [dose.mystic_trait.id, ", ".join(dose.mystic_trait.validate())])
 	if flavour == null:
 		problems.append("flavour profile is missing")
 	elif not flavour.is_in_range():

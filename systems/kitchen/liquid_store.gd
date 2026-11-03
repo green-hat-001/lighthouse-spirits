@@ -11,6 +11,7 @@ var grams: float = 0.0
 var capacity_g: float
 var temp_c: float
 var flavour: FlavourProfile
+var traits := TraitDoses.new()
 var unlimited: bool = false
 
 func _init(p_capacity_g: float, p_temp_c: float, p_ingredient: Ingredient = null, p_unlimited: bool = false) -> void:
@@ -20,6 +21,7 @@ func _init(p_capacity_g: float, p_temp_c: float, p_ingredient: Ingredient = null
 	if p_ingredient:
 		ingredient = p_ingredient
 		flavour = p_ingredient.flavour.copy() if p_ingredient.flavour else FlavourProfile.new()
+		traits = p_ingredient.trait_doses()
 		if unlimited:
 			grams = capacity_g
 
@@ -31,7 +33,7 @@ func fill_fraction() -> float:
 
 ## Takes in up to `amount_g` of a liquid and returns how much fitted.
 ## Refused for a different liquid than the one already held.
-func receive(liquid: Ingredient, amount_g: float, liquid_flavour: FlavourProfile, liquid_temp_c: float) -> float:
+func receive(liquid: Ingredient, amount_g: float, liquid_flavour: FlavourProfile, liquid_temp_c: float, liquid_traits: TraitDoses = null) -> float:
 	if liquid == null or amount_g <= 0.0 or unlimited:
 		return 0.0
 	if ingredient != null and grams > 0.0 and ingredient != liquid:
@@ -40,12 +42,15 @@ func receive(liquid: Ingredient, amount_g: float, liquid_flavour: FlavourProfile
 	if accepted <= 0.0:
 		return 0.0
 	var incoming: FlavourProfile = liquid_flavour if liquid_flavour else (liquid.flavour if liquid.flavour else FlavourProfile.new())
+	var incoming_traits: TraitDoses = liquid_traits if liquid_traits else liquid.trait_doses()
 	if ingredient == null or grams <= 0.0:
 		ingredient = liquid
 		flavour = incoming.copy()
+		traits = incoming_traits.copy()
 		temp_c = liquid_temp_c
 	else:
 		flavour = FlavourProfile.mix_by_mass(flavour, grams, incoming, accepted)
+		traits.mix_in(grams, incoming_traits, accepted)
 		temp_c = (temp_c * grams + liquid_temp_c * accepted) / (grams + accepted)
 	grams += accepted
 	return accepted

@@ -51,6 +51,8 @@ var core_doneness: float = 0.0
 ## 1 firm and whole through to 0 fallen apart.
 var integrity: float = 1.0
 var flavour: FlavourProfile
+## The mystical essences it carries now (see MysticTrait).
+var traits := TraitDoses.new()
 ## Every axis (Vector3.AXIS_*) this piece, or any piece it was cut from,
 ## has been cut along. A cut along any other axis is a perpendicular cut.
 var cut_axes: Array[int] = []
@@ -118,6 +120,7 @@ static func from_ingredient(p_ingredient: Ingredient, ambient_temp_c: float) -> 
 	piece.face_moisture.fill(p_ingredient.water_fraction)
 	piece.face_skin.fill(1.0)
 	piece.flavour = p_ingredient.flavour.copy() if p_ingredient.flavour else FlavourProfile.new()
+	piece.traits = p_ingredient.trait_doses()
 	return piece
 
 ## The axis (Vector3.AXIS_*) a face is perpendicular to.
@@ -315,6 +318,7 @@ func clone() -> FoodPiece:
 	copy.core_doneness = core_doneness
 	copy.integrity = integrity
 	copy.flavour = flavour.copy()
+	copy.traits = traits.copy()
 	copy.cut_axes = cut_axes.duplicate()
 	copy.face_temp_c = face_temp_c.duplicate()
 	copy.face_moisture = face_moisture.duplicate()

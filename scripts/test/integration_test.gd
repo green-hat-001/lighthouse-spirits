@@ -106,6 +106,12 @@ func _ready() -> void:
 	_test_open_water_evaporates()
 	_test_spoon_stirs_and_finds_food()
 	_test_full_pot_runs_in_real_time()
+	_test_trait_activation()
+	_test_lifting_food_floats_and_hovers()
+	_test_ember_and_frost()
+	_test_char_ward_and_bloom()
+	_test_essence_infuses_broth()
+	_test_essences_reach_spirits()
 	_test_shipped_transformations_validate()
 	_test_transformation_validation()
 	_test_press_turns_work_into_oil()
@@ -718,6 +724,137 @@ func _test_full_pot_runs_in_real_time() -> void:
 	var cost_ms: float = (Time.get_ticks_usec() - started) / 1000.0 / 10.0
 	print("pot with %d fries: %.2f ms per simulated second" % [count, cost_ms])
 	_expect_equal("a full batch simulates many times faster than real time", cost_ms < 100.0, true)
+
+# --- Mystical essence checks ---------------------------------------------------
+# Traits built in code, each against the same food without it.
+
+func _test_trait_activation() -> void:
+	var lift := _make_trait(MysticTrait.Effect.LIFT, 1.5, MysticTrait.Trigger.COOKED, 1.0)
+	var raw := FoodPiece.from_ingredient(_with_trait(_make_test_ingredient(), lift, 1.0), AMBIENT_TEMP_C)
+	_expect_near("an essence that wakes when cooked sleeps in raw food", TraitEffects.lift_share(raw), 0.0)
+	raw.core_doneness = 1.0
+	_expect_near("and is fully awake once cooked", TraitEffects.lift_share(raw), 1.5)
+	var cut: FoodPiece = FoodCutting.cut(raw, Vector3.AXIS_X, 20.0, true)[0]
+	_expect_near("cut pieces keep the essence", cut.traits.get_dose(lift), 1.0)
+	var hot := _make_trait(MysticTrait.Effect.GLOW, 1.0, MysticTrait.Trigger.HOT, 80.0)
+	var warmed := FoodPiece.from_ingredient(_with_trait(_make_test_ingredient(), hot, 1.0), AMBIENT_TEMP_C)
+	_expect_near("a heat-woken glow is dark cold", TraitEffects.glow(warmed).a, 0.0)
+	warmed.core_temp_c = 85.0
+	_expect_near("and bright hot", TraitEffects.glow(warmed).a, 1.0)
+	_expect_equal("a bloom trait without its flavour is rejected", _make_trait(MysticTrait.Effect.BLOOM, 1.0, MysticTrait.Trigger.ALWAYS, 1.0).validate().size(), 1)
+
+func _test_lifting_food_floats_and_hovers() -> void:
+	var lift := _make_trait(MysticTrait.Effect.LIFT, 1.5, MysticTrait.Trigger.COOKED, 1.0)
+	var buoyant := _with_trait(_make_test_ingredient(), lift, 1.0)
+	var pot := _make_test_oil_pot()
+	_heat_until(pot, 175.0, 1800.0)
+	var stick := _cut_stick_of(buoyant, 10.0)
+	pot.add_piece(stick)
+	_expect_equal("raw, it sinks like any potato", pot.placement_of(stick).resting, PotPlacement.Resting.FLOOR)
+	_hold_temperature(pot, 180.0, 400.0)
+	_expect_equal("cooked, its essence floats it", pot.placement_of(stick).resting, PotPlacement.Resting.FLOATING)
+	_expect_equal("riding high in the oil", pot.placement_of(stick).immersion < 0.2, true)
+	_expect_equal("lifted past its weight, it hovers off the board", RestingSurface.is_hovering(stick), true)
+	var rest := RestingSurface.new(KitchenAir.still(AMBIENT_TEMP_C))
+	_expect_near("hovering food touches nothing beneath it", rest.exposure_for(stick).contact_h(FoodPiece.BOTTOM), 0.0)
+
+func _test_ember_and_frost() -> void:
+	var ember := _make_trait(MysticTrait.Effect.EMBER, 0.5, MysticTrait.Trigger.ALWAYS, 1.0)
+	ember.fuel_j_per_g = 600.0
+	var warm := _cut_cube_of(_with_trait(_make_test_ingredient(), ember, 1.0), 20.0)
+	var plain := _cut_cube(20.0)
+	var rest := RestingSurface.new(KitchenAir.still(AMBIENT_TEMP_C))
+	rest.add_piece(warm)
+	rest.add_piece(plain)
+	rest.advance(300.0)
+	_expect_equal("an ember essence warms food from inside", warm.core_temp_c > plain.core_temp_c + 5.0, true)
+	_expect_equal("and spends its fuel doing it", warm.traits.get_dose(ember) < 1.0, true)
+	rest.advance(3600.0)
+	# It burns down: the less there is left, the less it gives.
+	_expect_equal("until it is all but spent", warm.traits.get_dose(ember) < 0.05, true)
+
+	var frost := _make_trait(MysticTrait.Effect.FROST, 2.0, MysticTrait.Trigger.HOT, 40.0)
+	var chilled := _cut_cube_of(_with_trait(_make_test_ingredient(), frost, 1.0), 20.0)
+	var control := _cut_cube(20.0)
+	var water := _held_exposure(_make_test_water(), 100.0)
+	for step in 4800:
+		FoodHeating.step(chilled, water, 0.05)
+		FoodHeating.step(control, water, 0.05)
+	_expect_equal("a frost essence holds food back from cooking", chilled.core_doneness < control.core_doneness - 0.2, true)
+
+func _test_char_ward_and_bloom() -> void:
+	var ward := _make_trait(MysticTrait.Effect.CHAR_WARD, 0.9, MysticTrait.Trigger.ALWAYS, 1.0)
+	var warded := _cut_stick_of(_with_trait(_make_test_ingredient(), ward, 1.0), 10.0)
+	var bare := _cut_stick(10.0)
+	var hot_oil := _held_exposure(_make_test_oil(), 220.0)
+	for step in 7200:
+		FoodHeating.step(warded, hot_oil, 0.05)
+		FoodHeating.step(bare, hot_oil, 0.05)
+	_expect_equal("a char ward keeps food from burning", warded.surface_char < bare.surface_char * 0.3, true)
+	_expect_equal("but it still browns", warded.surface_browning > 0.5, true)
+
+	var honey := FlavourProfile.new()
+	honey.sweet = 0.9
+	var bloom := _make_trait(MysticTrait.Effect.BLOOM, 0.2, MysticTrait.Trigger.BROWNED, 0.3)
+	bloom.bloom_flavour = honey
+	var blooming := _cut_stick_of(_with_trait(_make_test_ingredient(), bloom, 1.0), 10.0)
+	var oil := _held_exposure(_make_test_oil(), 180.0)
+	for step in 7200:
+		FoodHeating.step(blooming, oil, 0.05)
+	_expect_equal("a bloom essence turns sweet once toasted", blooming.flavour.sweet > 0.5, true)
+
+func _test_essence_infuses_broth() -> void:
+	var calm := _make_trait(MysticTrait.Effect.SOOTHE, 1.0, MysticTrait.Trigger.ALWAYS, 1.0)
+	calm.water_solubility = 1.0
+	var pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
+	pot.burner = _make_test_stove()
+	pot.add_medium(_make_test_water(), 800.0, AMBIENT_TEMP_C)
+	var bones := _with_trait(_make_test_ingredient(), calm, 1.0)
+	bones.edible_share = 0.0
+	var bone := FoodPiece.from_ingredient(bones, AMBIENT_TEMP_C)
+	pot.add_piece(bone)
+	pot.set_flame(0.6)
+	pot.advance(1800.0)
+	_expect_equal("a water-soluble essence boils out into broth", pot.medium_traits.get_dose(calm) > 0.02, true)
+	var broth := Dish.new()
+	broth.add_liquid(LiquidPortion.new(pot.medium, 200.0, pot.medium_flavour, pot.medium_traits, pot.temp_c))
+	var water := Dish.new()
+	water.add_liquid(LiquidPortion.new(_make_test_water(), 200.0, null))
+	_expect_equal("and the broth soothes a spirit as plain water doesn't",
+		DishNourishment.feeding_result_of(broth).calming > DishNourishment.feeding_result_of(water).calming + 1.0, true)
+	var only_bone := CookedPlates.plate([bone])
+	_expect_near("bones themselves feed no one", DishNourishment.feeding_result_of(only_bone).nourishment, 0.0)
+
+	var fat_only := _make_trait(MysticTrait.Effect.GLOW, 1.0, MysticTrait.Trigger.ALWAYS, 1.0)
+	fat_only.fat_solubility = 1.0
+	var glowing := _cut_cube_of(_with_trait(_make_test_ingredient(), fat_only, 1.0), 20.0)
+	var boiling := _held_exposure(_make_test_water(), 100.0)
+	boiling.traits = TraitDoses.new()
+	for step in 6000:
+		FoodHeating.step(glowing, boiling, 0.05)
+	_expect_near("a fat-soluble essence stays put in water", boiling.traits.get_dose(fat_only), 0.0)
+
+func _test_essences_reach_spirits() -> void:
+	var lift := _make_trait(MysticTrait.Effect.LIFT, 1.5, MysticTrait.Trigger.COOKED, 1.0)
+	var buoyant := _with_trait(_make_test_ingredient(), lift, 1.0)
+	var light_fries: Array[FoodPiece] = []
+	var plain_fries: Array[FoodPiece] = []
+	for index in 4:
+		light_fries.append(_fry_of(buoyant, 180.0, 360.0))
+		plain_fries.append(_fry(180.0, 360.0))
+	var light := DishNourishment.feeding_result_of(CookedPlates.plate(light_fries))
+	var plain := DishNourishment.feeding_result_of(CookedPlates.plate(plain_fries))
+	_expect_equal("food that lifts lightens the spirit", light.buoyancy_delta > plain.buoyancy_delta + 0.05, true)
+	_expect_equal("and carries it more surely to the moon", light.ascension_strength > plain.ascension_strength, true)
+	_expect_equal("a lifting essence changes the dish", CookedPlates.plate(light_fries).fingerprint() != CookedPlates.plate(plain_fries).fingerprint(), true)
+	var feeding := _make_trait(MysticTrait.Effect.NOURISH, 0.5, MysticTrait.Trigger.COOKED, 1.0)
+	var hearty := DishNourishment.feeding_result_of(CookedPlates.plate([_fry_of(_with_trait(_make_test_ingredient(), feeding, 1.0), 180.0, 360.0)]))
+	var ordinary := DishNourishment.feeding_result_of(CookedPlates.plate([_fry(180.0, 360.0)]))
+	_expect_equal("a nourishing essence feeds a spirit more", hearty.nourishment > ordinary.nourishment + 1.0, true)
+	var noted := _make_trait(MysticTrait.Effect.LIFT, 1.5, MysticTrait.Trigger.COOKED, 1.0)
+	noted.taste_note = "It lifts off the tongue."
+	var tasted := _fry_of(_with_trait(_make_test_ingredient(), noted, 1.0), 180.0, 360.0)
+	_expect_equal("tasting notices an awake essence", TasteNote.describe(tasted).contains("It lifts off the tongue."), true)
 
 # --- Equipment and transformation checks ---------------------------------------
 
@@ -1385,6 +1522,36 @@ func _hold_temperature(pot: CookingPot, target_c: float, seconds: float) -> void
 		pot.set_flame(1.0 if pot.temp_c < target_c - 1.0 else (0.0 if pot.temp_c > target_c + 1.0 else 0.4))
 		pot.advance(0.5)
 		elapsed += 0.5
+
+func _make_trait(effect: MysticTrait.Effect, magnitude: float, trigger: MysticTrait.Trigger, threshold: float) -> MysticTrait:
+	var made := MysticTrait.new()
+	made.id = StringName("test_%d_%d" % [effect, randi()])
+	made.effect = effect
+	made.magnitude = magnitude
+	made.trigger = trigger
+	made.trigger_threshold = threshold
+	return made
+
+func _with_trait(ingredient: Ingredient, mystic_trait: MysticTrait, concentration: float) -> Ingredient:
+	var dose := TraitDose.new()
+	dose.mystic_trait = mystic_trait
+	dose.concentration = concentration
+	ingredient.traits.append(dose)
+	return ingredient
+
+func _cut_stick_of(ingredient: Ingredient, thickness_mm: float) -> FoodPiece:
+	var plank: FoodPiece = FoodCutting.cut(FoodPiece.from_ingredient(ingredient, AMBIENT_TEMP_C), Vector3.AXIS_Z, thickness_mm, true)[0]
+	return FoodCutting.cut(plank, Vector3.AXIS_Y, thickness_mm, true)[0]
+
+func _cut_cube_of(ingredient: Ingredient, size_mm: float) -> FoodPiece:
+	return FoodCutting.cut(_cut_stick_of(ingredient, size_mm), Vector3.AXIS_X, size_mm, true)[0]
+
+func _fry_of(ingredient: Ingredient, temp_c: float, seconds: float) -> FoodPiece:
+	var fry := _cut_stick_of(ingredient, 10.0)
+	var exposure := _held_exposure(_make_test_oil(), temp_c)
+	for step in roundi(seconds / 0.05):
+		FoodHeating.step(fry, exposure, 0.05)
+	return fry
 
 ## Seconds of simulated time until the pot reaches the temperature, or the
 ## limit if it never does.

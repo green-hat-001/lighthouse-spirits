@@ -25,8 +25,27 @@ static func describe(piece: FoodPiece) -> String:
 	var taste := _taste(piece)
 	if taste != "":
 		parts.append(taste)
+	for note in _essences(piece):
+		parts.append(note)
 	parts.append(_warmth(piece))
 	return " ".join(parts)
+
+## The authored notes of the essences awake in it, strongest first.
+const ESSENCE_NOTICEABLE: float = 0.15
+
+static func _essences(piece: FoodPiece) -> PackedStringArray:
+	var noticed: Array[MysticTrait] = []
+	for mystic_trait in piece.traits.traits():
+		if mystic_trait.taste_note == "":
+			continue
+		if piece.traits.get_dose(mystic_trait) * TraitEffects.activation(mystic_trait, piece) >= ESSENCE_NOTICEABLE:
+			noticed.append(mystic_trait)
+	noticed.sort_custom(func(a: MysticTrait, b: MysticTrait) -> bool:
+		return piece.traits.get_dose(a) > piece.traits.get_dose(b))
+	var notes := PackedStringArray()
+	for mystic_trait in noticed:
+		notes.append(mystic_trait.taste_note)
+	return notes
 
 static func _feel(piece: FoodPiece) -> String:
 	var texture := FoodPerception.texture_of(piece)

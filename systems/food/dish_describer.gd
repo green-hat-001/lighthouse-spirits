@@ -18,16 +18,31 @@ const BURNT_CHAR: float = 0.2
 ## to count as infused with it.
 const INFUSED_ABOVE: float = 0.05
 
+## An essence at least this awake and concentrated marks the dish.
+const ESSENCE_MARKS: float = 0.2
+
 static func describe_piece(piece: FoodPiece) -> String:
-	return "%s:%s:%s:%s:%s" % [
+	var description := "%s:%s:%s:%s:%s" % [
 		piece.ingredient.id, _shape(piece), _thickness(piece), _doneness(piece), _colour(piece)
 	]
+	var awake: Array[String] = []
+	for mystic_trait in piece.traits.traits():
+		if piece.traits.get_dose(mystic_trait) * TraitEffects.activation(mystic_trait, piece) >= ESSENCE_MARKS:
+			awake.append(str(mystic_trait.id))
+	awake.sort()
+	return description + (":" + "+".join(awake) if not awake.is_empty() else "")
 
 static func describe_liquid(portion: LiquidPortion) -> String:
 	var infusions: Array[String] = []
 	for axis in FlavourProfile.AXES:
 		if float(portion.flavour.get(axis)) > float(portion.ingredient.flavour.get(axis)) + INFUSED_ABOVE:
 			infusions.append(str(axis))
+	if portion.traits:
+		var raw := portion.ingredient.trait_doses()
+		for mystic_trait in portion.traits.traits():
+			if portion.traits.get_dose(mystic_trait) > raw.get_dose(mystic_trait) + INFUSED_ABOVE:
+				infusions.append(str(mystic_trait.id))
+	infusions.sort()
 	return "%s:%s" % [portion.ingredient.id, "+".join(infusions) if not infusions.is_empty() else "plain"]
 
 ## The most frequent entry; ties go to the alphabetically first.

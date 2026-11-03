@@ -23,9 +23,22 @@ const VISIBLE_COOKING: float = 0.02
 const STEAM_FROM_C: float = 55.0
 const STEAM_FULL_C: float = 95.0
 
+## Glow strength at which awake essences throw light on what is around
+## them, not only shine themselves.
+const GLOW_LIGHT_FROM: float = 0.4
+## How high food lifted beyond its weight hangs above what it rests on.
+const MAX_HOVER_M: float = 0.025
+
 var piece: FoodPiece
 var grip: Interactable
 var steams_in_air: bool = true
+## Set by the owner when the piece rests on a surface it could rise off
+## (the board, a plate), so lifting food hovers.
+var may_hover: bool = true
+## The view's height offset for hovering, eased by the view.
+var hover_m: float = 0.0
+
+var _glow_light: OmniLight3D
 
 var _steam: GPUParticles3D
 
@@ -38,6 +51,7 @@ var _model: Node3D
 var _model_meshes: Array[MeshInstance3D] = []
 var _model_basis: Basis = Basis.IDENTITY
 var _model_wears_food_shader: bool = false
+var _model_rest: Vector3 = Vector3.ZERO
 
 func _init(p_piece: FoodPiece) -> void:
 	piece = p_piece
@@ -102,7 +116,36 @@ func refresh_shape() -> void:
 			# bounds exactly in the piece's box.
 			_model.transform = Transform3D(_model_basis, Vector3.ZERO)
 			var bounds := _model_bounds()
-			_model.position = -bounds.position
+			_model_rest = -bounds.position
+			_model.position = _model_rest
+
+## Glow and hover, from the essences awake in the piece.
+func _draw_essences(delta: float) -> void:
+	var glow := TraitEffects.glow(piece)
+	_material.set_shader_parameter("glow_energy", glow.a * 1.5)
+	if glow.a > 0.0:
+		_material.set_shader_parameter("glow_color", Color(glow.r, glow.g, glow.b))
+	if glow.a >= GLOW_LIGHT_FROM:
+		if _glow_light == null:
+			_glow_light = OmniLight3D.new()
+			_glow_light.shadow_enabled = false
+			_glow_light.omni_range = 0.25
+			add_child(_glow_light)
+		_glow_light.light_color = Color(glow.r, glow.g, glow.b)
+		_glow_light.light_energy = clampf(glow.a, 0.0, 2.0) * 0.6
+		_glow_light.position = piece.size_mm * MM_TO_M * 0.5
+	elif _glow_light:
+		_glow_light.queue_free()
+		_glow_light = null
+	var lift: float = TraitEffects.lift_share(piece) if may_hover else 0.0
+	var target: float = clampf(lift - 1.0, 0.0, 1.0) * MAX_HOVER_M
+	if target > 0.0:
+		target += sin(Time.get_ticks_msec() * 0.002 + piece.size_mm.x) * 0.002
+	hover_m = lerpf(hover_m, target, 1.0 - exp(-3.0 * delta))
+	var lifted := Vector3(0.0, hover_m, 0.0)
+	_box_instance.position = piece.size_mm * MM_TO_M * 0.5 + lifted
+	if _model and _model.visible:
+		_model.position = _model_rest + lifted
 
 func _draw_steam() -> void:
 	var heat: float = clampf((piece.surface_temp_c - STEAM_FROM_C) / (STEAM_FULL_C - STEAM_FROM_C), 0.0, 1.0)
@@ -181,8 +224,9 @@ func _model_bounds() -> AABB:
 		bounds = local if index == 0 else bounds.merge(local)
 	return bounds
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_draw_steam()
+	_draw_essences(delta)
 	var appearance := FoodPerception.appearance_of(piece)
 	_set_faces("browning", appearance.face_browning)
 	_set_faces("char", appearance.face_char)

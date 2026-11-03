@@ -6,8 +6,9 @@ extends RefCounted
 ## kitchen.
 ##
 ## Per step:
-##   1. Each piece's effective density is its mass over its volume plus the
-##      steam bubbles clinging to it. Denser than the liquid, it sinks, to
+##   1. Each piece's effective density is its weight (less what its
+##      essences lift) over its volume plus the steam bubbles clinging to
+##      it. Denser than the liquid, it sinks, to
 ##      the floor or onto food already lying where it is; lighter, it
 ##      floats, drawing as deep as Archimedes says. Raw potato sinks in oil;
 ##      a fry that is steaming hard, or has dried out, rises.
@@ -62,11 +63,13 @@ static func settle(
 	_place_all(placements, level, liquid_density_g_per_cm3)
 	return level
 
-## The density the piece shows the liquid, with its clinging bubbles.
+## The density the piece shows the liquid, with its clinging bubbles and
+## whatever share of its weight its essences lift.
 static func effective_density(placement: PotPlacement) -> float:
 	var piece := placement.piece
 	var bubbles_cm3: float = placement.steam_g_per_s * STEAM_CM3_PER_G * BUBBLE_RESIDENCE_S
-	return piece.mass_g() / (piece.volume_mm3() / 1000.0 + bubbles_cm3)
+	var weight: float = piece.mass_g() * maxf(1.0 - TraitEffects.lift_share(piece), 0.0)
+	return weight / (piece.volume_mm3() / 1000.0 + bubbles_cm3)
 
 static func _place_all(placements: Array[PotPlacement], level: float, liquid_density: float) -> float:
 	var submerged_mm3: float = 0.0

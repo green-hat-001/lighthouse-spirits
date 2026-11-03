@@ -184,6 +184,7 @@ func _view_position(placement: PotPlacement) -> Vector3:
 func _make_view(piece: FoodPiece) -> FoodPieceView:
 	var view := FoodPieceView.new(piece)
 	view.steams_in_air = false
+	view.may_hover = false
 	_pieces.add_child(view)
 	view.grip.drag_plane = _rim_plane()
 	view.grip.pressed.connect(_on_spoon_pressed)

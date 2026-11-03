@@ -25,6 +25,9 @@ uniform vec3 wet_neg = vec3(1.0);
 uniform float gloss : hint_range(0.0, 1.0) = 0.0;
 uniform float translucency : hint_range(0.0, 1.0) = 0.0;
 uniform float crumble : hint_range(0.0, 1.0) = 0.0;
+// Light given off by glowing essences awake in the food.
+uniform vec4 glow_color : source_color = vec4(1.0, 0.9, 0.6, 1.0);
+uniform float glow_energy = 0.0;
 
 uniform vec4 golden_color : source_color = vec4(0.86, 0.6, 0.22, 1.0);
 uniform vec4 brown_color : source_color = vec4(0.45, 0.24, 0.09, 1.0);
@@ -74,6 +77,7 @@ void fragment() {
 	float charred = smoothstep(1.0 - char_amount, 1.0 - char_amount + 0.2, speckle) * step(0.001, char_amount);
 	ALBEDO = mix(cooked, char_color.rgb, max(charred, char_amount * 0.35));
 
+	EMISSION = glow_color.rgb * glow_energy * (0.8 + 0.2 * sin(TIME * 2.0 + world_position.x * 40.0));
 	float shine = clamp(gloss + wet * 0.25, 0.0, 1.0);
 	ROUGHNESS = mix(0.95, 0.2, shine);
 	SPECULAR = mix(0.1, 0.7, shine);

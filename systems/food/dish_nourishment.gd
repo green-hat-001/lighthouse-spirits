@@ -2,7 +2,9 @@ class_name DishNourishment
 extends RefCounted
 
 ## Turns a Dish into the FeedingResult a spirit receives. Nothing here knows
-## a recipe. Nourishment comes from the food's real energy content, calming
+## a recipe. Mystical essences awake in the food add their own effects:
+## soothing ones calm, nourishing ones feed, glowing ones comfort, and food
+## that lifts lightens the spirit and carries it more surely to the moon. Nourishment comes from the food's real energy content, calming
 ## from how it tastes and how warm it is, and every piece is judged against
 ## its own ingredient's ideal doneness, never against a named dish. Badly
 ## made food still feeds - it only carries the spirit less surely towards
@@ -21,6 +23,14 @@ const KCAL_PER_G_FAT: float = 9.0
 const NOURISHMENT_PER_KCAL: float = 0.2
 const CALMING_PER_GRAM: float = 0.35
 const BUOYANCY_PER_DISH: float = 0.15
+## Spirit weight lifted per gram of food lifted by its essences, and how
+## much lifting food adds to how surely the spirit reaches the moon.
+const LIFT_BUOYANCY_PER_GRAM: float = 0.004
+const LIFT_ASCENSION: float = 0.25
+## A piece lifting more than this many times its weight counts as this.
+const MAX_LIFT_COUNTED: float = 2.0
+## Calming per gram per unit of glow: a spirit is soothed by light it eats.
+const GLOW_CALMING_PER_GRAM: float = 0.2
 
 ## Quality of completely raw food, rising to 1 at the ideal doneness.
 const RAW_QUALITY: float = 0.3
@@ -48,22 +58,38 @@ static func feeding_result_of(dish: Dish) -> FeedingResult:
 	if dish.is_empty():
 		return result
 
-	var kcal_total: float = 0.0
 	var weighted_quality: float = 0.0
 	var piece_mass: float = 0.0
+	var lifted_mass: float = 0.0
 	for piece in dish.pieces:
 		var quality: float = piece_quality(piece)
-		var mass: float = piece.mass_g()
-		result.nourishment += piece_kcal(piece) * quality * NOURISHMENT_PER_KCAL
+		# Only what can be eaten feeds: bones and horn on a plate are there
+		# for what they gave the food, not to be eaten.
+		var mass: float = piece.mass_g() * piece.ingredient.edible_share
+		if mass <= 0.0:
+			continue
+		result.nourishment += piece_kcal(piece) * piece.ingredient.edible_share * quality * NOURISHMENT_PER_KCAL
 		result.calming += mass * pleasantness(piece.flavour) * warmth_factor(piece) * quality * CALMING_PER_GRAM
+		result.nourishment += mass * TraitEffects.strength(piece, MysticTrait.Effect.NOURISH)
+		result.calming += mass * (TraitEffects.strength(piece, MysticTrait.Effect.SOOTHE)
+			+ TraitEffects.strength(piece, MysticTrait.Effect.GLOW) * GLOW_CALMING_PER_GRAM)
+		lifted_mass += mass * minf(TraitEffects.lift_share(piece), MAX_LIFT_COUNTED)
 		weighted_quality += quality * mass
 		piece_mass += mass
 	for portion in dish.liquids:
-		result.nourishment += liquid_kcal(portion) * NOURISHMENT_PER_KCAL
-		result.calming += portion.grams * pleasantness(portion.flavour) * CALMING_PER_GRAM
+		var edible: float = portion.grams * portion.ingredient.edible_share
+		result.nourishment += liquid_kcal(portion) * portion.ingredient.edible_share * NOURISHMENT_PER_KCAL
+		result.calming += edible * pleasantness(portion.flavour) * CALMING_PER_GRAM
+		result.nourishment += edible * TraitEffects.liquid_strength(portion.traits, MysticTrait.Effect.NOURISH, portion.temp_c)
+		result.calming += edible * (TraitEffects.liquid_strength(portion.traits, MysticTrait.Effect.SOOTHE, portion.temp_c)
+			+ TraitEffects.liquid_strength(portion.traits, MysticTrait.Effect.GLOW, portion.temp_c) * GLOW_CALMING_PER_GRAM)
+		lifted_mass += edible * minf(TraitEffects.liquid_strength(portion.traits, MysticTrait.Effect.LIFT, portion.temp_c), MAX_LIFT_COUNTED)
 
-	result.ascension_strength = weighted_quality / piece_mass if piece_mass > 0.0 else QUALITY_FLOOR
-	result.buoyancy_delta = result.ascension_strength * BUOYANCY_PER_DISH
+	var quality_mean: float = weighted_quality / piece_mass if piece_mass > 0.0 else QUALITY_FLOOR
+	# Food that lifts lightens the spirit, and carries it more surely up.
+	var lift_mean: float = lifted_mass / maxf(piece_mass, 1.0)
+	result.ascension_strength = clampf(quality_mean + lift_mean * LIFT_ASCENSION, 0.0, 1.0)
+	result.buoyancy_delta = quality_mean * BUOYANCY_PER_DISH + lifted_mass * LIFT_BUOYANCY_PER_GRAM
 	return result
 
 ## 0-1: how well this piece was made for what it is.

@@ -74,6 +74,9 @@ var air: KitchenAir
 var medium: Ingredient
 var medium_mass_g: float = 0.0
 var medium_flavour: FlavourProfile
+## The mystical essences dissolved in the liquid - a broth that has taken
+## in what was boiled in it.
+var medium_traits: TraitDoses
 ## How worn the medium is, 0 fresh to 1 spent. See MediumChemistry.
 var medium_breakdown: float = 0.0
 ## The liquid's temperature; with no liquid, the temperature of the base.
@@ -121,7 +124,7 @@ func set_flame(level: float) -> void:
 ## flavour with anything already there. Refused for anything that is not a
 ## LIQUID, for a different liquid than the one already in the pot, or when
 ## it would overflow.
-func add_medium(liquid: Ingredient, grams: float, liquid_temp_c: float) -> bool:
+func add_medium(liquid: Ingredient, grams: float, liquid_temp_c: float, liquid_flavour: FlavourProfile = null, liquid_traits: TraitDoses = null) -> bool:
 	if liquid == null or liquid.physical_form != Ingredient.PhysicalForm.LIQUID or grams <= 0.0:
 		return false
 	if medium != null and medium != liquid:
@@ -129,10 +132,12 @@ func add_medium(liquid: Ingredient, grams: float, liquid_temp_c: float) -> bool:
 	if _contents_volume_ml() + grams / liquid.density_g_per_cm3 > vessel.capacity_ml:
 		return false
 
-	var incoming_flavour: FlavourProfile = liquid.flavour if liquid.flavour else FlavourProfile.new()
+	var incoming_flavour: FlavourProfile = liquid_flavour if liquid_flavour else (liquid.flavour if liquid.flavour else FlavourProfile.new())
+	var incoming_traits: TraitDoses = liquid_traits if liquid_traits else liquid.trait_doses()
 	if medium == null:
 		medium = liquid
 		medium_flavour = incoming_flavour.copy()
+		medium_traits = incoming_traits.copy()
 		medium_breakdown = 0.0
 		# Liquid poured into an empty pot takes its own temperature; the
 		# metal heats it from there.
@@ -142,6 +147,7 @@ func add_medium(liquid: Ingredient, grams: float, liquid_temp_c: float) -> bool:
 		var added: float = grams * liquid.specific_heat_j_per_g_k
 		temp_c = (temp_c * held + liquid_temp_c * added) / (held + added)
 		medium_flavour = FlavourProfile.mix_by_mass(medium_flavour, medium_mass_g, incoming_flavour, grams)
+		medium_traits.mix_in(medium_mass_g, incoming_traits, grams)
 		medium_breakdown *= medium_mass_g / (medium_mass_g + grams)
 	medium_mass_g += grams
 	_settle()
@@ -363,6 +369,7 @@ func _exposure_for(placement: PotPlacement, pool: bool, agitation: float) -> Hea
 			exposure.fat_fraction = medium.fat_fraction
 			exposure.water_fraction = medium.water_fraction
 			exposure.flavour = medium_flavour
+			exposure.traits = medium_traits
 			exposure.medium_mass_g = medium_mass_g
 			exposure.temp_c = temp_c
 		for face in FoodPiece.FACE_COUNT:
@@ -376,6 +383,7 @@ func _exposure_for(placement: PotPlacement, pool: bool, agitation: float) -> Hea
 	exposure.fat_fraction = medium.fat_fraction
 	exposure.water_fraction = medium.water_fraction
 	exposure.flavour = medium_flavour
+	exposure.traits = medium_traits
 	exposure.medium_mass_g = medium_mass_g
 	exposure.browning_boost = MediumChemistry.browning_boost(medium_breakdown)
 	exposure.uptake_boost = MediumChemistry.uptake_boost(medium_breakdown)
@@ -530,6 +538,7 @@ func _empty_medium() -> void:
 	medium = null
 	medium_mass_g = 0.0
 	medium_flavour = null
+	medium_traits = null
 	medium_breakdown = 0.0
 	temp_c = base_temp_c
 

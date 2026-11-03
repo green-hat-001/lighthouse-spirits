@@ -41,8 +41,13 @@ func remove_piece(piece: FoodPiece) -> bool:
 	pieces.remove_at(index)
 	return true
 
-## The exposure of one piece lying here.
-func exposure_for(_piece: FoodPiece) -> HeatExposure:
+## True when the piece's essences lift more than its weight, so it rises
+## off the surface and hangs in the air above it.
+static func is_hovering(piece: FoodPiece) -> bool:
+	return TraitEffects.lift_share(piece) > 1.0
+
+## The exposure of one piece lying here - or hovering above it, all in air.
+func exposure_for(piece: FoodPiece) -> HeatExposure:
 	var exposure := HeatExposure.new()
 	exposure.use_per_face()
 	exposure.temp_c = air.temp_c
@@ -50,7 +55,7 @@ func exposure_for(_piece: FoodPiece) -> HeatExposure:
 	exposure.air_vapour_kg_m3 = air.vapour_density_kg_m3()
 	var air_h: float = air.convective_w_per_m2_k(shelter)
 	for face in FoodPiece.FACE_COUNT:
-		if face == FoodPiece.BOTTOM:
+		if face == FoodPiece.BOTTOM and not is_hovering(piece):
 			exposure.set_face(face, 0.0, 0.0, contact_w_per_m2_k, air.temp_c, 0.0)
 		else:
 			exposure.set_face(face, 0.0, 0.0, 0.0, 0.0, air_h)

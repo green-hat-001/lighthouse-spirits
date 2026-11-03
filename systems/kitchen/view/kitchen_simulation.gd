@@ -81,7 +81,7 @@ func pour_into_pot(store: LiquidStore, rate_g_per_s: float, dt: float) -> float:
 	var wanted: float = rate_g_per_s * dt
 	if not store.unlimited:
 		wanted = minf(wanted, store.grams)
-	if wanted <= 0.0 or not pot.add_medium(store.ingredient, wanted, store.temp_c):
+	if wanted <= 0.0 or not pot.add_medium(store.ingredient, wanted, store.temp_c, store.flavour, store.traits):
 		return 0.0
 	return store.draw(wanted)
 
@@ -92,6 +92,6 @@ func pour_into(store: LiquidStore, target: LiquidStore, rate_g_per_s: float, dt:
 	var wanted: float = rate_g_per_s * dt
 	if not store.unlimited:
 		wanted = minf(wanted, store.grams)
-	var moved: float = target.receive(store.ingredient, wanted, store.flavour, store.temp_c)
+	var moved: float = target.receive(store.ingredient, wanted, store.flavour, store.temp_c, store.traits)
 	store.draw(moved)
 	return moved
