@@ -25,6 +25,8 @@ extends Node
 
 var pot: CookingPot
 var board: RestingSurface
+## Food plated on the serving board.
+var plate: RestingSurface
 ## Food held up in the air - on the spoon, or in the hand.
 var held: RestingSurface
 var press: ManualProcessor
@@ -40,6 +42,8 @@ func _ready() -> void:
 	pot = CookingPot.new(vessel, air.temp_c, air)
 	pot.burner = stove
 	board = RestingSurface.new(air)
+	plate = RestingSurface.new(air)
+	IngredientCatalog.ensure_loaded()
 	held = RestingSurface.new(air, 0.0, 0.0)
 	press = ManualProcessor.new(press_equipment, Transformation.load_catalog())
 	cup = LiquidStore.new(cup_capacity_g, air.temp_c)
@@ -49,6 +53,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	pot.advance(delta)
 	board.advance(delta)
+	plate.advance(delta)
 	held.advance(delta)
 
 ## Puts seeds in the press's hopper, up to what it holds. Returns grams
@@ -84,6 +89,25 @@ func pour_into_pot(store: LiquidStore, rate_g_per_s: float, dt: float) -> float:
 	if wanted <= 0.0 or not pot.add_medium(store.ingredient, wanted, store.temp_c, store.flavour, store.traits):
 		return 0.0
 	return store.draw(wanted)
+
+## Dips a store into the pot's liquid for dt seconds at the given rate, and
+## returns grams taken - a cup used as a ladle.
+func dip_from_pot(store: LiquidStore, rate_g_per_s: float, dt: float) -> float:
+	if not pot.has_pool():
+		return 0.0
+	var wanted: float = minf(rate_g_per_s * dt, pot.medium_mass_g)
+	var taken: float = store.receive(pot.medium, wanted, pot.medium_flavour, pot.temp_c, pot.medium_traits)
+	pot.pour_out(taken)
+	return taken
+
+## Drizzles from a store over a serving board and returns grams poured.
+func pour_onto(store: LiquidStore, plate_surface: CuttingBoard, rate_g_per_s: float, dt: float) -> float:
+	if store.ingredient == null or store.is_empty():
+		return 0.0
+	var poured: float = store.draw(rate_g_per_s * dt)
+	if poured > 0.0:
+		plate_surface.add_liquid(store.ingredient, poured, store.flavour, store.traits, store.temp_c)
+	return poured
 
 ## Pours from one store into another and returns grams moved.
 func pour_into(store: LiquidStore, target: LiquidStore, rate_g_per_s: float, dt: float) -> float:

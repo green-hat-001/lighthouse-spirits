@@ -34,7 +34,9 @@ signal bitten(sound: BiteSound)
 signal dressed(creature: Creature)
 ## Something needed more room than the board has.
 signal board_crowded
+signal liquids_changed
 
+## The cutting board's own size: what a board model is made at.
 const SIZE_M: Vector2 = Vector2(0.40, 0.28)
 ## Space between the two halves of a fresh cut, so the cut shows.
 const CUT_GAP_M: float = 0.0015
@@ -61,6 +63,14 @@ const BLADE_LINE_WIDTH_M: float = 0.0008
 const MAX_BLADE_LINES: int = 64
 
 @export var ambient_temp_c: float = 15.0
+## The surface food can rest on, in metres (x, z).
+@export var size_m: Vector2 = SIZE_M
+## False for a serving board: food is arranged and plated on it, never cut.
+@export var allows_cutting: bool = true
+
+## Liquids poured over what is on it - a drizzle of chilli oil, a ladle of
+## broth - for a serving board.
+var liquids: Array[LiquidPortion] = []
 
 ## The simulation the board's food rests in. Set before food arrives.
 var rest: RestingSurface
@@ -70,6 +80,7 @@ var rest: RestingSurface
 var drop_target: Callable
 
 var _views: Array[FoodPieceView] = []
+var _puddles: Array[MeshInstance3D] = []
 var _lifted: Array[FoodPieceView] = []
 var _lift_offsets: Array[Vector3] = []
 var _carried: FoodPieceView
@@ -85,6 +96,9 @@ var _stroke_start: Vector3
 @onready var _blade_lines: MultiMeshInstance3D = $BladeLines
 
 func _ready() -> void:
+	if not allows_cutting:
+		_mezzaluna.visible = false
+	liquids_changed.connect(_draw_liquids)
 	var lines := MultiMesh.new()
 	lines.transform_format = MultiMesh.TRANSFORM_3D
 	var line_mesh := BoxMesh.new()
@@ -188,7 +202,7 @@ func pieces_near(world_point: Vector3, reach_m: float) -> Array[FoodPiece]:
 ## True if a world point lies over the board.
 func is_over(world_point: Vector3) -> bool:
 	var local := to_local(world_point)
-	return absf(local.x) <= SIZE_M.x * 0.5 and absf(local.z) <= SIZE_M.y * 0.5
+	return absf(local.x) <= size_m.x * 0.5 and absf(local.z) <= size_m.y * 0.5
 
 ## The pieces touching a piece, and the pieces touching those, and so on -
 ## everything that lifts with it.
@@ -373,7 +387,7 @@ func _hide_blade_line() -> void:
 ## The free spot nearest a point on the board (its middle by default), as
 ## the minimum corner of the footprint, or null if nothing fits.
 func _free_spot(footprint: Vector2, near: Vector2 = Vector2.ZERO) -> Variant:
-	var half := SIZE_M * 0.5
+	var half := size_m * 0.5
 	var candidates: Array[Vector2] = []
 	var z := -half.y
 	while z + footprint.y <= half.y:
@@ -397,7 +411,7 @@ func _free_spot(footprint: Vector2, near: Vector2 = Vector2.ZERO) -> Variant:
 
 ## Keeps a piece's footprint on the board.
 func _clamped(local_position: Vector3, footprint: Vector2) -> Vector3:
-	var half := SIZE_M * 0.5
+	var half := size_m * 0.5
 	return Vector3(
 		clampf(local_position.x, -half.x, maxf(half.x - footprint.x, -half.x)),
 		0.0,
@@ -468,7 +482,73 @@ func _on_piece_cancelled(view: FoodPieceView) -> void:
 		_lift_offsets.clear()
 	_carried = null
 
+## Everything plated here as a dish: its pieces and its liquids.
+func dish() -> Dish:
+	var plated := Dish.new()
+	for view in _views:
+		plated.add_piece(view.piece)
+	for portion in liquids:
+		plated.add_liquid(portion)
+	return plated
+
+## Pours a liquid over the food here; the same liquid poured again joins
+## the first, its flavour and essences mixed in by mass.
+func add_liquid(liquid: Ingredient, grams: float, flavour: FlavourProfile, traits: TraitDoses, temp_c: float) -> void:
+	for portion in liquids:
+		if portion.ingredient == liquid:
+			portion.flavour = FlavourProfile.mix_by_mass(portion.flavour, portion.grams, flavour if flavour else liquid.flavour, grams)
+			if portion.traits:
+				portion.traits.mix_in(portion.grams, traits if traits else liquid.trait_doses(), grams)
+			portion.temp_c = (portion.temp_c * portion.grams + temp_c * grams) / (portion.grams + grams)
+			portion.grams += grams
+			liquids_changed.emit()
+			return
+	liquids.append(LiquidPortion.new(liquid, grams, flavour, traits, temp_c))
+	liquids_changed.emit()
+
+## Depth a liquid pools to on a board, in mm: its puddle spreads to match.
+const PUDDLE_DEPTH_MM: float = 1.5
+
+## Pools each liquid on the board, as wide as its volume spreads at a
+## shallow depth, coloured by what it is and what it took in.
+func _draw_liquids() -> void:
+	for puddle in _puddles:
+		puddle.queue_free()
+	_puddles.clear()
+	for index in liquids.size():
+		var portion := liquids[index]
+		var area_mm2: float = portion.grams / maxf(portion.ingredient.density_g_per_cm3, 0.1) * 1000.0 / PUDDLE_DEPTH_MM
+		var radius_m: float = minf(sqrt(area_mm2 / PI) * FoodPieceView.MM_TO_M, size_m.y * 0.45)
+		var disc := CylinderMesh.new()
+		disc.top_radius = radius_m
+		disc.bottom_radius = radius_m
+		disc.height = 0.0015
+		disc.radial_segments = 24
+		var material := StandardMaterial3D.new()
+		var color: Color = portion.ingredient.tint_color
+		if portion.flavour:
+			color = color.lerp(Color(0.85, 0.22, 0.08), clampf(portion.flavour.heat, 0.0, 1.0) * 0.6)
+		color.a = 0.75
+		material.albedo_color = color
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		material.roughness = 0.1
+		disc.material = material
+		var puddle := MeshInstance3D.new()
+		puddle.mesh = disc
+		puddle.position = Vector3((index - (liquids.size() - 1) * 0.5) * radius_m * 1.2, 0.0008, 0.0)
+		add_child(puddle)
+		_puddles.append(puddle)
+
+## Clears everything off: the food and the liquid both.
+func clear() -> void:
+	for view in _views.duplicate():
+		_remove_view(view)
+	liquids.clear()
+	liquids_changed.emit()
+
 func _on_surface_pressed(point: Vector3) -> void:
+	if not allows_cutting:
+		return
 	_stroking = true
 	_stroke_start = to_local(point)
 	_mezzaluna.show_stroke(_stroke_start, _stroke_start)

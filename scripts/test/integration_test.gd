@@ -135,6 +135,7 @@ func _ready() -> void:
 	_test_kitchen_input_actions()
 	_test_kitchen_board_wiring()
 	_test_dressing_a_carcass()
+	_test_plating_at_the_pass()
 	_test_view_mode_transitions()
 	_test_counter_reach()
 	_test_peek_mapping()
@@ -1310,7 +1311,7 @@ func _test_mezzaluna_gesture() -> void:
 		MezzalunaGesture.resolve(footprint_min, footprint_size, Vector2(140.0, 230.0), Vector2(142.0, 230.0)) == null, true)
 
 func _test_kitchen_input_actions() -> void:
-	for action in [&"kitchen_steady", &"kitchen_taste", &"camera_pan_left", &"camera_pan_right", &"camera_look_out", &"camera_look_back",
+	for action in [&"kitchen_steady", &"kitchen_taste", &"kitchen_name_dish", &"kitchen_menu", &"camera_pan_left", &"camera_pan_right", &"camera_look_out", &"camera_look_back",
 			&"move_forward", &"move_back", &"move_left", &"move_right", &"interact", &"leave_view"]:
 		_expect_equal("input action %s is defined" % action, InputMap.has_action(action) and not InputMap.action_get_events(action).is_empty(), true)
 
@@ -1339,6 +1340,58 @@ func _test_kitchen_board_wiring() -> void:
 	while board.add_whole(potato) != null and many < 50:
 		many += 1
 	_expect_equal("the board refuses more potatoes once it is full", many < 50, true)
+	kitchen.queue_free()
+
+func _test_plating_at_the_pass() -> void:
+	DishBook.reset()
+	var kitchen: Kitchen = load("res://scenes/kitchen/kitchen.tscn").instantiate()
+	add_child(kitchen)
+	var board := kitchen.board
+	var plate := kitchen.plate
+	var whole := board.add_whole(KITCHEN_INGREDIENTS[0])
+	var across := whole.position.z + whole.footprint_m().y * 0.5
+	board.cut_stroke(Vector3(whole.position.x - 0.02, 0.0, across), Vector3(whole.position.x + whole.footprint_m().x + 0.02, 0.0, across), true)
+	var halves: Array[FoodPiece] = []
+	for view in board.touching_cluster(board.views()[0]):
+		halves.append(view.piece)
+	_expect_equal("food lifted off the board can be let go onto the serving board",
+		kitchen.release_lifted(halves, plate.global_position, [], board), true)
+	_expect_equal("and is plated there", plate.dish().pieces.size(), 2)
+	_expect_equal("resting in the plate's own simulation", kitchen.simulation.plate.pieces.size(), 2)
+	_expect_equal("a serving board can't be cut on", plate.allows_cutting, false)
+
+	var calm := _make_trait(MysticTrait.Effect.SOOTHE, 1.0, MysticTrait.Trigger.ALWAYS, 1.0)
+	var broth_traits := TraitDoses.new()
+	broth_traits.set_dose(calm, 0.5)
+	plate.add_liquid(KITCHEN_INGREDIENTS[3], 30.0, null, broth_traits, 80.0)
+	plate.add_liquid(KITCHEN_INGREDIENTS[3], 20.0, null, null, 20.0)
+	_expect_equal("the same liquid poured twice is one portion", plate.liquids.size() == 1 and is_equal_approx(plate.liquids[0].grams, 50.0), true)
+	_expect_near("its essence diluted by the second pour", plate.liquids[0].traits.get_dose(calm), 0.3)
+	_expect_equal("a drizzle is part of the dish", plate.dish().liquids.size(), 1)
+
+	var sim := kitchen.simulation
+	sim.pot.add_medium(KITCHEN_INGREDIENTS[3], 400.0, 90.0, null, broth_traits)
+	var ladled := sim.dip_from_pot(sim.cup, 40.0, 1.0)
+	_expect_equal("the cup dips broth out of the pot", ladled > 30.0 and sim.cup.ingredient == KITCHEN_INGREDIENTS[3], true)
+	_expect_near("carrying what the broth took in", sim.cup.traits.get_dose(calm), 0.5, 0.01)
+
+	var fingerprint := plate.dish().fingerprint()
+	_expect_equal("an unnamed dish can't go on the menu", kitchen.toggle_menu(), false)
+	DishBook.name_dish(fingerprint, "Steamed Halves in Calm Broth")
+	_expect_equal("a named dish can", kitchen.toggle_menu(), true)
+	_expect_equal("and is on the menu", DishBook.menu().has("Steamed Halves in Calm Broth"), true)
+	DishBook.reset()
+	_expect_equal("names survive being saved and read back", DishBook.load_saved() and DishBook.name_of(fingerprint) == "Steamed Halves in Calm Broth", true)
+
+	var salt := _make_test_spice()
+	salt.pantry_shelf = Ingredient.Shelf.SPICE
+	salt.flavour.salty = 1.0
+	salt.scoop_g = 1.5
+	var salty_before: float = plate.dish().pieces[0].flavour.salty
+	_expect_equal("a pinch let go over plated food seasons it",
+		kitchen.let_go_of_scoop(salt, 1.5, plate.to_global(plate.views()[0].position + Vector3(0.01, 0.0, 0.01))), true)
+	_expect_equal("so it tastes of it", plate.dish().pieces[0].flavour.salty > salty_before, true)
+	DishBook.name_dish(fingerprint, "")
 	kitchen.queue_free()
 
 func _test_view_mode_transitions() -> void:
@@ -1444,7 +1497,7 @@ func _test_caretaker_in_the_kitchen() -> void:
 	_expect_equal("the view settles at the counter", kitchen.view_mode.mode, KitchenViewMode.Mode.AT_COUNTER)
 	_expect_equal("at the counter the hand is live and the feet are still",
 		kitchen.pointer.enabled and not kitchen.caretaker.control_enabled, true)
-	_expect_equal("stepping in faces the station you stood at", kitchen.counter_views.station_index, 0)
+	_expect_equal("stepping in faces the station you stood at", kitchen.counter_views.station_index, 1)
 	_expect_equal("Esc steps back", kitchen.step_out(), true)
 	await _wait_for_mode(kitchen, KitchenViewMode.Mode.WALKING)
 	_expect_equal("the view returns to the caretaker's eyes",

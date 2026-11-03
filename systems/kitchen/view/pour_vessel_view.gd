@@ -7,7 +7,10 @@ extends Node3D
 ## liquid runs once it tips past the angle where the liquid reaches the
 ## spout - a full vessel pours at a slight tilt, a nearly empty one has to
 ## be tipped right over. Letting go sets it back down. A corked bottle
-## pours nothing until the cork is pulled (right-click).
+## pours nothing until the cork is pulled (right-click). Held over the
+## serving board it drizzles over what is plated there, and a vessel that
+## can dip (the cup) ladles from the pot while held over it steadied
+## ("kitchen_steady").
 ##
 ##   RESTING --press--> CARRIED --over a target--> POURING --away--> CARRIED
 ##   CARRIED/POURING --release--> RESTING
@@ -38,6 +41,11 @@ const CORK_REST_OFFSET: Vector3 = Vector3(0.07, 0.0, 0.03)
 ## Where it can pour into.
 @export var pot_view: PotView
 @export var receiving_vessel: PourVesselView
+## The serving board it can drizzle over.
+@export var serving_board: CuttingBoard
+## Whether it can be dipped into the pot as a ladle.
+@export var can_dip: bool = false
+@export var dip_g_per_s: float = 40.0
 ## A liquid-surface mesh inside the vessel that rises with the fill, and how
 ## high it rises when full (relative to its empty height).
 @export var fill_surface: MeshInstance3D
@@ -153,8 +161,9 @@ func _process(delta: float) -> void:
 			var facing: float = atan2(-to_target.z, to_target.x)
 			rotation.y = lerp_angle(rotation.y, facing, ease)
 			# Tip only as far as a full, steady stream needs; as the vessel
-			# empties that angle rises and the hand follows it.
-			var wanted: float = minf(pour_tilt_deg() + FULL_STREAM_DEG, MAX_TILT_DEG)
+			# empties that angle rises and the hand follows it. Dipping, it
+			# is held level, down in the pot.
+			var wanted: float = 0.0 if is_dipping() else minf(pour_tilt_deg() + FULL_STREAM_DEG, MAX_TILT_DEG)
 			tilt_deg = move_toward(tilt_deg, wanted, TILT_DEG_PER_S * delta)
 		else:
 			tilt_deg = move_toward(tilt_deg, 0.0, TILT_DEG_PER_S * 2.0 * delta)
@@ -172,11 +181,22 @@ func _pour_target() -> Variant:
 		return pot_view.global_position + Vector3(0.0, PotView.FLOOR_Y_M, 0.0) + Vector3(spout.x - pot_view.global_position.x, 0.0, spout.z - pot_view.global_position.z) * 0.5
 	if receiving_vessel and Vector2(spout.x - receiving_vessel.global_position.x, spout.z - receiving_vessel.global_position.z).length() < VESSEL_REACH_M:
 		return receiving_vessel.global_position
+	if serving_board and serving_board.is_over(spout):
+		return Vector3(spout.x, serving_board.global_position.y, spout.z)
 	return null
+
+## True while the vessel is being dipped into the pot as a ladle.
+func is_dipping() -> bool:
+	return can_dip and state != State.RESTING and pot_view != null \
+		and pot_view.is_over(global_position) and Input.is_action_pressed("kitchen_steady")
 
 func _pour(delta: float) -> void:
 	var rate: float = 0.0
 	var liquid := store()
+	if is_dipping():
+		simulation.dip_from_pot(liquid, dip_g_per_s, delta)
+		_stream.visible = false
+		return
 	if state == State.POURING and not corked and not liquid.is_empty():
 		rate = max_pour_g_per_s * clampf((tilt_deg - pour_tilt_deg()) / FULL_STREAM_DEG, 0.0, 1.0)
 	var grams: float = 0.0
@@ -186,6 +206,9 @@ func _pour(delta: float) -> void:
 		if pot_view and pot_view.is_over(spout):
 			grams = simulation.pour_into_pot(liquid, rate, delta)
 			landing_y = pot_view.global_position.y + PotView.FLOOR_Y_M + pot_view.pot().liquid_level_mm * 0.001
+		elif serving_board and serving_board.is_over(spout):
+			grams = simulation.pour_onto(liquid, serving_board, rate, delta)
+			landing_y = serving_board.global_position.y + 0.005
 		elif receiving_vessel:
 			grams = simulation.pour_into(liquid, receiving_vessel.store(), rate, delta)
 			landing_y = receiving_vessel.global_position.y + 0.02

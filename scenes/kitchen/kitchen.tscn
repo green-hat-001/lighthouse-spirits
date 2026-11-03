@@ -5,8 +5,6 @@
 [ext_resource type="PackedScene" path="res://scenes/kitchen/ingredient_source.tscn" id="3"]
 [ext_resource type="Script" path="res://systems/kitchen/view/counter_views.gd" id="4"]
 [ext_resource type="Script" path="res://systems/kitchen/view/kitchen_pointer.gd" id="5"]
-[ext_resource type="Resource" path="res://data/ingredients/potato.tres" id="6"]
-[ext_resource type="Resource" path="res://data/ingredients/chilli.tres" id="7"]
 [ext_resource type="PackedScene" path="res://scenes/world/coast.tscn" id="8"]
 [ext_resource type="PackedScene" path="res://assets/models/kitchen/counter.glb" id="9"]
 [ext_resource type="PackedScene" path="res://scenes/player/caretaker.tscn" id="18"]
@@ -65,16 +63,19 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6200, 0.0000, -0.0700)
 simulation = NodePath("../Simulation")
 cup = NodePath("../OilCup")
 
-[node name="OilCup" parent="." node_paths=PackedStringArray("simulation", "pot_view", "receiving_vessel") instance=ExtResource("23")]
+[node name="OilCup" parent="." node_paths=PackedStringArray("simulation", "pot_view", "receiving_vessel", "serving_board") instance=ExtResource("23")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6220, 0.0000, -0.0700)
 simulation = NodePath("../Simulation")
 pot_view = NodePath("../Pot")
 receiving_vessel = NodePath("../OilBottle")
+serving_board = NodePath("../ServingBoard")
+can_dip = true
 
-[node name="OilBottle" parent="." node_paths=PackedStringArray("simulation", "pot_view") instance=ExtResource("24")]
+[node name="OilBottle" parent="." node_paths=PackedStringArray("simulation", "pot_view", "serving_board") instance=ExtResource("24")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4700, 0.0000, 0.1900)
 simulation = NodePath("../Simulation")
 pot_view = NodePath("../Pot")
+serving_board = NodePath("../ServingBoard")
 
 [node name="WaterJug" parent="." node_paths=PackedStringArray("simulation", "pot_view") instance=ExtResource("25")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0400, 0.0000, -0.2200)
@@ -87,13 +88,40 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6700, 0.0000, 0.1600)
 [node name="CuttingBoard" parent="." instance=ExtResource("2")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2000, 0.0200, 0.0000)
 
-[node name="PotatoBasket" parent="." instance=ExtResource("3")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6200, 0.0000, -0.0900)
-ingredient = ExtResource("6")
+[node name="GardenBasket" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7200, 0.0000, -0.2200)
+shelf = 1
 
-[node name="ChilliBasket" parent="." instance=ExtResource("3")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6200, 0.0000, 0.1000)
-ingredient = ExtResource("7")
+[node name="CatchCrate" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5600, 0.0000, -0.2200)
+shelf = 2
+
+[node name="SpiceTin" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4000, 0.0000, -0.2200)
+shelf = 3
+
+[node name="GrainSack" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2400, 0.0000, -0.2200)
+shelf = 4
+
+[node name="ServingBoard" parent="." instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6200, 0.0160, 0.0600)
+size_m = Vector2(0.32, 0.224)
+allows_cutting = false
+
+[node name="Board" parent="ServingBoard" index="0"]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0)
+
+[node name="Surface" parent="ServingBoard" index="1"]
+transform = Transform3D(0.8, 0, 0, 0, 1, 0, 0, 0, 0.8, 0, 0, 0)
+
+[node name="DishLabel" type="Label3D" parent="ServingBoard"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14, -0.08)
+billboard = 1
+pixel_size = 0.0004
+font_size = 44
+outline_size = 8
+modulate = Color(1, 0.97, 0.9, 1)
 
 [node name="Audio" type="Node" parent="." node_paths=PackedStringArray("simulation", "stove", "pot_view", "press_view", "board", "vessels")]
 script = ExtResource("36")
@@ -105,6 +133,9 @@ board = NodePath("../CuttingBoard")
 vessels = [NodePath("../WaterJug"), NodePath("../OilBottle"), NodePath("../OilCup")]
 
 [node name="Stations" type="Node3D" parent="."]
+
+[node name="Pass" type="Marker3D" parent="Stations"]
+transform = Transform3D(1, 0, 0, 0, 0.6544, 0.7562, 0, -0.7562, 0.6544, -0.62, 0.52, 0.43)
 
 [node name="Board" type="Marker3D" parent="Stations"]
 transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.6544, 0.7562, 0.0000, -0.7562, 0.6544, -0.2200, 0.5200, 0.4300)
@@ -185,13 +216,14 @@ vertical_alignment = 1
 offset_left = 20.0
 offset_top = 14.0
 offset_right = 1200.0
-offset_bottom = 64.0
+offset_bottom = 84.0
 theme_override_colors/font_color = Color(1, 0.98, 0.92, 0.8)
 theme_override_colors/font_outline_color = Color(0.1, 0.12, 0.15, 0.55)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 15
 text = "Esc  step back     A / D  along the counter     W  look out to sea     T  taste
-drag  cut / carry / pour / stir     Space + drag  lift food together     right-click  roll · turn · cork · empty the pot"
+drag  cut / carry / pour / stir     Space + drag  lift food together     right-click  roll · turn · cork · empty the pot · next in the pantry
+Space over the pot  dip the cup     N  name the plated dish     M  on or off the menu"
 
 [node name="Caption" type="Label" parent="Hud"]
 anchors_preset = 7
@@ -210,3 +242,17 @@ theme_override_font_sizes/font_size = 21
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
+
+[node name="DishName" type="LineEdit" parent="Hud"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -24.0
+offset_right = 220.0
+offset_bottom = 24.0
+theme_override_font_sizes/font_size = 22
+placeholder_text = "Name this dish, then Enter (Esc to leave it)"
+alignment = 1

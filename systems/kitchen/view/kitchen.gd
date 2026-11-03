@@ -25,6 +25,8 @@ extends Node3D
 ## food lifted off the board can be let go into the pot, the spoon's catch
 ## is set down on the board, the sunflower head fills the press's hopper,
 ## and "kitchen_taste" bites whatever piece on the board is under the hand.
+## Food plated on the serving board is the dish: "kitchen_name_dish" names
+## it (DishBook) and "kitchen_menu" puts it up for service.
 
 const GLIDE_SPEED: float = 5.0
 const PEEK_EASE: float = 6.0
@@ -50,9 +52,15 @@ var _peek_deg: float = 0.0
 var _mouse_freed: bool = false
 
 var _caption_left_s: float = 0.0
+var _label_timer_s: float = 0.0
+## How often the plate's label re-reads the dish, in seconds.
+const PLATE_LABEL_EVERY_S: float = 0.5
 
 @onready var simulation: KitchenSimulation = $Simulation
 @onready var board: CuttingBoard = $CuttingBoard
+@onready var plate: CuttingBoard = $ServingBoard
+@onready var _plate_label: Label3D = $ServingBoard/DishLabel
+@onready var _name_field: LineEdit = $Hud/DishName
 @onready var stove: StoveView = $Stove
 @onready var pot_view: PotView = $Pot
 @onready var press_view: PressView = $OilPress
@@ -71,8 +79,13 @@ var _caption_left_s: float = 0.0
 func _ready() -> void:
 	board.ambient_temp_c = simulation.air.temp_c
 	board.rest = simulation.board
-	board.drop_target = drop_into_pot
-	board.piece_tasted.connect(show_caption)
+	plate.ambient_temp_c = simulation.air.temp_c
+	plate.rest = simulation.plate
+	for surface in surfaces():
+		surface.drop_target = release_lifted.bind(surface)
+		surface.piece_tasted.connect(show_caption)
+	_name_field.visible = false
+	_name_field.text_submitted.connect(_on_dish_named)
 	board.dressed.connect(func(creature: Creature) -> void: show_caption(_dressing_note(creature)))
 	board.board_crowded.connect(func() -> void: show_caption("There's no room on the board for that. Clear some space first."))
 	pot_view.lifted_out.connect(_on_lifted_out)
@@ -108,6 +121,25 @@ func counter_in_reach() -> bool:
 	var feet := Vector2(caretaker.global_position.x, caretaker.global_position.z)
 	return KitchenViewMode.within_reach(feet, caretaker.facing(), footprint)
 
+## The surfaces food rests on at the counter: the cutting board and the
+## serving board.
+func surfaces() -> Array[CuttingBoard]:
+	return [board, plate]
+
+## Where food lifted off a surface lands when let go: into the pot (or
+## across it, as a covering), or onto another surface. Returns true if it
+## was taken; otherwise it is set straight back down where it was lifted.
+func release_lifted(pieces: Array[FoodPiece], world_point: Vector3, held_at: Array[Vector3], from: CuttingBoard) -> bool:
+	if drop_into_pot(pieces, world_point, held_at):
+		return true
+	for surface in surfaces():
+		if surface != from and surface.is_over(world_point):
+			var refused := surface.receive(pieces, world_point)
+			if not refused.is_empty():
+				from.receive.call_deferred(refused, from.global_position)
+			return true
+	return false
+
 ## Lets food go into the pot if it was let go over it. Returns true when
 ## the pot took it; anything that would overflow the pot goes back on the
 ## board.
@@ -141,7 +173,7 @@ func let_go_of_scoop(ingredient: Ingredient, grams: float, world_point: Vector3)
 		if spice:
 			return Seasoning.season_pot(simulation.pot, ingredient, grams) > 0.0
 		return simulation.pot.add_piece(FoodPiece.handful(ingredient, grams, simulation.air.temp_c), pot_view.to_pot_mm(world_point))
-	for surface in [board]:
+	for surface in surfaces():
 		if not surface.is_over(world_point):
 			continue
 		if spice:
@@ -156,8 +188,9 @@ func taste_under_hand() -> String:
 	if hit.interactable == null or not (hit.interactable.get_parent() is FoodPieceView):
 		return ""
 	var view := hit.interactable.get_parent() as FoodPieceView
-	if board.views().has(view):
-		return board.taste(view)
+	for surface in surfaces():
+		if surface.views().has(view):
+			return surface.taste(view)
 	if pot_view.view_of(view.piece) == view:
 		show_caption("Too hot to reach into the pot. Lift it out with the spoon first.")
 	return ""
@@ -177,6 +210,54 @@ static func _dressing_note(creature: Creature) -> String:
 		names.append(part.part_name.to_lower() if part.count == 1 else "%d %s" % [part.count, part.part_name.to_lower()])
 	return "%s, opened: %s." % [creature.display_name, ", ".join(names)]
 
+## Opens the name field for what is plated on the serving board.
+func begin_naming() -> bool:
+	if plate.dish().is_empty():
+		show_caption("Plate something on the serving board first, then name it.")
+		return false
+	_name_field.text = DishBook.name_of(plate.dish().fingerprint())
+	_name_field.visible = true
+	_name_field.grab_focus()
+	pointer.enabled = false
+	return true
+
+## Puts the plated dish up for service, or takes it off the menu.
+func toggle_menu() -> bool:
+	var fingerprint := plate.dish().fingerprint()
+	if plate.dish().is_empty() or not DishBook.is_named(fingerprint):
+		show_caption("Name the dish (N) before putting it on the menu.")
+		return false
+	var on: bool = not DishBook.is_on_menu(fingerprint)
+	DishBook.set_on_menu(fingerprint, on)
+	show_caption("%s is %s." % [DishBook.name_of(fingerprint), "on the menu" if on else "off the menu"])
+	return true
+
+func _on_dish_named(dish_name: String) -> void:
+	var fingerprint := plate.dish().fingerprint()
+	DishBook.name_dish(fingerprint, dish_name)
+	_end_naming()
+	if dish_name.strip_edges() != "":
+		show_caption("You'll know it as %s whenever you make it this way again." % dish_name.strip_edges())
+
+func _end_naming() -> void:
+	_name_field.visible = false
+	_name_field.release_focus()
+	pointer.enabled = view_mode.mode == KitchenViewMode.Mode.AT_COUNTER
+
+## The plate's label: the dish's name when the caretaker has named it,
+## otherwise what is on it.
+func _label_plate() -> void:
+	var dish := plate.dish()
+	if dish.is_empty():
+		_plate_label.text = ""
+		return
+	var fingerprint := dish.fingerprint()
+	var dish_name := DishBook.name_of(fingerprint)
+	if dish_name == "":
+		_plate_label.text = "an unnamed dish  (N to name it)"
+	else:
+		_plate_label.text = dish_name + ("  - on the menu" if DishBook.is_on_menu(fingerprint) else "")
+
 func show_caption(text: String) -> void:
 	_caption.text = text
 	_caption_left_s = CAPTION_SECONDS
@@ -186,10 +267,11 @@ func show_caption(text: String) -> void:
 func _on_lifted_out(pieces: Array[FoodPiece], world_point: Vector3) -> void:
 	for piece in pieces:
 		simulation.held.remove_piece(piece)
-	var local := board.to_local(world_point)
-	var half := CuttingBoard.SIZE_M * 0.5
-	var over_board: bool = absf(local.x) <= half.x and absf(local.z) <= half.y
-	var leftover: Array[FoodPiece] = board.receive(pieces, world_point) if over_board else pieces
+	var leftover: Array[FoodPiece] = pieces
+	for surface in surfaces():
+		if surface.is_over(world_point):
+			leftover = surface.receive(pieces, world_point)
+			break
 	pot_view.return_to_pot(leftover)
 
 func step_in() -> bool:
@@ -217,8 +299,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("leave_view"):
 		if not step_out() and view_mode.mode == KitchenViewMode.Mode.WALKING:
 			_mouse_freed = true
+	elif _name_field.visible and event.is_action_pressed("leave_view"):
+		_end_naming()
+		get_viewport().set_input_as_handled()
+		return
 	elif event.is_action_pressed("kitchen_taste") and view_mode.mode == KitchenViewMode.Mode.AT_COUNTER:
 		taste_under_hand()
+	elif event.is_action_pressed("kitchen_name_dish") and view_mode.mode == KitchenViewMode.Mode.AT_COUNTER:
+		begin_naming()
+	elif event.is_action_pressed("kitchen_menu") and view_mode.mode == KitchenViewMode.Mode.AT_COUNTER:
+		toggle_menu()
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
 			and view_mode.mode == KitchenViewMode.Mode.WALKING and _mouse_freed:
 		_mouse_freed = false
@@ -237,6 +327,10 @@ func _lock_mouse() -> void:
 func _process(delta: float) -> void:
 	_lock_mouse()
 	_caption_left_s = maxf(_caption_left_s - delta, 0.0)
+	_label_timer_s -= delta
+	if _label_timer_s <= 0.0:
+		_label_timer_s = PLATE_LABEL_EVERY_S
+		_label_plate()
 	_caption.modulate.a = clampf(_caption_left_s / CAPTION_FADE_SECONDS, 0.0, 1.0)
 	var walking := view_mode.mode == KitchenViewMode.Mode.WALKING
 	_prompt.visible = walking and counter_in_reach()
