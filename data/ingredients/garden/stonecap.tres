@@ -40,6 +40,7 @@ skin_permeability = 0.5
 shrinkage_per_water_lost = 0.8
 available_from_start = true
 pantry_shelf = 1
+raw_firmness = 0.5
 cook_temp_c = 55.0
 cook_seconds = 120.0
 overcook_softening_per_s = 0.0005

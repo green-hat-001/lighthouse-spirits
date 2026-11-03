@@ -27,8 +27,11 @@ static func texture_of(piece: FoodPiece) -> FoodTexture:
 	texture.crispness = dryness * clampf(piece.surface_browning / CRISP_BROWNING, 0.0, 1.0) \
 		* (1.0 - 0.5 * texture.greasiness)
 	texture.wetness = 1.0 - dryness
-	texture.softness = clampf(cooked * 0.8 + (1.0 - piece.integrity) * 0.4, 0.0, 1.0)
-	texture.firmness = piece.integrity * (1.0 - cooked)
+	# Soft by nature (raw fish, liver) or made soft by cooking or falling
+	# apart.
+	texture.softness = clampf(cooked * 0.8 + (1.0 - piece.integrity) * 0.4 \
+		+ (1.0 - piece.ingredient.raw_firmness) * (1.0 - cooked), 0.0, 1.0)
+	texture.firmness = piece.integrity * (1.0 - cooked) * piece.ingredient.raw_firmness
 
 	var raw_moisture: float = piece.ingredient.water_fraction
 	if raw_moisture > 0.0:

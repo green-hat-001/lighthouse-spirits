@@ -118,6 +118,7 @@ func _ready() -> void:
 	_test_seasoning()
 	_test_coverings()
 	_test_shipped_world()
+	_test_every_carcass_dresses()
 	_test_shipped_transformations_validate()
 	_test_transformation_validation()
 	_test_press_turns_work_into_oil()
@@ -929,6 +930,24 @@ func _test_dressing_a_carcass() -> void:
 	_expect_equal("and stays on the board", board.views().has(second) and CuttingBoard.is_carcass(second.piece), true)
 	kitchen.queue_free()
 
+## Every whole creature the pantry offers opens into its parts on an
+## empty board.
+func _test_every_carcass_dresses() -> void:
+	var kitchen: Kitchen = load("res://scenes/kitchen/kitchen.tscn").instantiate()
+	add_child(kitchen)
+	for ingredient in IngredientCatalog.on_shelf(Ingredient.Shelf.CATCH):
+		if ingredient.creature == null:
+			continue
+		for view in kitchen.board.views().duplicate():
+			kitchen.board.take(view)
+		var whole := kitchen.board.add_whole(ingredient)
+		var parts: int = 0
+		for part in ingredient.creature.parts:
+			parts += part.count
+		_expect_equal("a whole %s opens into all %d of its parts" % [ingredient.creature.id, parts],
+			whole != null and kitchen.board.dress(whole) and kitchen.board.views().size() == parts, true)
+	kitchen.queue_free()
+
 func _test_fat_renders() -> void:
 	var tallow := _make_test_oil()
 	tallow.id = &"test_tallow"
@@ -1110,6 +1129,8 @@ func _test_shipped_world() -> void:
 	var pot := CookingPot.new(STARTING_EQUIPMENT[1], AMBIENT_TEMP_C)
 	pot.cover_with(hide, true)
 	_expect_equal("a ram's hide stretched over the pot seals a dum", pot.seal > 0.85, true)
+	var raw_fish := FoodPerception.bite_of(FoodPiece.from_ingredient(bream_fillet, AMBIENT_TEMP_C))
+	_expect_equal("raw fish doesn't crunch like a raw potato", raw_fish.dominant_layer() != BiteSound.Layer.CRUNCH, true)
 
 # --- Equipment and transformation checks ---------------------------------------
 

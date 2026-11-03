@@ -24,6 +24,7 @@ water_fraction = 0.72
 fat_fraction = 0.06
 protein_fraction = 0.18
 available_from_start = true
+raw_firmness = 0.3
 pantry_shelf = 2
 specific_heat_j_per_g_k = 3.5
 thermal_conductivity_w_per_m_k = 0.45

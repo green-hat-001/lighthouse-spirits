@@ -69,7 +69,7 @@ static func _feel(piece: FoodPiece) -> String:
 	elif texture.chewiness >= STRONG:
 		inside = "dry and leathery inside"
 	elif piece.core_doneness < 0.4:
-		inside = "raw and crunchy inside"
+		inside = "raw and crunchy inside" if piece.ingredient.raw_firmness >= 0.5 else "raw in the middle"
 	elif piece.core_doneness < piece.ingredient.ideal_doneness_min:
 		inside = "still firm in the middle"
 	elif piece.core_doneness <= piece.ingredient.ideal_doneness_max:
@@ -95,7 +95,7 @@ static func _taste(piece: FoodPiece) -> String:
 	if flavour.heat >= NOTICEABLE:
 		notes.append("fiery" if flavour.heat >= STRONG else "warm with chilli")
 	if flavour.aroma >= AROMA_STRONG:
-		notes.append("toasty and fragrant")
+		notes.append("fragrant")
 	elif flavour.aroma >= AROMA_NOTICEABLE:
 		notes.append("nutty")
 	if flavour.umami >= NOTICEABLE:

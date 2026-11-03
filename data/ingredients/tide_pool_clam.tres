@@ -34,6 +34,7 @@ fat_fraction = 0.01
 protein_fraction = 0.14
 specific_heat_j_per_g_k = 3.7
 thermal_conductivity_w_per_m_k = 0.5
+raw_firmness = 0.2
 stable_thickness_mm = 3.0
 unsteadied_cut_integrity_loss = 0.15
 cook_temp_c = 55.0

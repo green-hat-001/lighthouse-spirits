@@ -48,6 +48,11 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 @export_range(0.0, 1.0) var fat_fraction: float = 0.0
 @export_range(0.0, 1.0) var protein_fraction: float = 0.0
 
+@export_group("Texture")
+## How firm it is raw, 0-1: a raw potato or carrot crunches (1); raw fish,
+## liver and roe are soft (low). Cooking softens everything from there.
+@export_range(0.0, 1.0) var raw_firmness: float = 1.0
+
 @export_group("Handling")
 ## How well it stretches and drapes, 0 stiff to 1 like a wet hide: a pliable
 ## sheet laid over a pot seals it.

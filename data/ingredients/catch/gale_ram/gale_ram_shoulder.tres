@@ -25,6 +25,7 @@ protein_fraction = 0.18
 available_from_start = true
 pantry_shelf = 2
 skin_permeability = 1.0
+raw_firmness = 0.45
 specific_heat_j_per_g_k = 3.3
 thermal_conductivity_w_per_m_k = 0.42
 cook_temp_c = 60.0

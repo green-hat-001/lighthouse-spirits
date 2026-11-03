@@ -46,6 +46,9 @@ const SCATTER_M: float = 0.006
 ## Gap kept between a newly placed whole item and anything already here.
 const PLACEMENT_MARGIN_M: float = 0.01
 const PLACEMENT_STEP_M: float = 0.01
+## Parts of a dressed creature are laid out close together.
+const DRESSED_MARGIN_M: float = 0.003
+const DRESSED_STEP_M: float = 0.005
 ## Height above the board that lifted food is carried at: clear of the
 ## pot's rim.
 const CARRY_HEIGHT_M: float = 0.22
@@ -250,8 +253,8 @@ func cut_stroke(start: Vector3, end: Vector3, steadied: bool) -> int:
 static func is_carcass(piece: FoodPiece) -> bool:
 	return piece.ingredient.creature != null and piece.cut_axes.is_empty()
 
-## Opens a whole creature into every one of its parts, laid out on the
-## board around where it lay. Each part takes the carcass's temperature
+## Opens a whole creature into every one of its parts, laid out packed
+## across the board. Each part takes the carcass's temperature
 ## and how cooked it was. Refused, leaving it whole, when the board has no
 ## room for all of them.
 func dress(view: FoodPieceView) -> bool:
@@ -274,7 +277,7 @@ func dress(view: FoodPieceView) -> bool:
 	var placed: Array[FoodPieceView] = []
 	for piece in parts:
 		var footprint := Vector2(piece.size_mm.x, piece.size_mm.z) * FoodPieceView.MM_TO_M
-		var spot: Variant = _free_spot(footprint, near - footprint * 0.5)
+		var spot: Variant = _free_spot(footprint, near - footprint * 0.5, DRESSED_MARGIN_M, DRESSED_STEP_M, true)
 		if spot == null:
 			for undo in placed:
 				_remove_view(undo)
@@ -386,7 +389,7 @@ func _hide_blade_line() -> void:
 
 ## The free spot nearest a point on the board (its middle by default), as
 ## the minimum corner of the footprint, or null if nothing fits.
-func _free_spot(footprint: Vector2, near: Vector2 = Vector2.ZERO) -> Variant:
+func _free_spot(footprint: Vector2, near: Vector2 = Vector2.ZERO, margin: float = PLACEMENT_MARGIN_M, step: float = PLACEMENT_STEP_M, row_by_row: bool = false) -> Variant:
 	var half := size_m * 0.5
 	var candidates: Array[Vector2] = []
 	var z := -half.y
@@ -394,12 +397,18 @@ func _free_spot(footprint: Vector2, near: Vector2 = Vector2.ZERO) -> Variant:
 		var x := -half.x
 		while x + footprint.x <= half.x:
 			candidates.append(Vector2(x, z))
-			x += PLACEMENT_STEP_M
-		z += PLACEMENT_STEP_M
-	candidates.sort_custom(func(a: Vector2, b: Vector2) -> bool:
-		return (a + footprint * 0.5 - near).length_squared() < (b + footprint * 0.5 - near).length_squared())
+			x += step
+		z += step
+	if row_by_row:
+		# Fill from the far corner, row by row, so what is laid out packs
+		# tight and leaves the free room in one piece.
+		candidates.sort_custom(func(a: Vector2, b: Vector2) -> bool:
+			return a.y < b.y or (is_equal_approx(a.y, b.y) and a.x < b.x))
+	else:
+		candidates.sort_custom(func(a: Vector2, b: Vector2) -> bool:
+			return (a + footprint * 0.5 - near).length_squared() < (b + footprint * 0.5 - near).length_squared())
 	for corner in candidates:
-		var candidate := Rect2(corner, footprint).grow(PLACEMENT_MARGIN_M)
+		var candidate := Rect2(corner, footprint).grow(margin)
 		var clear := true
 		for view in _views:
 			if candidate.intersects(Rect2(Vector2(view.position.x, view.position.z), view.footprint_m())):
