@@ -48,6 +48,7 @@ const CAPTION_FADE_SECONDS: float = 1.2
 var view_mode := KitchenViewMode.new()
 
 var _peek_deg: float = 0.0
+var _glance_deg: float = 0.0
 ## Set when the player frees the mouse with Esc while walking.
 var _mouse_freed: bool = false
 
@@ -65,6 +66,7 @@ const PLATE_LABEL_EVERY_S: float = 0.5
 @onready var pot_view: PotView = $Pot
 @onready var press_view: PressView = $OilPress
 @onready var seed_source: SeedSource = $SunflowerHead
+@onready var pantry: PantryDresser = $Pantry
 @onready var audio: KitchenAudio = $Audio
 @onready var _caption: Label = $Hud/Caption
 @onready var camera: Camera3D = $Camera3D
@@ -94,15 +96,25 @@ func _ready() -> void:
 			simulation.pot.cover_with(piece, true)
 			show_caption("There's no room on the board to set the covering down."))
 	seed_source.taken.connect(func(_ingredient: Ingredient, grams: float) -> void: simulation.load_seeds(grams))
-	for source in find_children("*", "IngredientSource", true, false):
-		(source as IngredientSource).taken.connect(func(ingredient: Ingredient) -> void: board.add_whole(ingredient))
-		(source as IngredientSource).scooped.connect(let_go_of_scoop)
+	for source in pantry.sources:
+		_take_from(source)
+	pantry.source_added.connect(_take_from)
 	_caption.modulate.a = 0.0
 	pointer.enabled = false
 	counter_views.active = false
 	camera.fov = WALK_FOV_DEG
 	camera.global_transform = caretaker.eye_transform()
 	_lock_mouse()
+
+## Wires a pantry spot to the counter: a whole item goes to the board, a
+## scoop is let go where it is carried, and its label can be read.
+func _take_from(source: IngredientSource) -> void:
+	source.taken.connect(func(ingredient: Ingredient) -> void:
+		if board.add_whole(ingredient) == null:
+			show_caption("There's no room on the board for that. Clear some space first."))
+	source.scooped.connect(let_go_of_scoop)
+	source.read.connect(func(ingredient: Ingredient) -> void:
+		show_caption("%s. %s" % [ingredient.display_name, ingredient.lore] if ingredient.lore != "" else ingredient.display_name))
 
 ## The mouse mode each view mode wants.
 static func mouse_mode_for(mode: KitchenViewMode.Mode, freed_by_player: bool) -> Input.MouseMode:
@@ -281,6 +293,7 @@ func step_in() -> bool:
 	counter_views.looking_out = false
 	caretaker.control_enabled = false
 	_peek_deg = 0.0
+	_glance_deg = 0.0
 	# Start the hand in the middle of the screen, not wherever the captured
 	# pointer was left.
 	Input.warp_mouse(get_viewport().get_visible_rect().get_center())
@@ -349,7 +362,9 @@ func _process(delta: float) -> void:
 			if not pointer.is_holding():
 				var peek_target := CounterViews.peek_degrees(_mouse_x_norm())
 				_peek_deg = lerpf(_peek_deg, peek_target, 1.0 - exp(-PEEK_EASE * delta))
-			_glide(counter_views.pose(_peek_deg), COUNTER_FOV_DEG, delta)
+				var glance_target := CounterViews.glance_up_degrees(_mouse_y_norm()) if counter_views.can_glance_up() else 0.0
+				_glance_deg = lerpf(_glance_deg, glance_target, 1.0 - exp(-PEEK_EASE * delta))
+			_glide(counter_views.pose(_peek_deg, _glance_deg), COUNTER_FOV_DEG, delta)
 		KitchenViewMode.Mode.STEPPING_OUT:
 			if _glide(caretaker.eye_transform(), WALK_FOV_DEG, delta):
 				view_mode.arrived()
@@ -370,6 +385,13 @@ func _glide(target: Transform3D, target_fov: float, delta: float) -> bool:
 		camera.global_transform = target
 		camera.fov = target_fov
 	return close
+
+## The mouse's vertical position down the visible screen, -1 (top) to 1.
+func _mouse_y_norm() -> float:
+	var rect := get_viewport().get_visible_rect()
+	if rect.size.y <= 0.0:
+		return 0.0
+	return clampf((get_viewport().get_mouse_position().y - rect.position.y) / rect.size.y * 2.0 - 1.0, -1.0, 1.0)
 
 ## The mouse's horizontal position across the visible screen, -1 to 1.
 func _mouse_x_norm() -> float:

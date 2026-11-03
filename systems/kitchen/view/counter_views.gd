@@ -9,15 +9,22 @@ extends Node
 ##   STATION(i) --camera_look_out--> VISTA --camera_look_back--> STATION(i)
 ##
 ## Pushing the mouse towards either edge of the screen turns the view a
-## little that way, to glance at what's beside the station without moving.
+## little that way, to glance at what's beside the station without moving;
+## at a station in front of the pantry, pushing it to the top edge lifts the
+## eyes to the shelves.
 
 ## Only the outer part of the screen on each side peeks, so reaching for
 ## something near the edge doesn't swing the view.
 const PEEK_DEAD_ZONE: float = 0.62
 const PEEK_MAX_DEG: float = 26.0
+## Only the top of the screen lifts the eyes, and only this far.
+const GLANCE_DEAD_ZONE: float = 0.55
+const GLANCE_MAX_DEG: float = 34.0
 
 @export var stations: Node3D
 @export var vista: Marker3D
+## The stations (by index) standing in front of the pantry shelves.
+@export var below_shelves: PackedInt32Array = PackedInt32Array()
 
 ## Keys and peeking are only live while the Kitchen says so.
 var active: bool = false
@@ -40,10 +47,21 @@ func nearest_station(x: float) -> int:
 			best = index
 	return best
 
-## The pose to show, turned by `peek_deg` about the vertical.
-func pose(peek_deg: float) -> Transform3D:
+## The pose to show, turned by `peek_deg` about the vertical and lifted by
+## `glance_deg` toward the shelves.
+func pose(peek_deg: float, glance_deg: float = 0.0) -> Transform3D:
 	var base := vista.global_transform if looking_out or _anchors.is_empty() else _anchors[station_index].global_transform
-	return Transform3D(Basis(Vector3.UP, deg_to_rad(peek_deg)) * base.basis, base.origin)
+	return Transform3D(Basis(Vector3.UP, deg_to_rad(peek_deg)) * base.basis * Basis(Vector3.RIGHT, deg_to_rad(glance_deg)), base.origin)
+
+## Whether the eyes can lift to the shelves from where the cook stands.
+func can_glance_up() -> bool:
+	return not looking_out and below_shelves.has(station_index)
+
+## Degrees to lift the eyes for a mouse at `mouse_y_norm` (-1 top edge, 1
+## bottom): nothing below the top of the screen, easing up to
+## GLANCE_MAX_DEG at the very top.
+static func glance_up_degrees(mouse_y_norm: float) -> float:
+	return smoothstep(GLANCE_DEAD_ZONE, 1.0, -mouse_y_norm) * GLANCE_MAX_DEG
 
 ## Degrees to turn for a mouse at `mouse_x_norm` (-1 left edge, 1 right
 ## edge): nothing in the middle, easing up to PEEK_MAX_DEG at the edges.

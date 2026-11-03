@@ -97,7 +97,8 @@ func _stage(scenario: String) -> void:
 			_run(150.0)
 		"pantry":
 			await _open(1)
-			kitchen.camera.global_transform = kitchen.camera.global_transform.rotated_local(Vector3.RIGHT, deg_to_rad(22.0))
+			kitchen.set_process(false)
+			kitchen.camera.global_transform = kitchen.counter_views.pose(0.0, CounterViews.GLANCE_MAX_DEG)
 		"pass":
 			await _open(0)
 			var plate := kitchen.plate

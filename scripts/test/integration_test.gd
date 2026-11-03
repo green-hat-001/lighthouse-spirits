@@ -1673,6 +1673,83 @@ func _test_caretaker_in_the_kitchen() -> void:
 
 ## The working stations in the real kitchen scene, driven through the same
 ## signals and calls the player's hands produce.
+## The pantry dresser in the real kitchen: one shelf per larder, every
+## unlocked ingredient in a spot of its own, and nothing ever runs out.
+func _test_pantry_dresser() -> void:
+	var kitchen: Kitchen = load("res://scenes/kitchen/kitchen.tscn").instantiate()
+	add_child(kitchen)
+	await get_tree().process_frame
+	var pantry := kitchen.pantry
+	var expected: int = 0
+	var shelves_right: bool = true
+	for shelf in pantry.shelf_kinds.size():
+		var kind := pantry.shelf_kinds[shelf] as Ingredient.Shelf
+		var offered := PantryDresser.offering(kind)
+		expected += offered.size()
+		for item in offered:
+			var source := pantry.source_of(item)
+			if source == null or not is_equal_approx(source.position.y, pantry.floor_heights_m[shelf]):
+				shelves_right = false
+	_expect_equal("the dresser has four shelves: garden, catch, grains and spices", Array(pantry.shelf_kinds),
+		[Ingredient.Shelf.GARDEN, Ingredient.Shelf.CATCH, Ingredient.Shelf.GRAIN, Ingredient.Shelf.SPICE])
+	_expect_equal("every unlocked ingredient of each larder has a spot (%d)" % expected, pantry.sources.size(), expected)
+	_expect_equal("and each is on its own larder's shelf", shelves_right, true)
+	var spots_apart: bool = true
+	for a in pantry.sources:
+		for b in pantry.sources:
+			if a != b and is_equal_approx(a.position.y, b.position.y) and absf(a.position.x - b.position.x) < a.slot_size_m.x * 0.99:
+				spots_apart = false
+	_expect_equal("no two spots on a shelf overlap", spots_apart, true)
+
+	var potato: Ingredient = IngredientCatalog.by_id(&"potato")
+	var spot := pantry.source_of(potato)
+	var grip: Interactable = spot.get_node("Grip")
+	grip.hover_entered.emit()
+	_expect_equal("the empty hand over a spot shows what it is", (spot.get_node("Label") as Label3D).visible
+		and (spot.get_node("Label") as Label3D).text == potato.display_name, true)
+	grip.hover_exited.emit()
+	var taken: Array[int] = [0]
+	spot.taken.connect(func(_item: Ingredient) -> void: taken[0] += 1)
+	for index in 100:
+		grip.pressed.emit(spot.global_position)
+		grip.released.emit(spot.global_position)
+		if kitchen.board.views().size() > 2:
+			kitchen.board.clear()
+	await get_tree().process_frame
+	_expect_equal("a spot gives the same thing every time it is taken from, a hundred times over", taken[0], 100)
+	_expect_equal("and still has one to show", spot.get_node("Contents").get_child_count() > 0, true)
+	kitchen.board.clear()
+	grip.pressed.emit(spot.global_position)
+	_expect_equal("what is taken arrives whole on the board", kitchen.board.views().size() == 1
+		and kitchen.board.views()[0].piece.ingredient == potato, true)
+
+	var salt: Ingredient = IngredientCatalog.by_id(&"tidewater_salt")
+	var crock := pantry.source_of(salt)
+	var crock_grip: Interactable = crock.get_node("Grip")
+	kitchen.simulation.pot.add_medium(kitchen.simulation.water, 500.0, 20.0)
+	crock_grip.pressed.emit(crock.global_position)
+	_expect_equal("pressing a spice's crock takes a pinch in the hand", crock.state, IngredientSource.State.SCOOPING)
+	crock_grip.dragged.emit(kitchen.pot_view.global_position + Vector3(0.0, IngredientSource.CARRY_HEIGHT_M, 0.0))
+	crock_grip.released.emit(kitchen.pot_view.global_position + Vector3(0.0, IngredientSource.CARRY_HEIGHT_M, 0.0))
+	_expect_equal("and letting it go over the pot seasons what is in it", kitchen.simulation.pot.medium_flavour != null and kitchen.simulation.pot.medium_flavour.salty > 0.0, true)
+
+	crock_grip.secondary_pressed.emit(crock.global_position)
+	_expect_equal("right-clicking a spot reads its label", kitchen.get_node("Hud/Caption").text.begins_with(salt.display_name), true)
+
+	var long := IngredientSource.fit(Vector3(0.38, 0.02, 0.04), Vector3(0.06, 0.11, 0.22))
+	_expect_equal("a long item is turned to run back into its spot", long.turn, true)
+	_expect_equal("and shrunk to fit it", long.footprint.z <= 0.22 and long.footprint.x <= 0.06, true)
+	_expect_near("a small item is never made bigger", IngredientSource.fit(Vector3(0.012, 0.012, 0.012), Vector3(0.08, 0.12, 0.25)).scale, 1.0)
+
+	_expect_near("the eyes stay level with the mouse mid-screen", CounterViews.glance_up_degrees(0.0), 0.0)
+	_expect_near("and lift to the shelves at the top of the screen", CounterViews.glance_up_degrees(-1.0), CounterViews.GLANCE_MAX_DEG)
+	kitchen.counter_views.station_index = 1
+	_expect_equal("you can look up to the shelves from the board", kitchen.counter_views.can_glance_up(), true)
+	kitchen.counter_views.station_index = 2
+	_expect_equal("but not from the stove", kitchen.counter_views.can_glance_up(), false)
+	kitchen.queue_free()
+	await get_tree().process_frame
+
 func _test_kitchen_stations() -> void:
 	var kitchen: Kitchen = load("res://scenes/kitchen/kitchen.tscn").instantiate()
 	add_child(kitchen)
@@ -2342,6 +2419,7 @@ func _finish() -> void:
 
 	await _test_caretaker_in_the_kitchen()
 	await _test_kitchen_stations()
+	await _test_pantry_dresser()
 
 	print("")
 	print("fed path:       ", _fed_transitions, " -> ", _fed_outcome)

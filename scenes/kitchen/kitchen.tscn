@@ -1,8 +1,9 @@
-[gd_scene load_steps=40 format=3]
+[gd_scene load_steps=41 format=3]
 
 [ext_resource type="Script" path="res://systems/kitchen/view/kitchen.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/kitchen/cutting_board.tscn" id="2"]
-[ext_resource type="PackedScene" path="res://scenes/kitchen/ingredient_source.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/kitchen/pantry_dresser.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://assets/models/tools/serving_plate.glb" id="37"]
 [ext_resource type="Script" path="res://systems/kitchen/view/counter_views.gd" id="4"]
 [ext_resource type="Script" path="res://systems/kitchen/view/kitchen_pointer.gd" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/world/coast.tscn" id="8"]
@@ -88,29 +89,18 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6700, 0.0000, 0.1600)
 [node name="CuttingBoard" parent="." instance=ExtResource("2")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2000, 0.0200, 0.0000)
 
-[node name="GardenBasket" parent="." instance=ExtResource("3")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7200, 0.0000, -0.2200)
-shelf = 1
-
-[node name="CatchCrate" parent="." instance=ExtResource("3")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5600, 0.0000, -0.2200)
-shelf = 2
-
-[node name="SpiceTin" parent="." instance=ExtResource("3")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4000, 0.0000, -0.2200)
-shelf = 3
-
-[node name="GrainSack" parent="." instance=ExtResource("3")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2400, 0.0000, -0.2200)
-shelf = 4
+[node name="Pantry" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4000, 0.0000, -0.4500)
 
 [node name="ServingBoard" parent="." instance=ExtResource("2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6200, 0.0160, 0.0600)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6200, 0.0140, 0.0600)
 size_m = Vector2(0.32, 0.224)
 allows_cutting = false
 
 [node name="Board" parent="ServingBoard" index="0"]
-transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0)
+visible = false
+
+[node name="Plate" parent="ServingBoard" instance=ExtResource("37")]
 
 [node name="Surface" parent="ServingBoard" index="1"]
 transform = Transform3D(0.8, 0, 0, 0, 1, 0, 0, 0, 0.8, 0, 0, 0)
@@ -153,6 +143,7 @@ transform = Transform3D(0.9652, -0.0262, 0.2601, 0.0000, 0.9950, 0.1000, -0.2614
 script = ExtResource("4")
 stations = NodePath("../Stations")
 vista = NodePath("../Vista")
+below_shelves = PackedInt32Array(0, 1)
 
 [node name="Camera3D" type="Camera3D" parent="."]
 keep_aspect = 0
@@ -222,8 +213,8 @@ theme_override_colors/font_outline_color = Color(0.1, 0.12, 0.15, 0.55)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 15
 text = "Esc  step back     A / D  along the counter     W  look out to sea     T  taste
-drag  cut / carry / pour / stir     Space + drag  lift food together     right-click  roll · turn · cork · empty the pot · next in the pantry
-Space over the pot  dip the cup     N  name the plated dish     M  on or off the menu"
+drag  cut / carry / pour / stir     Space + drag  lift food together     right-click  roll · turn · cork · empty the pot · read a label
+Space over the pot  dip the cup     N  name the plated dish     M  on or off the menu     mouse to the top  the shelves"
 
 [node name="Caption" type="Label" parent="Hud"]
 anchors_preset = 7

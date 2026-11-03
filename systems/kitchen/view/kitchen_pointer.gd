@@ -8,7 +8,8 @@ extends Node
 ##   HOLDING --left release--> IDLE
 ##
 ## A right press on an Interactable is a one-shot action and never leaves
-## IDLE. Only one Interactable is held at a time, so a drag can never be
+## IDLE. While IDLE the hand also says what it is over (hover_entered and
+## hover_exited), so things can show they can be picked up. Only one Interactable is held at a time, so a drag can never be
 ## split between two owners. While disabled the hand ignores the mouse
 ## entirely; disabling it mid-drag cancels the hold.
 
@@ -24,7 +25,9 @@ var enabled: bool = true:
 		enabled = value
 		if not enabled:
 			cancel()
+			_hover(null)
 var _held: Interactable
+var _hovered: Interactable
 
 func is_holding() -> bool:
 	return state == State.HOLDING
@@ -57,11 +60,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		var point: Variant = _project(event.position, _held.drag_plane)
 		if point != null:
 			_held.dragged.emit(point)
+	elif event is InputEventMouseMotion:
+		_hover(pick(event.position).interactable)
+
+## Moves the hover from whatever it was over to `over`.
+func _hover(over: Interactable) -> void:
+	if over == _hovered:
+		return
+	if is_instance_valid(_hovered):
+		_hovered.hover_exited.emit()
+	_hovered = over
+	if is_instance_valid(_hovered):
+		_hovered.hover_entered.emit()
 
 func _press(screen_position: Vector2) -> void:
 	var hit := pick(screen_position)
 	if hit.interactable == null:
 		return
+	_hover(null)
 	state = State.HOLDING
 	_held = hit.interactable
 	_held.pressed.emit(hit.point)

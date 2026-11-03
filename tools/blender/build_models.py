@@ -538,9 +538,173 @@ def counter():
     kit.save("counter", "assets/models/kitchen/counter.glb")
 
 
+# --------------------------------------------------------------------------
+# The pantry and the pass
+# --------------------------------------------------------------------------
+
+# Shelf tops (m above the counter) and depths, front to back, for the
+# dresser: garden at counter height, then catch, grains and spices. The
+# Godot PantryDresser lays its items out on these, so keep them in step.
+DRESSER_WIDTH, DRESSER_DEPTH = 1.30, 0.30
+DRESSER_SHELVES = [(0.0, 0.30), (0.15, 0.28), (0.29, 0.25), (0.42, 0.22)]
+DRESSER_TOP = 0.58
+
+
+def pantry_dresser():
+    """An open dresser standing behind the counter: a cupboard base below the
+    counter's height, and four open shelves above, stepping back as they
+    rise. Origin: centre of the front-to-back middle of the bottom shelf's
+    top, level with the counter top; front faces -Y."""
+    kit.reset()
+    paint = material("paint", "#7d9e93", roughness=0.75)
+    wood = material("wood", "#cdb08a", roughness=0.85)
+    zinc = material("zinc", "#a3abae", metallic=0.3, roughness=0.45)
+    ice = material("ice", "#e2f0f3", roughness=0.2)
+    straw = material("straw", "#d6bf7c", roughness=0.95)
+    brass = material("brass", "#b8903f", metallic=1.0, roughness=0.35)
+    bm = bmesh.new()
+    w, d = DRESSER_WIDTH, DRESSER_DEPTH
+    back_y = d / 2
+    # Cupboard base, to the ground, with two doors.
+    box(bm, Vector((0, 0, -0.47)), (w, d, 0.90), 0)
+    box(bm, Vector((0, -0.005, -0.905)), (w - 0.02, d - 0.02, 0.03), 0)
+    for dx in (-w / 4, w / 4):
+        panel = kit.box_bm(Vector((dx, -d / 2 - 0.006, -0.48)), (w / 2 - 0.05, 0.012, 0.78), 0)
+        front = min(panel.faces, key=lambda f: f.calc_center_median().y)
+        bmesh.ops.inset_region(panel, faces=[front], thickness=0.035, depth=-0.005)
+        kit.merge(bm, panel)
+        tube(bm, [(dx * 0.2, -d / 2 - 0.012, -0.18), (dx * 0.2, -d / 2 - 0.02, -0.18), (dx * 0.2, -d / 2 - 0.028, -0.18),
+                  (dx * 0.2, -d / 2 - 0.031, -0.18)], [0.007, 0.006, 0.011, 0.0], 10, 5)
+    # Side panels, stepping back with the shelves, and a scalloped top.
+    for side in (1, -1):
+        x = side * (w / 2 - 0.0125)
+        outline = [(back_y, -0.02), (-d / 2, -0.02)]
+        for (z, depth), (z_next, _d) in zip(DRESSER_SHELVES, DRESSER_SHELVES[1:] + [(DRESSER_TOP, 0)]):
+            front = back_y - depth
+            outline += [(front, z + 0.02), (front, z_next - 0.03)]
+        outline += [(back_y - 0.20, DRESSER_TOP + 0.04), (back_y, DRESSER_TOP + 0.06)]
+        pts = [(x - 0.0125, y, z) for y, z in outline]
+        kit.prism(bm, pts, (0.025, 0, 0), 0)
+    # The back, in planks.
+    for i in range(10):
+        px = -w / 2 + 0.025 + (w - 0.05) * (i + 0.5) / 10
+        box(bm, Vector((px, back_y - 0.006, DRESSER_TOP / 2)), ((w - 0.05) / 10 - 0.002, 0.012, DRESSER_TOP), 0)
+    # Shelves, each with a rail to keep jars from walking off.
+    for i, (z, depth) in enumerate(DRESSER_SHELVES):
+        y = back_y - depth / 2
+        box(bm, Vector((0, y, z - 0.0125)), (w - 0.05, depth, 0.025), 1, bevel=0.003, segments=1)
+        if i >= 2:
+            tube(bm, [(-w / 2 + 0.025, back_y - depth + 0.008, z + 0.035), (w / 2 - 0.025, back_y - depth + 0.008, z + 0.035)],
+                 0.004, 6, 5)
+    # The cornice.
+    box(bm, Vector((0, back_y - 0.13, DRESSER_TOP + 0.015)), (w + 0.04, 0.26, 0.03), 1, bevel=0.006, segments=2)
+    # Straw on the garden shelf.
+    straw_bm = bmesh.new()
+    bmesh.ops.create_grid(straw_bm, x_segments=24, y_segments=6, size=0.5)
+    for v in straw_bm.verts:
+        v.co.x *= (w - 0.07)
+        v.co.y = v.co.y * (DRESSER_SHELVES[0][1] - 0.03) + back_y - DRESSER_SHELVES[0][1] / 2
+        v.co.z = 0.002 + 0.0015 * kit.bumpy(v.co * 40, 1.0, 1.0, 5) - 0.0015
+    ext = bmesh.ops.extrude_face_region(straw_bm, geom=list(straw_bm.faces))
+    bmesh.ops.translate(straw_bm, vec=(0, 0, -0.002), verts=[g for g in ext["geom"] if isinstance(g, bmesh.types.BMVert)])
+    for f in straw_bm.faces:
+        f.material_index = 4
+    kit.merge(bm, straw_bm)
+    # A zinc tray of crushed ice on the catch shelf.
+    z, depth = DRESSER_SHELVES[1]
+    y = back_y - depth / 2
+    tray_w, tray_d = w - 0.08, depth - 0.03
+    box(bm, Vector((0, y, z + 0.002)), (tray_w, tray_d, 0.004), 2)
+    for sx, sy, lx, ly in ((0, tray_d / 2, tray_w, 0.004), (0, -tray_d / 2, tray_w, 0.004),
+                           (tray_w / 2, 0, 0.004, tray_d), (-tray_w / 2, 0, 0.004, tray_d)):
+        box(bm, Vector((sx, y + sy, z + 0.012)), (lx, ly, 0.024), 2)
+    ice_bm = bmesh.new()
+    bmesh.ops.create_grid(ice_bm, x_segments=40, y_segments=8, size=0.5)
+    for v in ice_bm.verts:
+        v.co.x *= tray_w - 0.012
+        v.co.y = v.co.y * (tray_d - 0.012) + y
+        v.co.z = z + 0.014 + 0.004 * (kit.bumpy(v.co * 60, 1.0, 1.0, 9) - 1.0)
+    ext = bmesh.ops.extrude_face_region(ice_bm, geom=list(ice_bm.faces))
+    bmesh.ops.translate(ice_bm, vec=(0, 0, -0.01), verts=[g for g in ext["geom"] if isinstance(g, bmesh.types.BMVert)])
+    for f in ice_bm.faces:
+        f.material_index = 3
+    kit.merge(bm, ice_bm)
+    mesh_object("pantry_dresser", bm, [paint, wood, zinc, ice, straw, brass], smooth_angle=30)
+    kit.save("pantry_dresser", "assets/models/pantry/pantry_dresser.glb")
+
+
+# Where a crock's or sack's contents heap, above its base.
+CROCK_MOUTH_Z = 0.074
+SACK_MOUTH_Z = 0.082
+
+
+def spice_crock():
+    """A small glazed crock, open, its spice heaped at the mouth, with a
+    paper label tied round its belly."""
+    kit.reset()
+    glaze = material("glaze", "#5e7f8e", roughness=0.25)
+    clay = material("clay", "#c99a6e", roughness=0.9)
+    label = material("label", "#efe6cf", roughness=0.9)
+    bm = bmesh.new()
+    profile = [(0, 0.0), (0.026, 0.0), (0.031, 0.006), (0.035, 0.03), (0.034, 0.055), (0.029, 0.072),
+               (0.030, 0.080), (0.027, 0.082), (0.024, 0.076), (0.026, 0.06), (0.024, CROCK_MOUTH_Z - 0.006),
+               (0, CROCK_MOUTH_Z - 0.006)]
+    lathe(bm, profile, 18, 0, mats=[1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0])
+    band = bmesh.new()
+    lathe(band, [(0.0352, 0.026), (0.0362, 0.028), (0.0362, 0.05), (0.0352, 0.052), (0.034, 0.05),
+                 (0.034, 0.028)], 18, 2, closed=True)
+    kit.merge(bm, band)
+    mesh_object("spice_crock", bm, [glaze, clay, label], smooth_angle=40)
+    kit.save("spice_crock", "assets/models/pantry/spice_crock.glb")
+
+
+def grain_sack():
+    """A small burlap sack, its neck rolled down, its grain showing."""
+    kit.reset()
+    burlap = material("burlap", "#b89a6a", roughness=0.95)
+    twine = material("twine", "#8a6a44", roughness=0.9)
+    bm = bmesh.new()
+    profile = [(0, 0.0), (0.058, 0.0), (0.072, 0.012), (0.078, 0.04), (0.074, 0.068), (0.068, 0.08),
+               (0.074, 0.088), (0.078, 0.096), (0.072, 0.1), (0.064, 0.094), (0.062, SACK_MOUTH_Z),
+               (0, SACK_MOUTH_Z)]
+
+    def slump(p, a, i):
+        return p * kit.bumpy(Vector((math.cos(a), math.sin(a), p.z * 8.0)), 1.6, 0.06, 3)
+
+    lathe(bm, profile, 20, 0, shape=slump)
+    # The slump is uneven; set the sack's foot back on the origin.
+    foot = [v.co for v in bm.verts if v.co.z < 0.002]
+    shift = Vector(((min(p.x for p in foot) + max(p.x for p in foot)) / 2, (min(p.y for p in foot) + max(p.y for p in foot)) / 2, 0))
+    for v in bm.verts:
+        v.co -= shift
+    tube(bm, [(0.071 * math.cos(TAU * k / 20), 0.071 * math.sin(TAU * k / 20), 0.078) for k in range(20)],
+         0.003, 4, 1, closed=True)
+    mesh_object("grain_sack", bm, [burlap, twine], smooth_angle=45)
+    kit.save("grain_sack", "assets/models/pantry/grain_sack.glb")
+
+
+def serving_plate():
+    """The pass's serving platter: a glazed oval, its well level with the
+    origin like the board's top, rim raised and banded in blue."""
+    kit.reset()
+    glaze = material("glaze", "#f1ece0", roughness=0.2)
+    band = material("band", "#5876a0", roughness=0.25)
+    bm = bmesh.new()
+    sx, sy = 0.32 / 2, 0.224 / 2
+    profile = [(0, -0.014), (0.70, -0.014), (0.78, -0.008), (0.86, -0.002), (0.93, 0.004), (0.985, 0.0075),
+               (1.0, 0.006), (0.975, 0.0045), (0.88, 0.0005), (0.84, 0.0), (0, 0.0)]
+    lathe(bm, profile, 40, 0, mats=[0, 0, 0, 0, 1, 1, 0, 0, 0, 0])
+    for v in bm.verts:
+        v.co.x *= sx
+        v.co.y *= sy
+    mesh_object("serving_plate", bm, [glaze, band], smooth_angle=40)
+    kit.save("serving_plate", "assets/models/tools/serving_plate.glb")
+
+
 MODELS = {f.__name__: f for f in (
     potato, chilli, sunflower_head, sunflower_seed, gas_stove, pot, slotted_spoon, water_jug,
-    oil_bottle, oil_press, oil_cup, sunflower_seed_cake, mezzaluna, cutting_board, basket, counter)}
+    oil_bottle, oil_press, oil_cup, sunflower_seed_cake, mezzaluna, cutting_board, basket, counter,
+    pantry_dresser, spice_crock, grain_sack, serving_plate)}
 
 
 def main():

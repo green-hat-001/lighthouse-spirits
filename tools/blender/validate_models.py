@@ -55,6 +55,15 @@ SPEC = {
                {"basket": "MESH"}, {"wicker"}),
     "counter": ("assets/models/kitchen/counter.glb", (300, 800), (1.6, 0.6, 0.9), 0.01, "top",
                 {"counter": "MESH"}, {"top", "base"}),
+    # The pantry and the pass.
+    "pantry_dresser": ("assets/models/pantry/pantry_dresser.glb", (1500, 6000), (1.34, 0.33, 1.53), 0.03, "none",
+                       {"pantry_dresser": "MESH"}, {"paint", "wood", "zinc", "ice", "straw", "brass"}),
+    "spice_crock": ("assets/models/pantry/spice_crock.glb", (200, 700), (0.072, 0.072, 0.082), 0.03, "base",
+                    {"spice_crock": "MESH"}, {"glaze", "clay", "label"}),
+    "grain_sack": ("assets/models/pantry/grain_sack.glb", (200, 900), (0.16, 0.16, 0.10), 0.06, "base",
+                   {"grain_sack": "MESH"}, {"burlap", "twine"}),
+    "serving_plate": ("assets/models/tools/serving_plate.glb", (300, 1200), (0.32, 0.224, 0.0215), 0.03, "top_well",
+                      {"serving_plate": "MESH"}, {"glaze", "band"}),
     # The outdoor setting (tools/blender/build_environment.py). The terrain and
     # grass are positioned around the kitchen origin, so their origin is not
     # checked.
@@ -172,6 +181,10 @@ def validate(name):
     elif origin == "top":
         check(abs(hi.z) < eps, name, "top surface at Z = 0")
         check(abs(lo.x + hi.x) < eps and abs(lo.y + hi.y) < 2e-3, name, "centred in X and Y")
+    elif origin == "top_well":  # a plate: its well (where food rests) at Z = 0, the rim rising above it
+        well = [o.matrix_world @ v.co for o in meshes for v in o.data.vertices if abs(v.co.x) < 0.02 and abs(v.co.y) < 0.02]
+        check(well and abs(max(p.z for p in well)) < eps, name, "well at Z = 0")
+        check(abs(lo.x + hi.x) < eps and abs(lo.y + hi.y) < eps, name, "centred in X and Y")
     elif origin == "handle_end":
         check(abs(lo.x) < eps, name, "origin at the end of the handle")
     elif origin == "disc_back":

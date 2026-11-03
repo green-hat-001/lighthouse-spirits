@@ -15,6 +15,9 @@ signal secondary_pressed(point: Vector3)
 ## The hold ended without a release - the player stepped away mid-drag.
 ## Owners abandon whatever the drag was doing.
 signal cancelled
+## The empty hand came over it, and moved off it again.
+signal hover_entered
+signal hover_exited
 
 ## World-space plane drags are projected onto. Owners set it; the default
 ## is the counter surface.
