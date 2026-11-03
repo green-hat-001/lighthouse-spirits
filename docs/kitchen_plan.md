@@ -62,7 +62,7 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 
 ## 4. Perception and outcomes
 
-*Status: 4.1–4.5 code done and covered by the integration suite (`systems/food/food_perception.gd`, `food_texture.gd`, `food_appearance.gd`, `bite_sound.gd`, `dish.gd`, `dish_describer.gd`, `liquid_portion.gd`, `dish_nourishment.gd`). **4.6 not started: it waits for the user's go-ahead**, because it deletes `CulinaryCraftingMatrix` and the technique data and changes the F-key harness and the lifecycle test.*
+*Status: done, including 4.6. The crafting matrix and techniques are retired; spirits are fed real plated food through `DishServingStation`.*
 
 *Changed from the first draft:*
 - Texture has a sixth axis, firmness, so raw vegetables can crunch.
@@ -76,7 +76,7 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 - **4.3 Bite sound selection:** texture → sound layers, weights and pitch. *Check:* crisp fries select crunch; soggy ones select squelch.
 - **4.4 Dish identity:** a plate of pieces and sauces becomes a `Dish` with a fingerprint of its ingredients and how they were cooked. *Check:* two batches cooked the same way share a fingerprint; burnt and perfect batches don't.
 - **4.5 Nourishment:** Dish → `FeedingResult`, with a new ascension-strength field. Quality is measured against each ingredient's ideal doneness ranges (added to `Ingredient` here), never a recipe. *Check:* perfect fries > burnt fries > raw potato, and burnt fries still feed a spirit.
-- **4.6 Migration:** retire `CulinaryCraftingMatrix` and the technique `.tres` files, and replace `_test_crafting_math` and the two-servings assertion. *Check:* the integration suite passes on the new model.
+- **4.6 Migration:** retire `CulinaryCraftingMatrix` and the technique `.tres` files, and replace `_test_crafting_math` and the two-servings assertion. *Check:* the integration suite passes on the new model. *Done:* the lifecycle serves half a potato's fries with simmered kelp and clams and still ascends in two servings.
 
 ## 5. Falling, catching and the moon
 
@@ -131,11 +131,20 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 
 ## 7. Dishes, naming and service
 
-- **7.1 Plating:** pieces on a plate become a `Dish`.
-- **7.2 Naming:** the player names a dish, stored by fingerprint.
-- **7.3 Service menu.** Open question: are menu entries recipes cooked to order, or cooked stock?
-- **7.4 Serving:** adapt `DishServingStation` to the new dish and equipment gating.
-- **7.5 Persistence:** named dishes are saved with progression.
+*Status: 7.1, 7.2, 7.4 and 7.5 done. 7.3 waits on the user.*
+
+- **7.1 Plating:** pieces on a plate become a `Dish`. *Done:* the serving board at the pass, with drizzles and the cup as a ladle.
+- **7.2 Naming:** the player names a dish, stored by fingerprint. *Done:* `DishBook`, N at the pass.
+- **7.3 Service menu.** Open question: are menu entries recipes cooked to order, or cooked stock? *M puts a named dish on the menu; what the menu means for arriving spirits waits on this decision.*
+- **7.4 Serving:** adapt `DishServingStation` to the new dish and equipment gating. *Done in 4.6.*
+- **7.5 Persistence:** named dishes are saved. *Done:* `user://dish_book.cfg`, separate from progression.
+
+## 8. The mystical larder (added)
+
+Essences, ecosystems, butchery, rendering, grains, spices, pot coverings and the authored ingredient tree. All done and covered by the suite; see the latest `CHANGELOG.md` entry and `docs/ingredient_tree.md`. Still to come:
+- **Foraging and fishing out on the coast:** the pantry is unlimited until then.
+- **Weather that moves `KitchenAir`.**
+- **Models for the new ingredients:** see `docs/models_needed.md`.
 
 ## Assets (🎨)
 

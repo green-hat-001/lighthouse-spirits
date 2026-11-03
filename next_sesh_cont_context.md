@@ -4,15 +4,16 @@ Read this first, then `CLAUDE.md` (vision, cooking model, architecture, commands
 
 ## State in one paragraph
 
-*Updated at the end of the session that built the working counter.* Work is on branch **`claude/youthful-pascal-25llfn`**, and everything is committed and pushed. The main scene is the **outdoor kitchen**, and the whole counter works:
-- cutting on the board;
-- lighting and setting the stove by hand;
-- pouring oil and water;
-- lifting cut food into the pot, and stirring, turning and lifting it out with the slotted spoon;
-- pressing sunflower seeds into oil;
-- tasting (T).
+*Updated at the end of the session that built the mystical larder.* Work is on branch **`claude/youthful-pascal-25llfn`**, and everything is committed and pushed.
 
-The simulation is now **per face**. Each face of each piece cooks by what it touches: hot metal, oil, water or wind. The pot has three thermal masses, buoyancy, displacement and oil chemistry, and flavour partitions by solubility. The integration suite passes with **338 checks**. All sound is synthesised from the simulation (`KitchenAudio`, `SoundSynth`). **None of the counter has been play-tested by the user yet.** See the latest `CHANGELOG.md` entry for everything that changed and why.
+The main scene is the **outdoor kitchen**, and the whole counter works:
+- **Pass:** plate on the serving board, drizzle and ladle over it, and name dishes.
+- **Board:** cut, dress whole creatures into every part, and taste.
+- **Stove and pot:** fry, boil, render, steam under a sealed covering (dum), and bake.
+- **Press:** turn sunflower seed into oil.
+- **Pantry:** four shelves (garden, catch, spice, grain).
+
+The crafting matrix is retired, so spirits are fed real plated food. The world has 14 essences, 15 plants, 5 grains, 11 spices and six species with 54 parts, all tied together by a food web (`docs/ingredient_tree.md`). The integration suite passes with **475 checks**. **None of the counter has been play-tested by the user yet.** See the latest `CHANGELOG.md` entry.
 
 ## Files to read, in order
 
@@ -66,7 +67,7 @@ A condensed copy of `docs/kitchen_plan.md`, which has the full pass/fail check f
 - 4.3 Bite-sound layer selection ✅
 - 4.4 Dish fingerprint ✅
 - 4.5 Nourishment and ascension strength ✅
-- 4.6 Retire `CulinaryCraftingMatrix` and techniques, re-tune spirit pacing, give kelp/clam/herb/ember root physical data or retire them ⛔ needs the user's go-ahead
+- 4.6 Retire `CulinaryCraftingMatrix` and techniques ✅ (the user said go)
 
 **5. Falling, catching and the moon** ⛔
 - 5.1 Decisions (uncaught spirit, chance vs readable, catch style, moon vs kindled light) ⛔
@@ -98,7 +99,6 @@ A condensed copy of `docs/kitchen_plan.md`, which has the full pass/fail check f
    Tuning lives in constants: `PourVesselView.TILT_DEG_PER_S`, `PotView.SPOON_REACH_MM`, `CuttingBoard.CARRY_HEIGHT_M`, `StoveView.FULL_TURN_DEG`, and `CircularDrag` for the knob and crank.
 2. **Recorded bite samples**, if wanted, go in `KitchenAudio.recorded_bites`; until then the bites are synthesised.
 3. **Waiting on the user:**
-   - **4.6:** retiring `CulinaryCraftingMatrix` and the technique `.tres` files deletes working code and changes the spirit test harness. Get an explicit go-ahead.
    - **Section 5:** falling and catching spirits, and the moon. It's blocked on the open questions in `CLAUDE.md`.
    - **7.3:** is the service menu recipes cooked to order, or cooked stock?
 

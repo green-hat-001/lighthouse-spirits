@@ -29,7 +29,7 @@ part_name = "Belly"
 tissue = 1
 ingredient = ExtResource("6")
 count = 1
-uses = "Crisp it skin-down; it carries the most lift of all."
+uses = "Crisp it skin-down: rich, and it lifts like the fillet once cooked."
 
 [sub_resource type="Resource" id="part_2"]
 script = ExtResource("2")
@@ -45,7 +45,7 @@ part_name = "Frame"
 tissue = 3
 ingredient = ExtResource("8")
 count = 1
-uses = "Simmer for a clear, light broth; it gives the water its calm."
+uses = "Simmer for a clear, light broth."
 
 [sub_resource type="Resource" id="part_4"]
 script = ExtResource("2")

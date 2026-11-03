@@ -66,7 +66,13 @@ The spirit rendered in-game today is a procedurally built sphere with an emissiv
 
 ## Status and open questions
 
-Phase 1 — spirit FSM, culinary crafting, lighthouse progression — is complete and covered by the integration suite. The next piece of work is the simulated 3D kitchen described in Cooking model, built section by section from `docs/kitchen_plan.md`. Sections 1–3, 4.1–4.5 and all three checkpoints of Section 6 are done and covered by the suite. The counter (board, stove, pot, spoon, vessels, press, tasting) hasn't been play-tested yet. The cut-piece kit waits on assets; all sound is synthesised (`SoundSynth`) until recorded samples replace it. 4.6 (retiring the crafting matrix) waits for the user's go-ahead, and Section 5 waits on the open questions below. The kitchen replaces `CulinaryCraftingMatrix` and the technique `.tres` files as the source of dishes. Until 4.6, the Architecture section below describes both the live serving path and the kitchen modules that are not yet connected to it. `FeedingResult` stays the only contract with the spirit FSM.
+Phase 1 (spirit FSM, lighthouse progression) is complete and covered by the integration suite. The simulated 3D kitchen described in Cooking model is built section by section from `docs/kitchen_plan.md`. Done and covered by the suite:
+- Sections 1–4, including 4.6: the crafting matrix is retired, and spirits are fed real plated food.
+- All three checkpoints of Section 6.
+- 7.1 plating and 7.2 naming.
+- The mystical layer: essences, ecosystems, butchery, grains, spices and pot coverings.
+
+None of the counter has been play-tested yet. The cut-piece kit and whole models for the new ingredients wait on assets. All sound is synthesised (`SoundSynth`) until recorded samples replace it. Section 5 waits on the open questions below, and 7.3 (what the service menu means for spirits) waits on the user. `FeedingResult` stays the only contract with the spirit FSM.
 
 - **Patience is currently a real-time countdown** (`patience_seconds` 25s, then a 10s recovery window, then an `UNFED` outcome). This sits in tension with "coastal rhythm rather than a ticking clock." The loop has been played and approved as-is, so don't quietly re-time it — raise the question if the area comes up. Volatile weather is now the intended source of pressure, which strengthens the case for replacing the timer.
 - **What happens to a spirit that falls and isn't caught.** The stated stake is "don't let them die"; the actual mechanic is undecided.
@@ -93,16 +99,22 @@ godot --headless --editor --quit --path .
 # Play the game (the main scene: the outdoor kitchen).
 # Walking: WASD to walk, mouse to look, E at the counter to step in, Esc to
 # free the mouse (click to take it back).
-# At the counter: A/D along the counter (board, stove, press), W/S to look
+# At the counter: A/D along the counter (pass, board, stove, press), W/S to look
 # out to sea and back, mouse to a screen edge to glance sideways, Esc to
 # step back. Board: click a basket, drag across the board to cut (Space
 # steadies), drag a piece to move it, right-click to roll it, Space + drag
 # to lift it with everything touching it, T to taste. Stove: drag round the
 # knob. Pot: drag to stir with the slotted spoon, drag out over the rim to
 # lift, right-click a piece to turn it, right-click the pot to tip its liquid
-# out. Jug/bottle/cup: drag over the pot
-# to pour (right-click uncorks the bottle). Press: click the sunflower head
-# for seeds, drag round the crank.
+# out; let a lifted sheet (hide, big leaf) go over the pot to cover it,
+# press it to lift it off. Jug/bottle/cup: drag over the pot or the serving
+# board to pour (right-click uncorks the bottle; hold Space with the cup
+# over the pot to dip it). Pantry: click a shelf to take from it,
+# right-click for the next ingredient; spices and grains are carried and
+# let go over the pot, the board or the plate. The first stroke through a
+# whole fish, bird or crab dresses it. Pass: N names the plated dish, M
+# puts it on the menu. Press: click the sunflower head for seeds, drag
+# round the crank.
 godot --path .
 
 # Model kit: rebuild (all, or the named models), validate against
@@ -116,19 +128,27 @@ blender --background --factory-startup --python tools/blender/preview_models.py 
 # builder so it can never overwrite the kitchen kit. validate_models.py covers both.
 blender --background --factory-startup --python tools/blender/build_environment.py [-- lighthouse ...]
 
-# Manual play harness: F = serve a dish, U = buy cheapest retrofit,
-# R = spawn a new spirit after the current one departs
+# Write docs/ingredient_tree.md from the live catalog and food web.
+godot --headless --path . -s res://tools/godot/ingredient_tree_doc.gd
+
+# Manual play harness: F = serve a plate cooked by the simulation (fries with
+# simmered kelp and clams), U = buy cheapest retrofit, R = spawn a new spirit
+# after the current one departs
 godot --path . res://scenes/test_sanctuary.tscn
 ```
 
-There are no separate unit tests and no single-test runner. `scripts/test/integration_test.gd` runs pure checks first (crafting math, affinity, the kitchen simulation, progression economy/unlocks/persistence), then runs a two-spirit lifecycle simulation at `Engine.time_scale = 10`. To add a check, write a `_test_*` function that uses `_expect_equal`/`_expect_near` and call it from `_ready()`. Call `LighthouseProgression.reset()` before the lifecycle run so the station multipliers stay at 1.0. The persistence test writes to the real `user://progression.cfg`.
+There are no separate unit tests and no single-test runner. `scripts/test/integration_test.gd` runs pure checks first (serving, the kitchen simulation, essences, the food web, grains, seasoning, coverings, the shipped world, progression economy/unlocks/persistence), then runs a two-spirit lifecycle simulation at `Engine.time_scale = 10`. To add a check, write a `_test_*` function that uses `_expect_equal`/`_expect_near` (which takes an optional tolerance) and call it from `_ready()`. Call `LighthouseProgression.reset()` before the lifecycle run so the station multipliers stay at 1.0. The persistence test writes to the real `user://progression.cfg`, and the plating test to `user://dish_book.cfg`. `CookedPlates` (`scripts/test/`) cooks plates in code through the real simulation for the suite and the harness.
 
-The food model checks are the exception to what follows. They build their ingredients in code, and only the validation check reads the shipped potato, chilli and sunflower seeds; it is meant to fail if those files break. The kitchen station checks (`_test_kitchen_stations`) run in the real scene with the shipped pot, stove, press and oil, and expect 0.05 turns per gram and a 0.35 oil yield.
+The food model checks build their ingredients in code. The exceptions read shipped content on purpose, and are meant to fail if it breaks:
+- the validation check;
+- `_test_shipped_world`, which validates every ingredient, essence and species, and checks the food web's promises (cooked bream fillet hovers, grouse skin resists char, and so on);
+- `_test_every_carcass_dresses`;
+- the kitchen station checks (`_test_kitchen_stations`). They run in the real scene with the shipped pot, stove, press and oil, and expect 0.05 turns per gram and a 0.35 oil yield.
 
 The rest of the suite asserts against the shipped `data/` content, not fixtures, so some content-only changes break it:
-- `_test_crafting_math` hardcodes the sea kelp, tide pool clam, simmered and raw stats.
-- The lifecycle expects exactly two servings, and `SAFETY_TIMEOUT` is sized for the timings in `example_spirit_basic.tres`.
+- The lifecycle serves half a potato's fries with two simmered sea kelp blades and two tide pool clams, and expects exactly two servings. `SAFETY_TIMEOUT` is sized for the timings in `example_spirit_basic.tres`.
 - The progression tests hardcode upgrade ids, costs and multipliers. They also assert `available_upgrades().size() == 2` after the burner is bought, so adding a new upgrade with no prerequisites, or one that requires the burner, fails the suite even though it is a pure `.tres` addition.
+- `_test_shipped_world` expects six species and at least 90 ingredients.
 
 If you change this data on purpose, update the matching expected values in the test in the same change.
 
@@ -138,7 +158,7 @@ The game has three decoupled modules, and each dependency points in one directio
 
 ```
 LighthouseProgression ──(unlocks, station multipliers)──> DishServingStation
-CulinaryCraftingMatrix ──(FeedingResult)──> DishServingStation
+kitchen food ──Dish──> DishNourishment ──(FeedingResult)──> DishServingStation
 DishServingStation ──SpiritEventBus.feed_spirit_requested──> SpiritController/FSM
 Spirit FSM ──SpiritEventBus.spirit_lifecycle_complete("ASCENDED")──> LighthouseProgression (+light)
 ```
@@ -146,20 +166,22 @@ Spirit FSM ──SpiritEventBus.spirit_lifecycle_complete("ASCENDED")──> Lig
 - **Autoloads** (`autoload/`):
   - `SpiritEventBus` is a signal-only hub. External systems talk to spirits *only* through its signals and never call a `SpiritController` directly.
   - `LighthouseProgression` owns the light, the purchased upgrades and the save/load, and it emits its own signals. There is only one lighthouse, so it does not go through the bus.
-- **Culinary** (`systems/culinary/`):
-  - `CulinaryCraftingMatrix` is a pure static transform from `CraftedDish` (a list of ingredient × technique `DishComponent`s) to `FeedingResult`. It knows nothing about any particular spirit.
-  - `DishServingStation` is the *only* bridge from the culinary module to spirits. It rejects locked content, applies the affinity-match bonus (dominant ingredient affinity vs. the spirit archetype) and the progression station multipliers, then emits on the bus.
+- **Serving** (`systems/culinary/`): `DishServingStation` is the *only* bridge from the kitchen to spirits.
+  - It takes a plated `Dish`, refuses one with locked ingredients, and turns it into a `FeedingResult` through `DishNourishment`.
+  - It adds the affinity bonus when the dish's dominant affinity (by mass) matches the spirit's archetype, and applies the progression station multipliers.
+  - Then it emits on the bus. The crafting matrix and techniques it replaced are gone.
 - **Spirit** (`systems/spirit/`):
   - `SpiritController` (the `scenes/spirit.tscn` root) owns a `SpiritRuntimeState`, which is a mutable per-spawn copy of the stats. The `SpiritArchetype` resource itself is never mutated.
   - `SpiritController` also owns a `SpiritStateMachine`, a flat FSM with one strategy class per state in `states/`. State hooks return the next state or `NO_TRANSITION`.
   - Every transition is checked against `LEGAL_TRANSITIONS`. Adding a state means updating the `SpiritState.State` enum, the legality table, the `_states` map, and the `STATE_NAMES` arrays in both test scripts.
   - `ctx.outcome` (`ASCENDED` / `UNFED`) is set on the path into `DEPARTED`, and `StateDeparted` broadcasts it.
   - `FeedingResult` is the only data contract between the culinary module and the FSM.
-- **Data-driven content** (`resources/` for the scripts, `data/` for `.tres` instances): you add ingredients, techniques, archetypes and upgrades by authoring new `.tres` files, not new code.
-  - `LighthouseProgression` loads every `.tres` in `res://data/upgrades/` automatically.
-  - Only ingredients and techniques with `available_from_start` are usable before an upgrade unlocks them.
+- **Data-driven content** (`resources/` for the scripts, `data/` for `.tres` instances): you add ingredients, essences, species, equipment, archetypes and upgrades by authoring new `.tres` files, not new code.
+  - `LighthouseProgression` loads every `.tres` in `res://data/upgrades/` automatically. `IngredientCatalog` loads every ingredient under `res://data/ingredients/` (subfolders too) and every species in `res://data/creatures/`, and resolves the food web.
+  - Only ingredients with `available_from_start` are usable before an upgrade unlocks them.
+  - The world's content is described, as the game computes it, in `docs/ingredient_tree.md`. Regenerate it with `godot --headless --path . -s res://tools/godot/ingredient_tree_doc.gd` after changing content.
   - Upgrade `prerequisites` are upgrade `id` StringNames, and their multipliers stack multiplicatively.
-- **Food** (`systems/food/`) and **Kitchen** (`systems/kitchen/`) are the kitchen simulation. They aren't wired into serving yet.
+- **Food** (`systems/food/`) and **Kitchen** (`systems/kitchen/`) are the kitchen simulation. Plated food reaches spirits through `DishServingStation`.
   - `FoodPiece` is the physical state of one piece of a SOLID ingredient: grams of solids, water and oil, a core, and a surface shell split into six **faces** (`FoodPiece.Face`: ±X, ±Y, ±Z, indexed per face in `face_temp_c`, `face_moisture`, `face_browning`, `face_char`, `face_skin`). Each face's share of the shell is its share of the area. `surface_*` are area-weighted means; setting one sets every face. Cutting makes fresh flesh faces, and `roll()` rotates the faces with the piece.
   - `FoodCutting` is the pure geometry of axis-aligned mezzaluna cuts.
   - `FoodHeating` is the pure physics of one piece in a `HeatExposure`. Every face draws heat through three channels: the liquid it's wetted by, contact (hot metal, the board), and air (which also dries it, via `WaterVapour`). A wet core never passes 100°C, and dry crust insulates and runs hotter at its outside, where browning happens. Flavour exchange follows `FlavourProfile` fat and water solubility. It returns a `HeatExchange`, split by channel, so whoever owns each source can conserve energy and mass. Uniform exposure (no per-face values) is a piece fully immersed in a stirred medium; the tests use it.
@@ -173,12 +195,27 @@ Spirit FSM ──SpiritEventBus.spirit_lifecycle_complete("ASCENDED")──> Lig
   - `Ingredient` carries the physical, thermal and cooking-medium data all of these need, plus a `validate()`. This includes skin permeability, shrinkage and, for oils, smoke point and breakdown rates. The older ingredients (kelp, clam, herb, ember root) have no physical data yet and don't validate.
   - Equipment resources extend `KitchenEquipment` and live in `data/equipment/`. `LighthouseProgression.is_equipment_unlocked` gates them. `CookingVessel` carries the pot's real geometry and metal; `HeatSource` carries how far the flame spreads.
   - `FoodPerception` maps a piece's state to `FoodTexture`, `FoodAppearance` (with per-face values) and `BiteSound`. `TasteNote` puts a bite into words.
-  - `Dish` holds plated pieces and `LiquidPortion`s and has a `fingerprint()` (via `DishDescriber`). `DishNourishment` turns a `Dish` into a `FeedingResult`, including `ascension_strength`.
+  - `Dish` holds plated pieces and `LiquidPortion`s and has a `fingerprint()` (via `DishDescriber`) and a `dominant_affinity()`. `DishNourishment` turns a `Dish` into a `FeedingResult`, including `ascension_strength`. `DishBook` keeps the player's names for dishes by fingerprint (`user://dish_book.cfg`), and which dishes are on the menu.
+  - **Mystical essences:**
+    - A `MysticTrait` (`data/traits/`) is one of eight effects the physics understands (LIFT, GLOW, EMBER, FROST, CHAR_WARD, BLOOM, SOOTHE, NOURISH). It names a trigger (`TraitEffects.activation`), its fat and water solubility, and how it travels by diet.
+    - Food, media and plated liquids carry `TraitDoses`. Essences infuse by solubility like flavour, act in `FoodHeating` through `TraitEffects.act`, lift food in `PotLayout` and on a `RestingSurface`, and feed or calm spirits in `DishNourishment`.
+    - An ingredient's authored doses are `traits` (`TraitDose`); `inherited_traits` are computed.
+  - **Ecosystems:**
+    - A `Creature` (`data/creatures/`) has a diet and `CreaturePart`s (tissue, ingredient, count, uses). `FoodWeb` passes diet essences into tissues at each trait's `diet_share`, prey first.
+    - A whole carcass (an ingredient with `creature`) is dressed on the board into its parts. `dressed_in_field` species offer their parts from the pantry instead.
+  - **Physical extras on `Ingredient`:**
+    - rendering fat (`render_temp_c`, `renders_into`);
+    - grain hydration (`water_uptake_capacity`, `hydration_rate_per_s`) and grain heaps (`FoodPiece.count`, `FoodPiece.handful`);
+    - seasoning potency and scoop (`flavour_potency`, `scoop_g`, `Seasoning`);
+    - `pliability`, for covering a pot;
+    - `raw_firmness`, `edible_share`, `lore` and `pantry_shelf`.
+  - **Pot coverings:** `CookingPot.cover_with` seals a pot with a thin, wide piece. The headspace steams food above the liquid (condensation in `FoodHeating`) or bakes it in a dry pot, and the covering cooks too.
   - A `Transformation` in `data/transformations/` (loaded automatically) describes what one piece of equipment does to one bulk ingredient, e.g. pressing seeds into oil. `ManualProcessor` runs it from the player's work. Transformations are the only authored recipes, and they never describe a finished dish.
   - A piece's local Y axis is height, matching Godot. Food is never rotated off the world's axes in the kitchen, so the food shader picks a face by the world normal.
 - **Kitchen scene** (`scenes/kitchen/`, scripts in `systems/kitchen/view/`) is the playable view layer and the main scene.
   - `Kitchen` owns the one camera and a flat `KitchenViewMode` FSM: WALKING → STEPPING_IN → AT_COUNTER → STEPPING_OUT → WALKING. It gates every input by mode. It also routes food between the stations: board to pot, spoon to board, sunflower head to press. Tasting goes through it too.
-  - `KitchenSimulation` owns every simulation object (pot, board and held `RestingSurface`s, press, liquid stores) and steps them in `_physics_process`. The views (`CuttingBoard`, `StoveView`, `PotView`, `PourVesselView`, `PressView`, `SeedSource`) only draw state and turn the player's hands into calls. No scene script holds food logic.
+  - `KitchenSimulation` owns every simulation object (pot, board, plate and held `RestingSurface`s, press, liquid stores) and steps them in `_physics_process`. The views (`CuttingBoard`, `StoveView`, `PotView`, `PourVesselView`, `PressView`, `SeedSource`, `IngredientSource`) only draw state and turn the player's hands into calls. No scene script holds food logic.
+  - `CuttingBoard` is any food surface. The serving board is an instance with `allows_cutting` off and room for liquids; what is on it is the `Dish`. `IngredientSource` is a pantry shelf (`Ingredient.Shelf`) whose right-click turns to the next ingredient. Spices and grains are carried as a pinch or handful and let go where they land.
   - `KitchenAudio` drives synthesised sound (`SoundSynth`) from the simulation: the sizzle follows steam, the crackle follows bubbling, and the pitch follows oil temperature. It also plays the one-shots of the hands. `KitchenAudio.recorded_bites` swaps in recorded bite layers.
   - The `Caretaker` (`systems/player/`, `scenes/player/`) is the first-person body. It has a ledge guard so it never walks off the cliff.
   - `CounterViews` supplies the station poses, the sea vista and the edge-peek.

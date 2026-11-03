@@ -213,3 +213,17 @@ The first mockup of the outdoor kitchen on the cliff top. These are built by `to
 - **Path:** `assets/models/environment/grass_field.glb`
 - **What it is:** 2,600 tufts of five blades each, scattered on the cliff top in drifts from a fixed seed. They keep clear of the cliff edge, the cook's standing room and the lighthouse. Each vertex stores how far up its blade it is in its colour alpha, which the `coast_grass` wind shader uses to sway only the tips.
 - **Material slots:** `grass_blade` (replaced by the wind shader in Godot).
+
+## From the mystical larder (not built)
+
+Every new ingredient is drawn as the food box it cuts into until it has a model. The rules for each new model:
+- **Path:** `whole_model` points at the `.glb`, under `assets/models/ingredients/` (plants, grains, spices) or `assets/models/catch/<species>/` (carcasses and parts).
+- **Size and slots:** model at the `whole_size_mm` in its `.tres`, with `skin` and `flesh` material slots like the potato.
+- **The reference:** `docs/ingredient_tree.md` lists them all with their lore.
+
+Priority, by how much the player sees them:
+- **Whole carcasses** (dressed on the board): Driftback Bream (260 × 55 × 40 mm), Lantern Eel (380 × 40 × 22), Heath Grouse plucked (180 × 60 × 70), Fogtail Carp (300 × 60 × 50), Cinder Crab (130 × 100 × 45).
+- **Hero parts:** Gale Ram hide (a 220 mm square sheet, 3 mm thick, that drapes over the pot rim; it needs a draped variant for lying across the pot), the ram horn (a 160 mm spiral), and the swim bladder.
+- **Garden:** skybladder kelp (a blade with round gas bladders), lanternwrack, sea cabbage leaf (260 × 240, which also drapes over the pot), stonecap, frostcap, bog lotus root, mirewort, cliff carrot, heathberry, tide leek.
+- **Grains and spices:** one kernel or fleck each. These are instanced many times in heaps, so keep them under 40 triangles.
+- **A serving plate:** the pass uses the cutting-board model at 0.8 scale as a serving board until there is one. Make it about 320 × 224 mm, origin at the centre of the top surface like the board.

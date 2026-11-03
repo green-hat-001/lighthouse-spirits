@@ -2,6 +2,76 @@
 
 Completed work, newest first. Section numbers refer to `docs/kitchen_plan.md`.
 
+## The mystical larder: crafting retired, essences, ecosystems, butchery, grains, spices, dum and plating
+
+**4.6: the crafting matrix is retired.** `CulinaryCraftingMatrix`, `CraftedDish`, `DishComponent`, `PreparationTechnique` and the technique data are gone.
+- `DishServingStation` serves a plated `Dish`. `DishNourishment` judges the real food, the dish's dominant affinity (by mass) earns the match bonus, and locked ingredients are refused.
+- Upgrades no longer unlock techniques.
+- The spirit harness (F) and the lifecycle test serve a plate cooked by the simulation: half a potato's fries with simmered kelp and clams. The spirit still ascends in two servings.
+- A finding: seafood calms a spirit but barely feeds it, and fries do the opposite, so balanced plates matter.
+
+**Mystical essences** (`MysticTrait` in `data/traits/`, `TraitDoses`, `TraitEffects`). Eight effects the physics understands, triggered by the food's state:
+- **LIFT** floats food in the pot and lifts it off the board past its weight.
+- **GLOW** lights it and comforts spirits.
+- **EMBER** heats it from inside, and **FROST** chills it; both spend fuel.
+- **CHAR_WARD** holds off burning.
+- **BLOOM** draws out a flavour once triggered.
+- **SOOTHE** and **NOURISH** calm and feed spirits.
+
+How they move:
+- Essences infuse into a medium by fat and water solubility like flavour, so boiled bones give their essence to the broth.
+- Lifting food lightens a spirit and carries it more surely to the moon.
+- Tasting names awake essences, and they mark a dish's fingerprint.
+
+**Ecosystems** (`Creature`, `CreaturePart`, `FoodWeb`, `IngredientCatalog`):
+- A species has a diet and every part named, each with its tissue and its use.
+- `FoodWeb` passes diet essences into the tissues each essence favours, at its diet share. Grazers can concentrate an essence past their food, and predators inherit a share of their prey's.
+- The first mezzaluna stroke through a whole creature dresses it into all its parts, packed onto the board. It's refused when there's no room.
+- Big animals are dressed in the field, and the pantry offers their parts.
+
+**New physics:**
+- **Fat renders:** fatty food melts its fat into the pot, as its own frying fat or joining fat already there.
+- **Grain:** a handful is one kernel standing for all of them (`FoodPiece.count`). It drinks water and swells, and cooks only once hydrated, so dry heat toasts but doesn't cook it.
+- **Seasoning** sticks by how wet or oily the surface is, and dissolves into a liquid by solubility: salt into water, chilli heat into oil.
+- **Pot coverings:** a thin, wide, pliable piece laid over the rim seals the pot.
+  - Over water, food above the liquid steams by condensation, and a low flame holds a sealed pot near the boil with little water lost. That's dum cooking.
+  - A sealed dry pot bakes like an oven.
+  - The covering cooks too.
+- **Condensation:** steam now condenses onto faces colder than its dew point.
+- **Thin films:** a liquid film too thin to pool takes the metal's temperature, which fixes an instability when fat first renders.
+- **`raw_firmness`:** raw fish, liver and roe are soft, not crunchy.
+
+**The counter:**
+- **The pantry is four shelves** (garden, catch, spice, grain). Right-click turns to the next unlocked ingredient. Whole items go to the board; spices and grains are carried as a pinch or handful and let go over the pot, the board or the plate.
+- **A pass station with a serving board:**
+  - Plate food there and drizzle liquids over it; the same liquid poured twice is one portion.
+  - The oil cup dips into the pot as a ladle (Space).
+  - N names the dish (`DishBook`, kept in `user://dish_book.cfg` by fingerprint) and M puts it on the menu. The plate's label shows its name.
+- **Pot coverings by hand:** let a lifted sheet go over the pot to cover it (Space stretches it taut). Press it to lift it back onto the board.
+
+**The ingredient tree** (all available from the start, generated as `.tres` and described in `docs/ingredient_tree.md`):
+- **14 essences.**
+- **Garden:** 10 new plants: skybladder kelp, lanternwrack, sea cabbage leaf, stonecap, frostcap, bog lotus root, mirewort, cliff carrot, heathberry and tide leek. Sea kelp, the cliff herb and the ember-root gain essences.
+- **Grains:** moonbarley, cliff oats, ember millet and mirebean, plus sunflower seed.
+- **Spices:** 11 of them.
+- **Six species:** Driftback Bream, Lantern Eel, Gale Ram, Heath Grouse, Fogtail Carp and Cinder Crab, with 54 parts between them, from fillets, belly and roe to hide, fat, bones, heads, eyes, teeth, horn, hooves, scales, organs and swim bladder. Two rendered fats: ram tallow and grouse schmaltz.
+- **The food web delivers what the lore says:**
+  - cooked bream fillet rises off the plate because the bream grazes skybladder kelp;
+  - the eel that eats it is lightened but not lifted;
+  - grouse skin resists burning from the stonecaps;
+  - ram fat holds the gale from the windward herbs;
+  - crab claw warms itself from washed-down ember-root.
+
+**Checks:** 338 → 475. New coverage:
+- serving and affinity, every essence effect, infusion by solubility, spirit effects;
+- the food web, biomagnification and cycles;
+- dressing, and every shipped carcass dressing;
+- rendering, grain hydration and toasting, seasoning, coverings;
+- plating, drizzling, dipping and naming;
+- the whole shipped world.
+
+New screenshots: `kitchen_dressed_bream.png`, `kitchen_pass.png` (cooked bream hovering over the serving board) and `kitchen_dum.png`.
+
 ## The working kitchen: per-face cooking, the pot, stove, spoon, vessels and press (Section 6, checkpoints 2 and 3)
 
 **Physics and chemistry (Sections 1–3, extended)**
