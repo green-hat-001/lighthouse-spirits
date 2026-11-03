@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cwavrrlvfina3"
-path="res://.godot/imported/kitchen_press.png-79a472880057a0bce26a93574dd55cfe.ctex"
+uid="uid://elxgf6i773jg"
+path="res://.godot/imported/kitchen_carry.png-8893ea28e8037c03f8bcc5c475b277e7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/screenshots/kitchen_press.png"
-dest_files=["res://.godot/imported/kitchen_press.png-79a472880057a0bce26a93574dd55cfe.ctex"]
+source_file="res://docs/screenshots/kitchen_carry.png"
+dest_files=["res://.godot/imported/kitchen_carry.png-8893ea28e8037c03f8bcc5c475b277e7.ctex"]
 
 [params]
 

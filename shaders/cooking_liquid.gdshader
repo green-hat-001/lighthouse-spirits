@@ -96,4 +96,7 @@ void fragment() {
 	ROUGHNESS = mix(0.6, 0.32, gloss);
 	SPECULAR = mix(0.2, 0.4, gloss);
 	ALPHA = clamp(1.0 - clarity + agitation * 0.15 + wall * 0.2, 0.2, 1.0);
+	// Light carried through the body of the liquid: oil reads golden and a
+	// broth its colour even down in the shade of the pot's walls.
+	EMISSION = liquid_color.rgb * 0.16 * ALPHA;
 }

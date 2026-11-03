@@ -30,9 +30,10 @@ const TOUCH_RECOVER: float = 9.0
 ## How far it leans into its motion, per metre per second, at most.
 const LEAN_PER_MPS: float = 0.5
 const MAX_LEAN_RAD: float = 0.3
-## Turned this much from the line of sight, so the arm comes in from the
-## lower right like a right arm does.
-const ARM_YAW_RAD: float = 0.32
+## Where the right shoulder is, in the eye's space: the arm runs back to it.
+const SHOULDER: Vector3 = Vector3(0.2, -0.32, 0.12)
+## How steeply the sleeve already rises back toward the elbow in the model.
+const ARM_RISE_RAD: float = 0.36
 const SPRING_STEP_S: float = 1.0 / 240.0
 const HOLDING_STIFFNESS: float = 2.2
 
@@ -87,17 +88,24 @@ func _process(delta: float) -> void:
 		_velocity += ((target - global_position) * omega * omega - _velocity * 2.0 * FOLLOW_DAMPING * omega) * step
 		global_position += _velocity * step
 
-	# Face away from the eye, turned so the arm comes in from the right,
-	# leaning into the way it moves.
+	# The arm runs back to the shoulder, below and to the right of the eye,
+	# so however far the hand reaches the sleeve recedes toward the corner of
+	# the view; the hand leans into the way it moves.
 	var eye := kitchen.camera.global_transform
-	var forward := -eye.basis.z
-	forward.y = 0.0
-	var yaw: float = atan2(-forward.x, -forward.z) + ARM_YAW_RAD
+	var shoulder: Vector3 = eye * SHOULDER
+	var back := shoulder - global_position
+	back.y = 0.0
+	if back.length() < 0.01:
+		back = eye.basis.z
+	var yaw: float = atan2(back.x, back.z)
 	var facing := Basis(Vector3.UP, yaw)
 	var local_velocity := facing.inverse() * _velocity
 	var roll: float = clampf(-local_velocity.x * LEAN_PER_MPS, -MAX_LEAN_RAD, MAX_LEAN_RAD)
 	var pitch: float = clampf(local_velocity.z * LEAN_PER_MPS, -MAX_LEAN_RAD, MAX_LEAN_RAD)
-	basis = facing * Basis(Vector3.FORWARD, roll) * Basis(Vector3.RIGHT, pitch)
+	# Reaching up and away, the forearm tips down from the shoulder.
+	var rise: float = shoulder.y - global_position.y
+	var tilt: float = clampf(atan2(rise, maxf(back.length(), 0.05)) - ARM_RISE_RAD, -0.6, 0.6)
+	basis = facing * Basis(Vector3.RIGHT, -tilt) * Basis(Vector3.FORWARD, roll) * Basis(Vector3.RIGHT, pitch)
 
 func _state_now() -> State:
 	if kitchen.view_mode.mode != KitchenViewMode.Mode.AT_COUNTER or not pointer.enabled \

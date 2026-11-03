@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bl7eiunvyoja4"
-path="res://.godot/imported/kitchen_dressed_bream.png-fcc43ccc573eda50d76e7b0f98dcfa0b.ctex"
+uid="uid://blevl0dh6t3js"
+path="res://.godot/imported/kitchen_broth.png-673b71e575745225c5a1568d87a292bc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/screenshots/kitchen_dressed_bream.png"
-dest_files=["res://.godot/imported/kitchen_dressed_bream.png-fcc43ccc573eda50d76e7b0f98dcfa0b.ctex"]
+source_file="res://docs/screenshots/kitchen_broth.png"
+dest_files=["res://.godot/imported/kitchen_broth.png-673b71e575745225c5a1568d87a292bc.ctex"]
 
 [params]
 

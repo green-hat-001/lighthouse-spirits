@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://tirxqa42gaq7"
-path="res://.godot/imported/kitchen_cutting.png-561edb62337328dd5b8b1dc066176a45.ctex"
+uid="uid://ctyrd8xcqrdbo"
+path="res://.godot/imported/kitchen_season.png-d5a1cac07ec6d3cecb7f1e2d448a7e43.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/screenshots/kitchen_cutting.png"
-dest_files=["res://.godot/imported/kitchen_cutting.png-561edb62337328dd5b8b1dc066176a45.ctex"]
+source_file="res://docs/screenshots/kitchen_season.png"
+dest_files=["res://.godot/imported/kitchen_season.png-d5a1cac07ec6d3cecb7f1e2d448a7e43.ctex"]
 
 [params]
 

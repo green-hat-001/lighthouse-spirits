@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://k7stn13qjolc"
-path="res://.godot/imported/kitchen_pot_close.png-3bb917c72e0d5db1ce0d967884569b7d.ctex"
+uid="uid://ci111w55y3lbu"
+path="res://.godot/imported/kitchen_fries.png-5a2df1d7f84a8deb2f369bcd3634272f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/screenshots/kitchen_pot_close.png"
-dest_files=["res://.godot/imported/kitchen_pot_close.png-3bb917c72e0d5db1ce0d967884569b7d.ctex"]
+source_file="res://docs/screenshots/kitchen_fries.png"
+dest_files=["res://.godot/imported/kitchen_fries.png-5a2df1d7f84a8deb2f369bcd3634272f.ctex"]
 
 [params]
 

@@ -74,7 +74,7 @@ Everything listed here is covered by the integration suite and passes.
   - **New ways to cook:** fat renders into frying fat, grain drinks water as it cooks, and spices season what they stick to.
   - **Dum cooking:** a ram's hide stretched over the pot seals it, steaming what's inside, or turns a dry pot into an oven.
 - Plating at the pass: arrange food on the serving board, drizzle oil or ladle broth over it, name the dish (N), and put it on the menu (M).
-- Hearing it cook: synthesised sizzle and crackle that follow the steaming and bubbling, the burner's roar, the spark, the press's ratchet, the blade on the board, pouring, and bites layered from the food's texture.
+- Hearing it cook: synthesised sizzle and crackle that follow the steaming and bubbling, the burner's roar, the spark, the press's ratchet, the blade on the board, pouring, a pinch of spice pattering down, food plopped into water or set down on wood, and bites layered from the food's texture.
 - Seeing it: every ingredient has its own model, cut pieces are shaped by their cut (skin rounded, cut faces flat, the flesh's own grain), the kitchen is cel-shaded and inked, and your hands reach, grip, pinch and steady. Carried food sways, set-down food drops and squashes, and spice falls as flecks and stays on the food.
 - Watching food cook: fries ringed by sizzle foam, oil that shimmers as it heats and smokes when abused, steam and smoke in the wind, and food that browns face by face, shrinks, and steams as it rests.
 

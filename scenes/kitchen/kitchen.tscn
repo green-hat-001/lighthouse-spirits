@@ -161,7 +161,7 @@ transform = Transform3D(1, 0, 0, 0, 0.53149116, 0.84706396, 0, -0.84706396, 0.53
 transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.7291, 0.6844, 0.0000, -0.6844, 0.7291, 0.6200, 0.5600, 0.4400)
 
 [node name="Vista" type="Marker3D" parent="."]
-transform = Transform3D(0.9652, -0.0262, 0.2601, 0.0000, 0.9950, 0.1000, -0.2614, -0.0966, 0.9604, 0.6000, 0.7500, 1.2000)
+transform = Transform3D(0.9985, -0.0055, 0.0547, 0.0000, 0.9950, 0.1000, -0.0550, -0.0999, 0.9935, 0.7500, 0.7500, 1.2000)
 
 [node name="CounterViews" type="Node" parent="." node_paths=PackedStringArray("stations", "vista")]
 script = ExtResource("4")

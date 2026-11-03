@@ -244,7 +244,8 @@ godot --path . -s res://tools/godot/larder_sheet.gd -- <out.png> [folder_or_glb 
 ### Spice crock and grain sack
 - **Paths:** `assets/models/pantry/spice_crock.glb` (0.072 m across, 0.082 m tall) and `assets/models/pantry/grain_sack.glb` (0.16 m across, 0.10 m tall). Both have their origin at the centre of the base.
 - **Mouths:** a crock's spice heaps at 0.074 m and a sack's grain at 0.082 m (`CROCK_MOUTH_Z`, `SACK_MOUTH_Z`).
-- **Material slots:** `glaze`, `clay`, `label`; `burlap`, `twine`.
+- **Contents:** each has a separate object, `contents`, a heaped mound in its mouth. Godot tints it the colour of what it holds.
+- **Material slots:** `glaze`, `clay`, `label`, `contents`; `burlap`, `twine`, `contents`.
 
 ### Serving plate
 - **Path:** `assets/models/tools/serving_plate.glb`

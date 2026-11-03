@@ -107,7 +107,9 @@ func _process(delta: float) -> void:
 	var pot := simulation.pot
 	var oily: bool = pot.has_pool() and pot.medium.fat_fraction > 0.5
 	var watery: bool = pot.has_pool() and not oily
-	var steaming: float = clampf(sqrt(pot.steam_g_per_s / FULL_SIZZLE_STEAM_G_PER_S), 0.0, 1.0)
+	# Net steam dips below zero for a moment when cold food condenses vapour
+	# onto itself; that is silence, not a sizzle.
+	var steaming: float = clampf(sqrt(maxf(pot.steam_g_per_s, 0.0) / FULL_SIZZLE_STEAM_G_PER_S), 0.0, 1.0)
 	_set_level(sizzle, steaming if oily else 0.0)
 	sizzle.pitch_scale = lerpf(0.85, 1.2, clampf((pot.temp_c - SIZZLE_PITCH_FROM_C) / (SIZZLE_PITCH_TO_C - SIZZLE_PITCH_FROM_C), 0.0, 1.0))
 	_set_level(crackle, clampf(pot.bubbling * 1.6, 0.0, 1.0) if oily else 0.0)

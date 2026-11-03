@@ -63,6 +63,15 @@ Kitchen plan Section 9. Decided with the user: the pantry is a dresser behind th
 - **New synthesised one-shots:** a pinch pattering down, food plopped into water, food set down on wood.
 - **`tools/godot/kitchen_reel.tscn`** plays a scripted turn at the counter through the real input, for recording with `--write-movie`. **`tools/godot/kitchen_shots.tscn`** stages scenes in the real kitchen and saves screenshots.
 
+**Found by playing the reel:**
+- **Looking up at the pantry** latches (`CounterViews.glance`). The mouse at the top edge lifts the eyes to the shelves, and they come down only at the bottom edge. Following the mouse's height made the shelves slide away from the hand.
+- **The arm runs back to a shoulder** below and to the right of the eye, so reaching up and away the sleeve recedes toward the corner instead of filling the view.
+- **The look out to sea** is turned 12° toward open water, so the dresser frames the left edge instead of covering the cliff.
+- **Oil and broth** carry a little of their own colour as light, so they read in the shade of the pot's walls.
+- **The sizzle's volume** went NaN when net steam dipped below zero, which happens as cold food condenses vapour onto itself.
+
+**Screenshots:** `docs/screenshots/kitchen_*.png` are rendered in Forward+ (lavapipe in the container), replacing the box-era ones. `docs/screenshots/kitchen_reel.mp4` is the scripted turn at the counter, with its synthesised sound.
+
 **Fixed:** the glTF exporter was writing a fake white `COLOR_0` and moving the real vertex colours to `COLOR_1`, which also hid the grass field's sway mask. `kit.save` now exports only the active colour attribute, and the grass field is rebuilt.
 
 **Changed:** at the counter the mouse is confined and hidden, because the hand stands in for the cursor. The suite's mouse-mode checks are updated.
