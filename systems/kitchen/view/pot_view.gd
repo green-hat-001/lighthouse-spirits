@@ -33,6 +33,9 @@ enum SpoonState { IDLE, STIRRING, LIFTING }
 const FLOOR_Y_M: float = 0.0035
 const RIM_Y_M: float = 0.123
 const MM_TO_M: float = 0.001
+## The render layer the pot and everything in it is drawn on, which the gas
+## flame's light leaves out.
+const POT_LAYER: int = 1 << 1
 ## The spoon's bowl catches food this near its centre, in mm, up to this
 ## much footprint.
 const SPOON_REACH_MM: float = 14.0
@@ -51,7 +54,18 @@ const BOIL_BUBBLES: int = 160
 const FULL_STEAM_G_PER_S: float = 0.6
 const SHIMMER_FROM_C: float = 60.0
 const SHIMMER_FULL_C: float = 190.0
-const WATER_COLOR: Color = Color(0.62, 0.74, 0.8, 1.0)
+const WATER_COLOR: Color = Color(0.66, 0.74, 0.72, 1.0)
+## Water takes this colour as what dissolves into it gives it body.
+const BROTH_COLOR: Color = Color(0.8, 0.6, 0.3, 1.0)
+## Ripples the surface can carry at once (cooking_liquid.gdshader keeps the
+## same number).
+const MAX_RIPPLES: int = 6
+## Food dropped in rings the surface by its weight, up to full at this.
+const FULL_RIPPLE_G: float = 60.0
+## A swirl set going by the spoon dies away at this rate (per second), and
+## the stroke's turn about the middle feeds it this much.
+const SWIRL_DECAY: float = 1.2
+const SWIRL_FROM_STROKE: float = 0.8
 
 @export var simulation: KitchenSimulation
 
@@ -64,6 +78,11 @@ var _lifted_views: Array[FoodPieceView] = []
 var _spoon_mm: Vector2
 var _spoon_world: Vector3
 var _surface_material := ShaderMaterial.new()
+## Rings spreading on the liquid: (x, z) in the pot's space, when (s), how
+## hard.
+var _ripples: Array[Vector4] = []
+var _swirl_angle: float = 0.0
+var _swirl_rate: float = 0.0
 var _foam_multimesh := MultiMesh.new()
 
 @onready var _surface: MeshInstance3D = $Model/liquid_surface
@@ -90,6 +109,7 @@ func _ready() -> void:
 	_foam_multimesh.instance_count = FOAM_INSTANCES
 	_foam_multimesh.visible_instance_count = 0
 	_foam.multimesh = _foam_multimesh
+	_on_pot_layer(self)
 
 func pot() -> CookingPot:
 	return simulation.pot
@@ -155,6 +175,8 @@ func turn(piece: FoodPiece) -> void:
 func _process(delta: float) -> void:
 	_sync_covering()
 	_sync_views(delta)
+	_swirl_angle += _swirl_rate * delta
+	_swirl_rate *= exp(-SWIRL_DECAY * delta)
 	_draw_liquid()
 	_draw_foam()
 	_draw_air()
@@ -170,6 +192,7 @@ func _sync_covering() -> void:
 		_covering_view = FoodPieceView.new(covering)
 		_covering_view.may_hover = false
 		add_child(_covering_view)
+		_on_pot_layer(_covering_view)
 		_covering_view.grip.pressed.connect(func(_point: Vector3) -> void:
 			var lifted := pot().uncover()
 			if lifted:
@@ -205,7 +228,22 @@ func _view_position(placement: PotPlacement) -> Vector3:
 		FLOOR_Y_M + placement.bottom_mm * MM_TO_M,
 		(placement.centre_mm.y - size.z * 0.5) * MM_TO_M)
 
+## Rings the liquid's surface at a point in the pot (mm from its centre),
+## `strength` 0 to 1.
+func ripple(at_mm: Vector2, strength: float) -> void:
+	if pot().medium == null:
+		return
+	_ripples.append(Vector4(at_mm.x * MM_TO_M, at_mm.y * MM_TO_M, _clock(), clampf(strength, 0.0, 1.0)))
+	while _ripples.size() > MAX_RIPPLES:
+		_ripples.pop_front()
+
+func _clock() -> float:
+	return Time.get_ticks_msec() * 0.001
+
 func _make_view(piece: FoodPiece) -> FoodPieceView:
+	var placement := pot().placement_of(piece)
+	if placement:
+		ripple(placement.centre_mm, piece.total_mass_g() / FULL_RIPPLE_G)
 	var view := FoodPieceView.new(piece)
 	view.steams_in_air = false
 	view.may_hover = false
@@ -217,7 +255,14 @@ func _make_view(piece: FoodPiece) -> FoodPieceView:
 	view.grip.cancelled.connect(_on_spoon_cancelled)
 	view.grip.secondary_pressed.connect(func(_point: Vector3) -> void: turn(piece))
 	_views[piece] = view
+	_on_pot_layer(view)
 	return view
+
+## Draws everything under `node` on POT_LAYER only.
+static func _on_pot_layer(node: Node) -> void:
+	for visual: VisualInstance3D in node.find_children("*", "VisualInstance3D", true, false):
+		if not visual is Light3D:
+			visual.layers = POT_LAYER
 
 func _draw_liquid() -> void:
 	var cooking := pot()
@@ -228,12 +273,27 @@ func _draw_liquid() -> void:
 	var medium := cooking.medium
 	var oily: bool = medium.fat_fraction > 0.5
 	var color: Color = medium.tint_color if oily else WATER_COLOR
+	var broth: float = 0.0
 	if oily:
 		color = color.lerp(medium.spent_color, cooking.medium_breakdown)
-		if cooking.medium_flavour:
-			color = color.lerp(Color(0.85, 0.22, 0.08), clampf(cooking.medium_flavour.heat, 0.0, 1.0) * 0.6)
+	elif cooking.medium_flavour:
+		var body := cooking.medium_flavour
+		# A long simmer of bones and kelp reaches umami of about 0.05-0.1: by
+		# then the water is a golden broth.
+		broth = clampf((body.umami + body.sweet * 0.5 + body.salty * 0.2 + body.aroma * 0.4) * 9.0, 0.0, 0.85)
+		color = color.lerp(BROTH_COLOR, broth)
+	if cooking.medium_flavour:
+		color = color.lerp(Color(0.85, 0.22, 0.08), clampf(cooking.medium_flavour.heat, 0.0, 1.0) * 0.6)
 	_surface_material.set_shader_parameter("liquid_color", color)
-	_surface_material.set_shader_parameter("clarity", 0.5 if oily else 0.7)
+	_surface_material.set_shader_parameter("clarity", 0.5 if oily else lerpf(0.55, 0.15, broth))
+	_surface_material.set_shader_parameter("now", _clock())
+	_surface_material.set_shader_parameter("centre", Vector2(global_position.x, global_position.z))
+	_surface_material.set_shader_parameter("radius", cooking.vessel.interior_radius_mm() * MM_TO_M)
+	_surface_material.set_shader_parameter("swirl", _swirl_angle)
+	var rings := PackedVector4Array()
+	for index in MAX_RIPPLES:
+		rings.append(_ripples[index] if index < _ripples.size() else Vector4(0.0, 0.0, -100.0, 0.0))
+	_surface_material.set_shader_parameter("ripples", rings)
 	_surface_material.set_shader_parameter("gloss", 0.9 if oily else 0.7)
 	var shimmer: float = clampf((cooking.temp_c - SHIMMER_FROM_C) / (SHIMMER_FULL_C - SHIMMER_FROM_C), 0.0, 1.0) if oily else 0.0
 	_surface_material.set_shader_parameter("shimmer", shimmer)
@@ -343,6 +403,12 @@ func _on_spoon_dragged(point: Vector3) -> void:
 		SpoonState.STIRRING:
 			if at_mm.length() <= pot().vessel.interior_radius_mm() - 6.0:
 				pot().stir(_spoon_mm, at_mm, STIR_REACH_MM)
+				# The stroke's turn about the middle sets the liquid swirling;
+				# the spoon's wake ripples it.
+				if _spoon_mm.length() > 5.0 and at_mm.length() > 5.0:
+					_swirl_rate += _spoon_mm.angle_to(at_mm) * SWIRL_FROM_STROKE / maxf(get_process_delta_time(), 0.008) * 0.05
+				if at_mm.distance_to(_spoon_mm) > 12.0:
+					ripple(at_mm, 0.25)
 				_spoon_mm = at_mm
 			else:
 				_lift()

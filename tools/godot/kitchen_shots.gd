@@ -12,7 +12,7 @@ extends Node
 ## scenarios it runs them all.
 
 const SHOT_SIZE := Vector2i(1280, 720)
-const SCENARIOS: Array[String] = ["board", "dressed", "fries", "pantry", "pass", "dum", "closeup"]
+const SCENARIOS: Array[String] = ["board", "dressed", "fries", "pantry", "pass", "dum", "closeup", "broth"]
 
 var kitchen: Kitchen
 
@@ -126,4 +126,16 @@ func _stage(scenario: String) -> void:
 			for stick in CookedPlates.cooked_sticks(_ingredient(&"potato"), 10.0, kitchen.simulation.oil, 180.0, 0.0).slice(0, 3):
 				board.receive([stick], origin + Vector3(-0.1, 0.0, 0.07))
 			_close_on(origin + Vector3(0.0, 0.0, 0.03), 0.32)
+		"broth":
+			await _open(2)
+			var pot := kitchen.simulation.pot
+			pot.add_medium(kitchen.simulation.water, 900.0, 92.0)
+			kitchen.stove.set_knob(120.0)
+			for id: StringName in [&"sea_kelp", &"tide_pool_clam", &"tide_pool_clam", &"driftback_bream_frame"]:
+				pot.add_piece(FoodPiece.from_ingredient(_ingredient(id), 15.0))
+			_run(400.0)
+			await _settle_frames(3)
+			pot.add_piece(FoodPiece.from_ingredient(_ingredient(&"stonecap"), 15.0), Vector2(30.0, 20.0))
+			await _settle_frames(8)
+			_close_on(kitchen.pot_view.global_position + Vector3(0.0, 0.08, 0.0), 0.3, 65.0)
 	await _settle_frames(4)

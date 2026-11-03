@@ -36,8 +36,12 @@ func _ready() -> void:
 	_light.omni_range = 0.12
 	_light.omni_attenuation = 2.2
 	_light.light_specular = 0.1
+	# The flame lights the burner and the stove, never what is in the pot:
+	# without this the light would shine up through the pot's base and blue
+	# everything inside it (PotView draws on POT_LAYER).
 	_light.shadow_enabled = false
-	_light.position = Vector3(0.0, 0.01, 0.0)
+	_light.light_cull_mask = ~PotView.POT_LAYER
+	_light.position = Vector3(0.0, 0.004, 0.0)
 	add_child(_light)
 	_apply()
 

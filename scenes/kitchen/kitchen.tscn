@@ -97,6 +97,13 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6700, 0.0000, 0.1600)
 [node name="CuttingBoard" parent="." instance=ExtResource("2")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2000, 0.0200, 0.0000)
 
+[node name="Fill" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.9659, 0, -0.2588, -0.1477, 0.8211, -0.5513, 0.2125, 0.5708, 0.7932, 0, 2, 2)
+light_color = Color(1, 0.93, 0.84, 1)
+light_energy = 0.4
+light_specular = 0.15
+sky_mode = 1
+
 [node name="Pantry" parent="." instance=ExtResource("3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4000, 0.0000, -0.4500)
 
