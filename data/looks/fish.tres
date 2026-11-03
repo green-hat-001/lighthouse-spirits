@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="FoodLook" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/food_look.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+roundness = 0.5
+cut_edge_mm = 0.6
+wobble_mm = 0.3
+wobble_size_mm = 16
+pattern = 3
+pattern_color = Color(0.86, 0.8, 0.78, 1)
+pattern_strength = 0.45
+pattern_size_mm = 1.8
+curl_when_cooked = 0.35
+crust_blister = 0.35

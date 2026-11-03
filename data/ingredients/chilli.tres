@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="Ingredient" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="Ingredient" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="1"]
 [ext_resource type="Script" path="res://resources/flavour_profile.gd" id="2"]
 [ext_resource type="PackedScene" path="res://assets/models/ingredients/chilli.glb" id="3"]
+[ext_resource type="Resource" path="res://data/looks/stalk.tres" id="look"]
 
 [sub_resource type="Resource" id="Resource_flavour"]
 script = ExtResource("2")
@@ -13,6 +14,7 @@ aroma = 0.5
 
 [resource]
 script = ExtResource("1")
+look = ExtResource("look")
 id = &"chilli"
 display_name = "Chilli"
 tint_color = Color(0.8, 0.12, 0.08, 1)

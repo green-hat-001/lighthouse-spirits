@@ -119,6 +119,8 @@ func _ready() -> void:
 	_test_coverings()
 	_test_shipped_world()
 	_test_every_carcass_dresses()
+	_test_cut_piece_mesh()
+	_test_every_whole_model_fits()
 	_test_shipped_transformations_validate()
 	_test_transformation_validation()
 	_test_press_turns_work_into_oil()
@@ -932,6 +934,101 @@ func _test_dressing_a_carcass() -> void:
 
 ## Every whole creature the pantry offers opens into its parts on an
 ## empty board.
+## A cut piece's mesh fills its box and never leaves it, keeps its cut
+## faces flat and its skin rounded, and builds fast enough to cut freely.
+func _test_cut_piece_mesh() -> void:
+	var look := FoodLook.new()
+	look.roundness = 0.9
+	look.wobble_mm = 0.8
+	var size := Vector3(45.0, 45.0, 55.0)
+	# A potato half: cut on +X, skin everywhere else.
+	var skin := PackedFloat64Array([0.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+	var mesh := FoodPieceMesh.build(size, skin, look)
+	var arrays := mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var bounds := AABB(vertices[0], Vector3.ZERO)
+	var on_cut_face: int = 0
+	for vertex in vertices:
+		bounds = bounds.expand(vertex)
+		# Within the knife's bevel of the cut plane.
+		if vertex.x * 1000.0 > size.x - look.cut_edge_mm:
+			on_cut_face += 1
+	var size_m := size * 0.001
+	_expect_equal("a cut piece's mesh never leaves the piece's box",
+		bounds.position.x >= -1e-6 and bounds.position.y >= -1e-6 and bounds.position.z >= -1e-6
+		and bounds.end.x <= size_m.x + 1e-6 and bounds.end.y <= size_m.y + 1e-6 and bounds.end.z <= size_m.z + 1e-6, true)
+	_expect_equal("and fills it to within 2 mm on every side",
+		bounds.size.x > size_m.x - 0.002 and bounds.size.y > size_m.y - 0.002 and bounds.size.z > size_m.z - 0.002, true)
+	_expect_equal("its cut face is flat on the cut plane (%d vertices)" % on_cut_face, on_cut_face >= 30, true)
+	var far_corner := Vector3(0.0, size.y, size.z) * 0.001
+	var nearest: float = INF
+	for vertex in vertices:
+		nearest = minf(nearest, vertex.distance_to(far_corner))
+	_expect_equal("and its skin rounds off the corners the knife never touched", nearest > 0.008, true)
+	# No seams: the faces share their edges exactly, so the mesh is closed.
+	_expect_equal("its faces meet without seams", _mesh_is_closed(mesh), true)
+	var fry := Vector3(10.0, 10.0, 80.0)
+	var started := Time.get_ticks_usec()
+	for index in 20:
+		FoodPieceMesh.build(fry + Vector3(index * 0.37, 0.0, 0.0), PackedFloat64Array([0, 0, 0, 0, 1, 0]), look)
+	var per_build_ms: float = (Time.get_ticks_usec() - started) / 20000.0
+	_expect_equal("a fry's mesh builds in under 4 ms (%.2f ms)" % per_build_ms, per_build_ms < 4.0, true)
+	_expect_equal("and pieces of the same size share one mesh",
+		FoodPieceMesh.build(fry, skin, look) == FoodPieceMesh.build(fry, skin, look), true)
+
+## True when every edge of the mesh's triangles is shared by exactly two of
+## them, once vertices at the same place are taken as one.
+func _mesh_is_closed(mesh: ArrayMesh) -> bool:
+	var arrays := mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var welded := PackedInt32Array()
+	var ids := {}
+	for vertex in vertices:
+		var key := Vector3i((vertex * 1e6).round())
+		if not ids.has(key):
+			ids[key] = ids.size()
+		welded.append(ids[key])
+	var edges := {}
+	for t in range(0, indices.size(), 3):
+		for k in 3:
+			var a: int = welded[indices[t + k]]
+			var b: int = welded[indices[t + (k + 1) % 3]]
+			if a == b:
+				continue
+			var key := Vector2i(mini(a, b), maxi(a, b))
+			edges[key] = edges.get(key, 0) + 1
+	for count: int in edges.values():
+		if count != 2:
+			return false
+	return true
+
+## Every ingredient's whole model is at the size its data gives, so the
+## model and the piece the simulation cuts are the same thing.
+func _test_every_whole_model_fits() -> void:
+	IngredientCatalog.ensure_loaded()
+	var misfits: Array[String] = []
+	var modelled: int = 0
+	for ingredient in IngredientCatalog.all():
+		if ingredient.whole_model == null or ingredient.physical_form == Ingredient.PhysicalForm.LIQUID:
+			continue
+		modelled += 1
+		var scene: Node3D = ingredient.whole_model.instantiate()
+		var bounds := AABB()
+		var first := true
+		for mesh: MeshInstance3D in scene.find_children("*", "MeshInstance3D", true, false):
+			var box: AABB = mesh.transform * mesh.get_aabb()
+			bounds = box if first else bounds.merge(box)
+			first = false
+		scene.free()
+		var want: Vector3 = ingredient.whole_size_mm * 0.001
+		for axis in 3:
+			if want[axis] > 0.0 and absf(bounds.size[axis] / want[axis] - 1.0) > 0.1:
+				misfits.append("%s %s" % [ingredient.id, bounds.size * 1000.0])
+				break
+	_expect_equal("every solid ingredient has a whole model (%d)" % modelled, modelled >= 86, true)
+	_expect_equal("and every model is within 10%% of its ingredient's size %s" % [misfits], misfits.is_empty(), true)
+
 func _test_every_carcass_dresses() -> void:
 	var kitchen: Kitchen = load("res://scenes/kitchen/kitchen.tscn").instantiate()
 	add_child(kitchen)

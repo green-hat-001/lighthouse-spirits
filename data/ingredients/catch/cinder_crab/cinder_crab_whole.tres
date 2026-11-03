@@ -1,9 +1,10 @@
-[gd_resource type="Resource" script_class="Ingredient" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="Ingredient" load_steps=7 format=3]
 
 [ext_resource type="Resource" path="res://data/creatures/cinder_crab.tres" id="1"]
 [ext_resource type="Script" path="res://resources/flavour_profile.gd" id="2"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="3"]
 [ext_resource type="PackedScene" path="res://assets/models/catch/cinder_crab/cinder_crab_whole.glb" id="4"]
+[ext_resource type="Resource" path="res://data/looks/bone.tres" id="look"]
 
 [sub_resource type="Resource" id="flavour"]
 script = ExtResource("2")
@@ -13,6 +14,7 @@ umami = 0.6
 
 [resource]
 script = ExtResource("3")
+look = ExtResource("look")
 whole_model = ExtResource("4")
 id = &"cinder_crab_whole"
 display_name = "Cinder Crab (whole)"

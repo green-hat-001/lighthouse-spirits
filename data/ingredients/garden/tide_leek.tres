@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="Ingredient" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="Ingredient" load_steps=9 format=3]
 
 [ext_resource type="Resource" path="res://data/traits/tidesalt.tres" id="1"]
 [ext_resource type="Script" path="res://resources/trait_dose.gd" id="2"]
 [ext_resource type="Script" path="res://resources/flavour_profile.gd" id="3"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="4"]
 [ext_resource type="PackedScene" path="res://assets/models/ingredients/tide_leek.glb" id="5"]
+[ext_resource type="Resource" path="res://data/looks/stalk.tres" id="look"]
 
 [sub_resource type="Resource" id="dose_0"]
 script = ExtResource("2")
@@ -19,6 +20,7 @@ aroma = 0.6
 
 [resource]
 script = ExtResource("4")
+look = ExtResource("look")
 whole_model = ExtResource("5")
 id = &"tide_leek"
 display_name = "Tide Leek"

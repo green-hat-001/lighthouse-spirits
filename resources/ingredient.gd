@@ -29,6 +29,9 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 ## The whole, uncut item as it appears in the kitchen: a .glb from the model
 ## kit, origin at the centre of its base. Cut pieces are drawn separately.
 @export var whole_model: PackedScene
+## How its cut pieces are shaped and patterned (data/looks/). Empty uses
+## FoodLook.DEFAULT.
+@export var look: FoodLook
 
 @export_group("Affinity")
 @export var elemental_affinity: ElementalAffinity.Type = ElementalAffinity.Type.NONE

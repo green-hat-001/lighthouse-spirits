@@ -12,7 +12,7 @@ extends Node
 ## scenarios it runs them all.
 
 const SHOT_SIZE := Vector2i(1280, 720)
-const SCENARIOS: Array[String] = ["board", "dressed", "fries", "pantry", "pass", "dum"]
+const SCENARIOS: Array[String] = ["board", "dressed", "fries", "pantry", "pass", "dum", "closeup"]
 
 var kitchen: Kitchen
 
@@ -61,6 +61,14 @@ func _run(seconds: float) -> void:
 		kitchen.simulation.board.advance(step)
 		elapsed += step
 
+## Moves the camera in close over a point, looking down at `pitch_deg`.
+func _close_on(target: Vector3, distance_m: float, pitch_deg: float = 55.0) -> void:
+	# The kitchen would glide the camera back to the station.
+	kitchen.set_process(false)
+	(kitchen.get_node("Hud") as CanvasLayer).visible = false
+	var basis := Basis(Vector3.RIGHT, deg_to_rad(-pitch_deg))
+	kitchen.camera.global_transform = Transform3D(basis, target + basis.z * distance_m)
+
 func _ingredient(id: StringName) -> Ingredient:
 	return IngredientCatalog.by_id(id)
 
@@ -73,8 +81,8 @@ func _stage(scenario: String) -> void:
 				kitchen.board.add_whole(_ingredient(id))
 			var potato := kitchen.board.views()[0]
 			var across := potato.position.z + potato.footprint_m().y * 0.5
-			kitchen.board.cut_stroke(Vector3(potato.position.x - 0.02, 0.0, across) + kitchen.board.global_position,
-				Vector3(potato.position.x + potato.footprint_m().x + 0.02, 0.0, across) + kitchen.board.global_position, true)
+			kitchen.board.cut_stroke(Vector3(potato.position.x - 0.02, 0.0, across),
+				Vector3(potato.position.x + potato.footprint_m().x + 0.02, 0.0, across), true)
 		"dressed":
 			await _open(1)
 			var bream := kitchen.board.add_whole(_ingredient(&"driftback_bream_whole"))
@@ -105,4 +113,16 @@ func _stage(scenario: String) -> void:
 			var hide := FoodPiece.from_ingredient(_ingredient(&"gale_ram_hide"), 15.0)
 			pot.cover_with(hide, true)
 			_run(30.0)
+		"closeup":
+			await _open(1)
+			var board := kitchen.board
+			var origin := board.global_position
+			var potato := board.add_whole(_ingredient(&"potato"))
+			var mid := potato.position.x + potato.footprint_m().x * 0.5
+			board.cut_stroke(Vector3(mid, 0.0, potato.position.z - 0.02), Vector3(mid, 0.0, potato.position.z + potato.footprint_m().y + 0.02), true)
+			for stick in CookedPlates.cooked_sticks(_ingredient(&"potato"), 10.0, kitchen.simulation.oil, 180.0, 330.0).slice(0, 5):
+				board.receive([stick], origin + Vector3(0.05, 0.0, 0.06))
+			for stick in CookedPlates.cooked_sticks(_ingredient(&"potato"), 10.0, kitchen.simulation.oil, 180.0, 0.0).slice(0, 3):
+				board.receive([stick], origin + Vector3(-0.1, 0.0, 0.07))
+			_close_on(origin + Vector3(0.0, 0.0, 0.03), 0.32)
 	await _settle_frames(4)

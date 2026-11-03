@@ -8,15 +8,17 @@ extends Node3D
 ## every frame and never changes the piece itself.
 ##
 ## A whole, uncut item is drawn with its ingredient's model, turned to match
-## however it has been rolled, and wears its own materials until cooking
-## starts to show. A cut piece is drawn as a box with the food shader - the
-## stand-in for the cut-piece kit (kitchen plan 6.3).
+## however it has been rolled. A cut piece is drawn with a mesh built for its
+## own size and skin (FoodPieceMesh). Both wear the food shader from the
+## start - one material per surface of a model, each keeping that surface's
+## colour - so cooking shows the moment it begins. A heap of grain or spice
+## is its kernel model, instanced.
 
 const MM_TO_M: float = 0.001
 const FOOD_SHADER: Shader = preload("res://shaders/food_cel.gdshader")
-## Once a whole item browns, chars or cooks this much, its model switches
-## to the food shader so the change shows.
-const VISIBLE_COOKING: float = 0.02
+## A cut piece's mesh is rebuilt once the piece has shrunk or swollen this
+## much since it was built; smaller changes just scale it.
+const REBUILD_DRIFT: float = 0.04
 
 ## Hot, wet food out in the air gives off wisps of steam. Off in the pot,
 ## which draws its own.
@@ -44,15 +46,21 @@ var _glow_light: OmniLight3D
 
 var _steam: GPUParticles3D
 
-var _box_instance: MeshInstance3D
-var _box: BoxMesh
+var _body: MeshInstance3D
+var _built_size_mm: Vector3 = Vector3.ZERO
+var _built_skin := PackedFloat64Array()
 var _shape: BoxShape3D
 var _collision: CollisionShape3D
 var _material: ShaderMaterial
+## Every food material this view drives: the cut body's, and one per
+## surface of a whole model.
+var _materials: Array[ShaderMaterial] = []
+var _look: FoodLook
+## Where in its pattern this piece sits, so neighbouring pieces differ.
+var _pattern_offset := Vector3(randf(), randf(), randf())
 var _model: Node3D
 var _model_meshes: Array[MeshInstance3D] = []
 var _model_basis: Basis = Basis.IDENTITY
-var _model_wears_food_shader: bool = false
 var _model_rest: Vector3 = Vector3.ZERO
 var _heap: MultiMeshInstance3D
 var _heap_laid_size: Vector3 = Vector3.ZERO
@@ -61,30 +69,29 @@ func _init(p_piece: FoodPiece) -> void:
 	piece = p_piece
 	name = "FoodPiece_%s" % piece.ingredient.id
 
-	_material = ShaderMaterial.new()
-	_material.shader = FOOD_SHADER
-	_material.set_shader_parameter("skin_color", piece.ingredient.tint_color)
-	_material.set_shader_parameter("flesh_color", piece.ingredient.flesh_color)
+	_look = FoodLook.of(piece.ingredient)
+	_material = _food_material(piece.ingredient.tint_color, false)
+	_material.set_shader_parameter("vertex_data", true)
 
-	_box = BoxMesh.new()
-	_box.material = _material
-	_box.subdivide_width = 2
-	_box.subdivide_height = 2
-	_box.subdivide_depth = 2
-	_box_instance = MeshInstance3D.new()
-	_box_instance.name = "Box"
-	_box_instance.mesh = _box
-	add_child(_box_instance)
+	_body = MeshInstance3D.new()
+	_body.name = "Body"
+	_body.material_override = _material
+	add_child(_body)
 
 	if piece.is_heap():
 		_heap = MultiMeshInstance3D.new()
 		_heap.name = "Heap"
-		_heap.material_override = _material
 		var kernels := MultiMesh.new()
 		kernels.transform_format = MultiMesh.TRANSFORM_3D
-		var kernel := BoxMesh.new()
-		kernel.size = Vector3.ONE
-		kernels.mesh = kernel
+		var kernel_mesh: Mesh = _kernel_mesh()
+		if kernel_mesh:
+			_heap.material_override = _food_material(piece.ingredient.tint_color, true)
+		else:
+			var box := BoxMesh.new()
+			box.size = Vector3.ONE
+			kernel_mesh = box
+			_heap.material_override = _material
+		kernels.mesh = kernel_mesh
 		kernels.instance_count = mini(piece.count, MAX_KERNELS_DRAWN)
 		_heap.multimesh = kernels
 		add_child(_heap)
@@ -94,6 +101,7 @@ func _init(p_piece: FoodPiece) -> void:
 		add_child(_model)
 		for mesh in _model.find_children("*", "MeshInstance3D", true, false):
 			_model_meshes.append(mesh)
+			_wear_food_shader(mesh)
 
 	grip = Interactable.new()
 	grip.name = "Grip"
@@ -120,17 +128,17 @@ func rolled_about(axis: int) -> void:
 ## Call after the piece's size or orientation changes.
 func refresh_shape() -> void:
 	var size_m: Vector3 = piece.bulk_size_mm() * MM_TO_M
-	_box.size = size_m
-	_box_instance.position = size_m * 0.5
 	_shape.size = size_m
 	_collision.position = size_m * 0.5
 	if _heap:
-		_box_instance.visible = false
+		_body.visible = false
 		_lay_kernels()
 		return
 
 	var show_model: bool = _model != null and piece.cut_axes.is_empty()
-	_box_instance.visible = not show_model
+	_body.visible = not show_model
+	if _body.visible:
+		_rebuild_body()
 	if _model:
 		_model.visible = show_model
 		if show_model:
@@ -140,6 +148,58 @@ func refresh_shape() -> void:
 			var bounds := _model_bounds()
 			_model_rest = -bounds.position
 			_model.position = _model_rest
+
+## A food material in the ingredient's colours. `painted` reads a model's
+## vertex-colour shading.
+func _food_material(skin_color: Color, painted: bool) -> ShaderMaterial:
+	var material := ShaderMaterial.new()
+	material.shader = FOOD_SHADER
+	material.set_shader_parameter("skin_color", skin_color)
+	material.set_shader_parameter("flesh_color", piece.ingredient.flesh_color)
+	material.set_shader_parameter("vertex_tint", painted)
+	material.set_shader_parameter("pattern", _look.pattern)
+	material.set_shader_parameter("pattern_color", _look.pattern_color)
+	material.set_shader_parameter("pattern_strength", _look.pattern_strength)
+	material.set_shader_parameter("pattern_size", _look.pattern_size_mm * MM_TO_M)
+	material.set_shader_parameter("crust_blister", _look.crust_blister)
+	material.set_shader_parameter("pattern_offset", _pattern_offset)
+	_materials.append(material)
+	return material
+
+## Gives every surface of a whole model its own food material in that
+## surface's colour, so a fish's fins and eyes stay theirs as it cooks.
+func _wear_food_shader(mesh: MeshInstance3D) -> void:
+	for surface in mesh.mesh.get_surface_count():
+		var original := mesh.mesh.surface_get_material(surface) as BaseMaterial3D
+		var colour: Color = original.albedo_color if original else piece.ingredient.tint_color
+		mesh.set_surface_override_material(surface, _food_material(colour, true))
+
+## The kernel model's mesh for a heap, if the ingredient has one.
+func _kernel_mesh() -> Mesh:
+	if piece.ingredient.whole_model == null:
+		return null
+	var scene: Node = piece.ingredient.whole_model.instantiate()
+	var found: Array[Node] = scene.find_children("*", "MeshInstance3D", true, false)
+	var mesh: Mesh = (found[0] as MeshInstance3D).mesh if not found.is_empty() else null
+	scene.free()
+	return mesh
+
+## Builds the cut body for the piece as it is now, or rescales the last
+## one if the piece has only shrunk or swollen a little.
+func _rebuild_body() -> void:
+	var size: Vector3 = piece.size_mm
+	var drift: float = 0.0
+	for axis in 3:
+		if _built_size_mm[axis] <= 0.0:
+			drift = INF
+			break
+		drift = maxf(drift, absf(size[axis] / _built_size_mm[axis] - 1.0))
+	if drift > REBUILD_DRIFT or _built_skin != piece.face_skin:
+		_body.mesh = FoodPieceMesh.build(size, piece.face_skin, _look)
+		_built_size_mm = size
+		_built_skin = piece.face_skin.duplicate()
+	_body.scale = Vector3(size.x / _built_size_mm.x, size.y / _built_size_mm.y, size.z / _built_size_mm.z)
+	_material.set_shader_parameter("piece_size", _built_size_mm * MM_TO_M)
 
 ## Scatters the drawn kernels through the heap's layer, the same way each
 ## time for the same heap.
@@ -156,16 +216,25 @@ func _lay_kernels() -> void:
 		var centred := Vector2(a - 0.5, b - 0.5)
 		var height: float = floor(c * layers * (1.0 - centred.length())) * kernel.y
 		var turn := Basis(Vector3.UP, index * 2.4)
-		var spot := Vector3(a * (bulk.x - kernel.x) + kernel.x * 0.5, height + kernel.y * 0.5, b * (bulk.z - kernel.z) + kernel.z * 0.5)
-		_heap.multimesh.set_instance_transform(index, Transform3D(turn.scaled(kernel), spot))
+		var spot := Vector3(a * (bulk.x - kernel.x) + kernel.x * 0.5, height, b * (bulk.z - kernel.z) + kernel.z * 0.5)
+		_heap.multimesh.set_instance_transform(index, Transform3D(turn * Basis.from_scale(_kernel_scale(kernel)), spot))
 	_heap_laid_size = piece.size_mm
+
+## The scale that takes a kernel's mesh to a kernel of `kernel` metres: a
+## kernel model is at the ingredient's whole size, with its origin at the
+## centre of its base; the stand-in box is a unit cube about its centre.
+func _kernel_scale(kernel: Vector3) -> Vector3:
+	if piece.ingredient.whole_model == null:
+		return kernel
+	var native: Vector3 = piece.ingredient.whole_size_mm * MM_TO_M
+	return Vector3(kernel.x / maxf(native.x, 1e-6), kernel.y / maxf(native.y, 1e-6), kernel.z / maxf(native.z, 1e-6))
 
 ## Glow and hover, from the essences awake in the piece.
 func _draw_essences(delta: float) -> void:
 	var glow := TraitEffects.glow(piece)
-	_material.set_shader_parameter("glow_energy", glow.a * 1.5)
+	_set_all("glow_energy", glow.a * 1.5)
 	if glow.a > 0.0:
-		_material.set_shader_parameter("glow_color", Color(glow.r, glow.g, glow.b))
+		_set_all("glow_color", Color(glow.r, glow.g, glow.b))
 	if glow.a >= GLOW_LIGHT_FROM:
 		if _glow_light == null:
 			_glow_light = OmniLight3D.new()
@@ -184,7 +253,7 @@ func _draw_essences(delta: float) -> void:
 		target += sin(Time.get_ticks_msec() * 0.002 + piece.size_mm.x) * 0.002
 	hover_m = lerpf(hover_m, target, 1.0 - exp(-3.0 * delta))
 	var lifted := Vector3(0.0, hover_m, 0.0)
-	_box_instance.position = piece.bulk_size_mm() * MM_TO_M * 0.5 + lifted
+	_body.position = lifted
 	if _heap:
 		_heap.position = lifted
 		# Swelling grain grows its heap.
@@ -252,8 +321,12 @@ static func _make_steam() -> GPUParticles3D:
 ## Hands one per-face value to the shader as its (+X, +Y, +Z) and
 ## (-X, -Y, -Z) pair.
 func _set_faces(name: String, values: PackedFloat64Array) -> void:
-	_material.set_shader_parameter(name + "_pos", Vector3(values[FoodPiece.Face.POS_X], values[FoodPiece.Face.POS_Y], values[FoodPiece.Face.POS_Z]))
-	_material.set_shader_parameter(name + "_neg", Vector3(values[FoodPiece.Face.NEG_X], values[FoodPiece.Face.NEG_Y], values[FoodPiece.Face.NEG_Z]))
+	_set_all(name + "_pos", Vector3(values[FoodPiece.Face.POS_X], values[FoodPiece.Face.POS_Y], values[FoodPiece.Face.POS_Z]))
+	_set_all(name + "_neg", Vector3(values[FoodPiece.Face.NEG_X], values[FoodPiece.Face.NEG_Y], values[FoodPiece.Face.NEG_Z]))
+
+func _set_all(name: String, value: Variant) -> void:
+	for material in _materials:
+		material.set_shader_parameter(name, value)
 
 ## The model's bounds in this view's space, with its current turn applied.
 func _model_bounds() -> AABB:
@@ -278,11 +351,9 @@ func _process(delta: float) -> void:
 	_set_faces("char", appearance.face_char)
 	_set_faces("skin", appearance.face_skin)
 	_set_faces("wet", appearance.face_wetness)
-	_material.set_shader_parameter("gloss", appearance.gloss)
-	_material.set_shader_parameter("translucency", appearance.translucency)
-	_material.set_shader_parameter("crumble", appearance.crumble)
-	if _model and not _model_wears_food_shader \
-			and maxf(appearance.browning, maxf(appearance.charring, piece.core_doneness)) > VISIBLE_COOKING:
-		_model_wears_food_shader = true
-		for mesh in _model_meshes:
-			mesh.material_override = _material
+	_set_all("gloss", appearance.gloss)
+	_set_all("translucency", appearance.translucency)
+	_set_all("crumble", appearance.crumble)
+	_set_all("curl", _look.curl_when_cooked * clampf(piece.core_doneness, 0.0, 1.0))
+	if _body.visible and not piece.size_mm.is_equal_approx(_built_size_mm * _body.scale):
+		_rebuild_body()

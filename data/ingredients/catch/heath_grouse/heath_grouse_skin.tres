@@ -1,9 +1,10 @@
-[gd_resource type="Resource" script_class="Ingredient" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="Ingredient" load_steps=7 format=3]
 
 [ext_resource type="Resource" path="res://data/ingredients/catch/heath_grouse/grouse_schmaltz.tres" id="1"]
 [ext_resource type="Script" path="res://resources/flavour_profile.gd" id="2"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="3"]
 [ext_resource type="PackedScene" path="res://assets/models/catch/heath_grouse/heath_grouse_skin.glb" id="4"]
+[ext_resource type="Resource" path="res://data/looks/skin.tres" id="look"]
 
 [sub_resource type="Resource" id="flavour"]
 script = ExtResource("2")
@@ -12,6 +13,7 @@ aroma = 0.3
 
 [resource]
 script = ExtResource("3")
+look = ExtResource("look")
 whole_model = ExtResource("4")
 id = &"heath_grouse_skin"
 display_name = "Heath Grouse Skin"

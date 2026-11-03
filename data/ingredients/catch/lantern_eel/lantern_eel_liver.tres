@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="Ingredient" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="Ingredient" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://resources/flavour_profile.gd" id="1"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="2"]
 [ext_resource type="PackedScene" path="res://assets/models/catch/lantern_eel/lantern_eel_liver.glb" id="3"]
+[ext_resource type="Resource" path="res://data/looks/organ.tres" id="look"]
 
 [sub_resource type="Resource" id="flavour"]
 script = ExtResource("1")
@@ -11,6 +12,7 @@ umami = 0.6
 
 [resource]
 script = ExtResource("2")
+look = ExtResource("look")
 whole_model = ExtResource("3")
 id = &"lantern_eel_liver"
 display_name = "Lantern Eel Liver"
