@@ -12,7 +12,7 @@ extends Node
 ## scenarios it runs them all.
 
 const SHOT_SIZE := Vector2i(1280, 720)
-const SCENARIOS: Array[String] = ["board", "dressed", "fries", "pantry", "pass", "dum", "closeup", "broth"]
+const SCENARIOS: Array[String] = ["board", "dressed", "fries", "pantry", "pass", "dum", "closeup", "broth", "hands", "carry", "season"]
 
 var kitchen: Kitchen
 
@@ -138,4 +138,41 @@ func _stage(scenario: String) -> void:
 			pot.add_piece(FoodPiece.from_ingredient(_ingredient(&"stonecap"), 15.0), Vector2(30.0, 20.0))
 			await _settle_frames(8)
 			_close_on(kitchen.pot_view.global_position + Vector3(0.0, 0.08, 0.0), 0.3, 65.0)
+		"hands":
+			await _open(1)
+			kitchen.pointer.enabled = true
+			var board := kitchen.board
+			var potato := board.add_whole(_ingredient(&"potato"))
+			var mid := potato.position + Vector3(potato.footprint_m().x * 0.5, 0.0, 0.0)
+			board.cut_stroke(Vector3(mid.x, 0.0, mid.z - 0.02), Vector3(mid.x, 0.0, mid.z + potato.footprint_m().y + 0.02), true)
+			# The left hand steadies the halves for the next cut, along them.
+			var across := Vector3(-0.06, 0.0, mid.z + potato.footprint_m().y * 0.5)
+			board._steady_hand.visible = true
+			board._place_steady_hand(across, across + Vector3(0.12, 0.0, 0.0))
+			kitchen.pointer.hand_point = board.global_position + Vector3(0.09, 0.0, -0.02)
+			await _settle_frames(90)
+		"carry":
+			await _open(1)
+			kitchen.pointer.enabled = true
+			var carrot := kitchen.board.add_whole(_ingredient(&"cliff_carrot"))
+			var grab := carrot.global_position + Vector3(carrot.footprint_m().x * 0.5, 0.02, carrot.footprint_m().y * 0.5)
+			kitchen.pointer._press(kitchen.camera.unproject_position(grab))
+			for step in 20:
+				var to := grab + Vector3(-0.004 * step, 0.0, 0.003 * step)
+				var event := InputEventMouseMotion.new()
+				event.position = kitchen.camera.unproject_position(to)
+				kitchen.pointer._unhandled_input(event)
+				await get_tree().process_frame
+			await _settle_frames(2)
+		"season":
+			await _open(1)
+			var board := kitchen.board
+			var fries := CookedPlates.cooked_sticks(_ingredient(&"potato"), 10.0, kitchen.simulation.oil, 180.0, 330.0).slice(0, 6)
+			board.receive(fries, board.global_position + Vector3(0.02, 0.0, 0.02))
+			await _settle_frames(40)
+			var over := board.global_position + Vector3(0.02, IngredientSource.CARRY_HEIGHT_M * 0.5, 0.02)
+			kitchen.let_go_of_scoop(_ingredient(&"tidewater_salt"), 0.6, over)
+			kitchen.let_go_of_scoop(_ingredient(&"ember_flakes"), 0.4, over + Vector3(0.03, 0.0, 0.0))
+			await _settle_frames(5)
+			_close_on(board.global_position + Vector3(0.02, 0.0, 0.03), 0.3)
 	await _settle_frames(4)

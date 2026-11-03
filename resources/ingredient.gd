@@ -32,6 +32,10 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 ## How its cut pieces are shaped and patterned (data/looks/). Empty uses
 ## FoodLook.DEFAULT.
 @export var look: FoodLook
+## For a covering (a hide, a big leaf): how it looks laid over a pot's rim,
+## slumping down its sides. Origin at the centre of its top, like the rim it
+## lies on. Empty draws it flat.
+@export var draped_model: PackedScene
 
 @export_group("Affinity")
 @export var elemental_affinity: ElementalAffinity.Type = ElementalAffinity.Type.NONE

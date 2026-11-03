@@ -78,6 +78,7 @@ func _ready() -> void:
 	_home = transform
 	_home_y = global_position.y
 	corked = _cork != null
+	_grip.hand_anchor = get_node_or_null("Tilt")
 	_grip.pressed.connect(_on_pressed)
 	_grip.dragged.connect(func(point: Vector3) -> void: _target_point = point)
 	_grip.released.connect(func(_point: Vector3) -> void: _set_down())

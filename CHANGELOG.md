@@ -2,6 +2,71 @@
 
 Completed work, newest first. Section numbers refer to `docs/kitchen_plan.md`.
 
+## Polish: the larder modelled, cut pieces, the pantry dresser, the hands, ink, light and motion
+
+Kitchen plan Section 9. Decided with the user: the pantry is a dresser behind the counter, a first-person hand is drawn, and cut pieces are built per cut instead of from a cut-piece kit.
+
+**Every ingredient has a model** (`tools/blender/larder.py`): 86 ingredients plus the hide draped over a pot.
+- About 45 parametric shape families (fish, eel, bird, crab, fillets and organs, bones, horn, hoof, teeth, skins and hides, leaves, kelp, roots, mushrooms, berries, the clam, grain and spice kernels). Each ingredient is one row naming its family and its shape.
+- Size and colour are read from each ingredient's `.tres`, so a model always matches what the simulation cuts. Painted shading is a vertex-colour multiplier.
+- `validate_models.py` checks every one (111 models pass), and the suite checks each is within 10% of its ingredient's size.
+- `tools/godot/larder_sheet.gd` renders a contact sheet through the game's own import.
+
+**Cut pieces are meshes built for their cut** (`FoodPieceMesh`), replacing boxes and the planned cut-piece kit.
+- Skin faces round over the way the whole did, cut faces stay flat with only the knife's bevel, and a cut face's outline follows the curve of the skin around it.
+- The mesh fills exactly the piece's box, has no seams, and is cached by size (a tray of fries shares meshes).
+- `FoodLook` (`data/looks/`, 13 shared looks) gives each ingredient its roundness, lumps, flesh grain (speckle, fibre, flake, marble, vein, pore, rings), curl when cooked and crust blistering.
+- A heap of grain or spice draws its kernel model.
+
+**The pantry dresser** replaces the four cycling baskets.
+- Four shelves behind the counter: garden level with the counter, then the catch on ice, grains in sacks and spices in crocks.
+- Every unlocked ingredient has a spot of its own, laid out from the catalog. A new ingredient, or a retrofit that unlocks one, appears without code.
+- Nothing runs out: what is taken lifts away and another settles in its place.
+- The hand over a spot names it, and right-click reads its label.
+- At the pass and the board, the mouse at the top of the screen lifts the eyes to the shelves.
+- Neither the dresser nor what is on it casts a shadow, because the low sun comes in off the sea behind it.
+
+**The hands** (`HandView`, `HandModel`, `assets/models/player/hand.glb`).
+- The right hand is the cursor at the counter. It hovers open over what the mouse is over, and closes on what it takes:
+  - a grip on food, by its top;
+  - the mezzaluna's handle, the spoon's, the knob, the crank's grip and the vessels;
+  - a pinch for spices and seeds.
+- It follows on a spring, leans into its motion and dips to touch.
+- While steadying a cut, the left hand lays flat on the food beside the blade's line.
+
+**Look:**
+- **Ink outlines:** a screen pass on the camera. Silhouettes everywhere, creases in Forward+, fading with distance.
+- **Lighting for cel shading:**
+  - lower sun and ambient, with ACES tonemapping;
+  - four shadow splits, with a finer, softer shadow map;
+  - a shadowless fill light from the cook's side;
+  - no surface glossier than roughness 0.62, so nothing mirrors the sky.
+- **The gas flame's light** is a small glow on the burner, and leaves out the pot and its contents, which have their own render layer. Before, it bleached the stove and lit the inside of the pot blue through its base.
+- **The food shader:**
+  - paints the flesh's grain;
+  - browns crisp edges ahead of the faces between them;
+  - blisters a browning crust and cracks char;
+  - curls cooked fillets;
+  - gives pale food a cel rim.
+  - Whole models wear it from the start, one material per surface, so nothing pops when cooking begins.
+- **The pot's liquid:**
+  - rings where food drops in and in the spoon's wake;
+  - swirls when stirred, darkens at the meniscus, and has a painted gloss;
+  - water clouds to a golden broth as flavour dissolves into it.
+- **Painted grain:** wood, wicker, burlap, straw, clay, paint, enamel and iron get it at import.
+
+**Feel:**
+- **Carried food** trails the hand and sways (`FoodPieceView.move_to`).
+- **Food set on the board** drops into place and squashes as it lands. A dressed creature's parts fall open.
+- **Spice** falls from the fingers as flecks (`Sprinkle`), and what sticks stays visible on the food. `FoodPiece.spices` records it, `Seasoning` adds to it, and cutting shares it out.
+- **A covering** laid over the pot drapes over the rim (`Ingredient.draped_model`; the ram hide has one).
+- **New synthesised one-shots:** a pinch pattering down, food plopped into water, food set down on wood.
+- **`tools/godot/kitchen_reel.tscn`** plays a scripted turn at the counter through the real input, for recording with `--write-movie`. **`tools/godot/kitchen_shots.tscn`** stages scenes in the real kitchen and saves screenshots.
+
+**Fixed:** the glTF exporter was writing a fake white `COLOR_0` and moving the real vertex colours to `COLOR_1`, which also hid the grass field's sway mask. `kit.save` now exports only the active colour attribute, and the grass field is rebuilt.
+
+**Changed:** at the counter the mouse is confined and hidden, because the hand stands in for the cursor. The suite's mouse-mode checks are updated.
+
 ## The mystical larder: crafting retired, essences, ecosystems, butchery, grains, spices, dum and plating
 
 **4.6: the crafting matrix is retired.** `CulinaryCraftingMatrix`, `CraftedDish`, `DishComponent`, `PreparationTechnique` and the technique data are gone.

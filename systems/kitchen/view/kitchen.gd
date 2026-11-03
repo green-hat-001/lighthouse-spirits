@@ -124,7 +124,8 @@ static func mouse_mode_for(mode: KitchenViewMode.Mode, freed_by_player: bool) ->
 		KitchenViewMode.Mode.STEPPING_OUT:
 			return Input.MOUSE_MODE_CAPTURED
 		_:
-			return Input.MOUSE_MODE_CONFINED
+			# At the counter the cook's hand is the cursor.
+			return Input.MOUSE_MODE_CONFINED_HIDDEN
 
 ## True when the caretaker is standing at the counter, facing it.
 func counter_in_reach() -> bool:
@@ -181,6 +182,12 @@ const PINCH_REACH_M: float = 0.03
 
 func let_go_of_scoop(ingredient: Ingredient, grams: float, world_point: Vector3) -> bool:
 	var spice: bool = ingredient.pantry_shelf == Ingredient.Shelf.SPICE
+	if spice:
+		var below: float = 0.0
+		if pot_view.is_over(world_point):
+			below = pot_view.global_position.y + PotView.FLOOR_Y_M + simulation.pot.liquid_level_mm * PotView.MM_TO_M
+		Sprinkle.fall(self, world_point, below, ingredient.tint_color)
+		audio.play_sprinkle(world_point)
 	if pot_view.is_over(world_point):
 		if spice:
 			return Seasoning.season_pot(simulation.pot, ingredient, grams) > 0.0
@@ -294,6 +301,7 @@ func step_in() -> bool:
 	caretaker.control_enabled = false
 	_peek_deg = 0.0
 	_glance_deg = 0.0
+	counter_views.looking_up = false
 	# Start the hand in the middle of the screen, not wherever the captured
 	# pointer was left.
 	Input.warp_mouse(get_viewport().get_visible_rect().get_center())
@@ -362,8 +370,9 @@ func _process(delta: float) -> void:
 			if not pointer.is_holding():
 				var peek_target := CounterViews.peek_degrees(_mouse_x_norm())
 				_peek_deg = lerpf(_peek_deg, peek_target, 1.0 - exp(-PEEK_EASE * delta))
-				var glance_target := CounterViews.glance_up_degrees(_mouse_y_norm()) if counter_views.can_glance_up() else 0.0
-				_glance_deg = lerpf(_glance_deg, glance_target, 1.0 - exp(-PEEK_EASE * delta))
+			# The eyes lift to the shelves and come down again even while the
+			# hand holds something, so a pinch can be carried down to the board.
+			_glance_deg = lerpf(_glance_deg, counter_views.glance(_mouse_y_norm()), 1.0 - exp(-PEEK_EASE * delta))
 			_glide(counter_views.pose(_peek_deg, _glance_deg), COUNTER_FOV_DEG, delta)
 		KitchenViewMode.Mode.STEPPING_OUT:
 			if _glide(caretaker.eye_transform(), WALK_FOV_DEG, delta):

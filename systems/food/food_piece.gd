@@ -56,6 +56,9 @@ var integrity: float = 1.0
 var flavour: FlavourProfile
 ## The mystical essences it carries now (see MysticTrait).
 var traits := TraitDoses.new()
+## Spice stuck to its surface, in grams by spice (Seasoning). Its flavour
+## is already in `flavour`; this is what the eye sees - the flecks.
+var spices: Dictionary[Ingredient, float] = {}
 ## How many identical pieces this stands for: 1 for a piece of food, many
 ## for a handful of grain, where one kernel is simulated for them all.
 ## Every quantity on the piece is per kernel; total_mass_g() is the lot.
@@ -368,6 +371,7 @@ func clone() -> FoodPiece:
 	copy.integrity = integrity
 	copy.flavour = flavour.copy()
 	copy.traits = traits.copy()
+	copy.spices = spices.duplicate()
 	copy.cut_axes = cut_axes.duplicate()
 	copy.face_temp_c = face_temp_c.duplicate()
 	copy.face_moisture = face_moisture.duplicate()

@@ -63,6 +63,13 @@ const SLIDE_APART_S: float = 0.14
 ## A cut that costs more integrity than this sheds crumbs.
 const CRUMB_INTEGRITY_LOSS: float = 0.1
 const BLADE_LINE_WIDTH_M: float = 0.0008
+## Food set on the board from the hand or the spoon drops this far into
+## place.
+const ARRIVAL_DROP_M: float = 0.05
+## The steadying hand presses this far to the side of the blade's line, its
+## arm coming in from the lower left.
+const STEADY_HAND_OFFSET_M: float = 0.045
+const STEADY_HAND_YAW_RAD: float = 0.35
 const MAX_BLADE_LINES: int = 64
 
 @export var ambient_temp_c: float = 15.0
@@ -116,6 +123,8 @@ func _ready() -> void:
 	lines.visible_instance_count = 0
 	_blade_lines.multimesh = lines
 	_surface.drag_plane = _top_plane()
+	if allows_cutting:
+		_surface.hand_anchor = _mezzaluna.handle()
 	_surface.pressed.connect(_on_surface_pressed)
 	_surface.dragged.connect(_on_surface_dragged)
 	_surface.released.connect(_on_surface_released)
@@ -136,6 +145,7 @@ func add_whole(ingredient: Ingredient) -> FoodPieceView:
 	if spot == null:
 		return null
 	var view := _add_view(piece, Vector3(spot.x, 0.0, spot.y))
+	view.drop_from(ARRIVAL_DROP_M)
 	piece_placed.emit(view)
 	return view
 
@@ -151,7 +161,9 @@ func receive(pieces: Array[FoodPiece], world_point: Vector3) -> Array[FoodPiece]
 		if spot == null:
 			rejected.append(piece)
 			continue
-		piece_placed.emit(_add_view(piece, Vector3(spot.x, 0.0, spot.y)))
+		var placed := _add_view(piece, Vector3(spot.x, 0.0, spot.y))
+		placed.drop_from(ARRIVAL_DROP_M)
+		piece_placed.emit(placed)
 	return rejected
 
 ## Takes a piece off the board and hands it over.
@@ -284,7 +296,10 @@ func dress(view: FoodPieceView) -> bool:
 			_views.append(view)
 			board_crowded.emit()
 			return false
-		placed.append(_add_view(piece, Vector3(spot.x, 0.0, spot.y)))
+		var part := _add_view(piece, Vector3(spot.x, 0.0, spot.y))
+		# The parts fall open across the board, a little apart in time.
+		part.drop_from(0.006 + 0.004 * float(placed.size() % 4))
+		placed.append(part)
 	if rest:
 		rest.remove_piece(carcass)
 	view.queue_free()
@@ -443,15 +458,16 @@ func _on_piece_dragged(point: Vector3, view: FoodPieceView) -> void:
 		var hand := to_local(point)
 		for index in _lifted.size():
 			var offset: Vector3 = _lift_offsets[index]
-			_lifted[index].position = Vector3(hand.x + offset.x, CARRY_HEIGHT_M, hand.z + offset.z)
+			_lifted[index].move_to(Vector3(hand.x + offset.x, CARRY_HEIGHT_M, hand.z + offset.z))
 	elif view == _carried:
-		view.position = _clamped(to_local(point) + _carry_offset, view.footprint_m())
+		view.move_to(_clamped(to_local(point) + _carry_offset, view.footprint_m()))
 
 func _on_piece_released(point: Vector3, view: FoodPieceView) -> void:
 	if not _lifted.is_empty() and _lifted[0] == view:
 		_let_go(point)
 	elif view == _carried:
 		_carried = null
+		view.land()
 
 ## Lifts a piece and everything touching it into the hand.
 func _lift(view: FoodPieceView, point: Vector3) -> void:
@@ -462,7 +478,7 @@ func _lift(view: FoodPieceView, point: Vector3) -> void:
 	var hand := to_local(point)
 	for lifted in _lifted:
 		_lift_offsets.append(Vector3(lifted.position.x - hand.x, 0.0, lifted.position.z - hand.z))
-		lifted.position.y = CARRY_HEIGHT_M
+		lifted.move_to(Vector3(lifted.position.x, CARRY_HEIGHT_M, lifted.position.z))
 
 ## Lets go of what is lifted: into the pot if it takes it, otherwise
 ## straight down onto the board.
@@ -481,12 +497,12 @@ func _let_go(point: Vector3) -> void:
 		return
 	for view in lifted:
 		view.grip.drag_plane = _top_plane()
-		view.position = _clamped(Vector3(view.position.x, 0.0, view.position.z), view.footprint_m())
+		view.move_to(_clamped(Vector3(view.position.x, 0.0, view.position.z), view.footprint_m()))
 
 func _on_piece_cancelled(view: FoodPieceView) -> void:
 	if not _lifted.is_empty() and _lifted[0] == view:
 		for lifted in _lifted:
-			lifted.position = _clamped(Vector3(lifted.position.x, 0.0, lifted.position.z), lifted.footprint_m())
+			lifted.move_to(_clamped(Vector3(lifted.position.x, 0.0, lifted.position.z), lifted.footprint_m()))
 		_lifted.clear()
 		_lift_offsets.clear()
 	_carried = null
@@ -570,7 +586,24 @@ func _on_surface_dragged(point: Vector3) -> void:
 	_show_blade_line(_stroke_start, end)
 	_steady_hand.visible = Input.is_action_pressed("kitchen_steady")
 	if _steady_hand.visible:
-		_steady_hand.position = (_stroke_start + end) * 0.5
+		_place_steady_hand(_stroke_start, end)
+
+## The other hand lays flat on the food beside the blade's line, holding it
+## still: to the left of the stroke, palm down on the top of what is there.
+func _place_steady_hand(start: Vector3, end: Vector3) -> void:
+	var along := end - start
+	along.y = 0.0
+	var side := Vector3(-along.z, 0.0, along.x).normalized() if along.length() > 0.002 else Vector3.LEFT
+	if side.x > 0.0:
+		side = -side
+	var at := (start + end) * 0.5 + side * STEADY_HAND_OFFSET_M
+	var top: float = 0.0
+	for view in _views:
+		if _footprint_rect(view).grow(0.01).has_point(Vector2(at.x, at.z)):
+			top = maxf(top, view.piece.bulk_size_mm().y * FoodPieceView.MM_TO_M)
+	_steady_hand.position = Vector3(at.x, top, at.z)
+	_steady_hand.rotation = Vector3(0.0, -STEADY_HAND_YAW_RAD, 0.0)
+	(_steady_hand as HandModel).set_pose(HandModel.Pose.PRESS)
 
 func _on_surface_cancelled() -> void:
 	_stroking = false

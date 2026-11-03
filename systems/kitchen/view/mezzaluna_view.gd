@@ -19,6 +19,10 @@ var _tween: Tween
 func _ready() -> void:
 	rest()
 
+## The handle the cook's hand holds.
+func handle() -> Node3D:
+	return $Model/BladePivot/HandleRight
+
 ## Stands the blade on the board along the stroke, centred on it.
 func show_stroke(start: Vector3, end: Vector3) -> void:
 	_stop_tween()

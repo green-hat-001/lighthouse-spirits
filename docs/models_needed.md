@@ -25,7 +25,7 @@ Built beyond the entries below:
 - **Materials:** use the named slots listed. The cel shader is assigned per slot in Godot.
 - **Moving parts:** any part the player turns or that swaps state is a separate object with its pivot at the rotation axis, named as listed.
 
-**Deliberately not listed yet:** the cut-piece kit (halves, planks, sticks, dice). What it has to contain depends on how Section 6.3 will match a cut piece to a mesh, and that isn't written yet. It gets added here when 6.3 is built.
+**No cut-piece kit.** Cut pieces are not models: `FoodPieceMesh` builds each one in Godot from the piece's size and which of its faces still carry skin (kitchen plan 9.3), so a cut always looks like exactly the cut that was made. What makes a cut piece look like its ingredient is data: its colours in its `.tres` and its `FoodLook` in `data/looks/`.
 
 ## From Section 1: food state model
 
@@ -214,16 +214,54 @@ The first mockup of the outdoor kitchen on the cliff top. These are built by `to
 - **What it is:** 2,600 tufts of five blades each, scattered on the cliff top in drifts from a fixed seed. They keep clear of the cliff edge, the cook's standing room and the lighthouse. Each vertex stores how far up its blade it is in its colour alpha, which the `coast_grass` wind shader uses to sway only the tips.
 - **Material slots:** `grass_blade` (replaced by the wind shader in Godot).
 
-## From the mystical larder (not built)
+## The mystical larder (built)
 
-Every new ingredient is drawn as the food box it cuts into until it has a model. The rules for each new model:
-- **Path:** `whole_model` points at the `.glb`, under `assets/models/ingredients/` (plants, grains, spices) or `assets/models/catch/<species>/` (carcasses and parts).
-- **Size and slots:** model at the `whole_size_mm` in its `.tres`, with `skin` and `flesh` material slots like the potato.
-- **The reference:** `docs/ingredient_tree.md` lists them all with their lore.
+Every solid ingredient has a whole model: 86 of them, plus the hide draped over a pot. They are built by `tools/blender/larder.py`, not drawn one by one:
+- **Families:** about 45 parametric shape families (fish, eel, bird, crab, fillet and organ blobs, bones, horn, hoof, teeth, skins and hides, fins, scales, leaves, kelp, roots, mushrooms, berries, the clam, and grain and spice kernels). `SPECS` in `larder.py` names each ingredient's family and its shape parameters.
+- **Size and colour come from the `.tres`:** `whole_size_mm`, `tint_color` and `flesh_color`. Never write them in the builder, so a model always matches what the simulation cuts. The suite checks every model is within 10% of its ingredient's size.
+- **Painted shading** (a fish's darker back, a loin's fat cap, leaf veins) is a vertex-colour multiplier on the slot colour, exported as `COLOR_0`.
+- **Paths:** `assets/models/ingredients/<id>.glb` for plants, grains and spices; `assets/models/catch/<species>/<id>.glb` for carcasses and parts. Sources are `models/larder/<id>.blend`.
+- **Slots:** at least `skin` (the tint); `flesh` for cut faces, plus whatever the family needs (`fin`, `eye`, `stem`, `bone`, ...).
+- **Budgets:** carcasses 400–3,000 triangles, other items up to 2,000, and grain and spice kernels under 40, since they're drawn hundreds of times in a heap.
+- **`gale_ram_hide_draped`** is the hide as it lies over the pot's rim, for the covering to swap to.
 
-Priority, by how much the player sees them:
-- **Whole carcasses** (dressed on the board): Driftback Bream (260 × 55 × 40 mm), Lantern Eel (380 × 40 × 22), Heath Grouse plucked (180 × 60 × 70), Fogtail Carp (300 × 60 × 50), Cinder Crab (130 × 100 × 45).
-- **Hero parts:** Gale Ram hide (a 220 mm square sheet, 3 mm thick, that drapes over the pot rim; it needs a draped variant for lying across the pot), the ram horn (a 160 mm spiral), and the swim bladder.
-- **Garden:** skybladder kelp (a blade with round gas bladders), lanternwrack, sea cabbage leaf (260 × 240, which also drapes over the pot), stonecap, frostcap, bog lotus root, mirewort, cliff carrot, heathberry, tide leek.
-- **Grains and spices:** one kernel or fleck each. These are instanced many times in heaps, so keep them under 40 triangles.
-- **A serving plate:** the pass uses the cutting-board model at 0.8 scale as a serving board until there is one. Make it about 320 × 224 mm, origin at the centre of the top surface like the board.
+A new ingredient needs one row in `SPECS`. It needs a new family only if no existing shape fits, which is bespoke work.
+
+```sh
+blender --background --factory-startup --python tools/blender/larder.py [-- id ...]
+godot --path . -s res://tools/godot/larder_sheet.gd -- <out.png> [folder_or_glb ...]
+```
+
+## The pantry and the pass (built)
+
+### Pantry dresser
+- **Path:** `assets/models/pantry/pantry_dresser.glb`
+- **Size:** 1.30 m wide and 0.30 m deep. A cupboard base runs down to the ground (0.92 m below the counter top), and four open shelves rise 0.58 m above it.
+- **Origin:** the front-to-back middle of the bottom shelf's top, level with the counter top. Its front faces the cook.
+- **Shelves:** garden (at counter height, on straw), catch (a zinc tray of crushed ice), grains, spices (with rails). Their heights and depths are `DRESSER_SHELVES` in `build_models.py`, and `PantryDresser` lays its spots out on the same numbers, so keep the two in step.
+- **Material slots:** `paint`, `wood`, `zinc`, `ice`, `straw`, `brass`.
+
+### Spice crock and grain sack
+- **Paths:** `assets/models/pantry/spice_crock.glb` (0.072 m across, 0.082 m tall) and `assets/models/pantry/grain_sack.glb` (0.16 m across, 0.10 m tall). Both have their origin at the centre of the base.
+- **Mouths:** a crock's spice heaps at 0.074 m and a sack's grain at 0.082 m (`CROCK_MOUTH_Z`, `SACK_MOUTH_Z`).
+- **Material slots:** `glaze`, `clay`, `label`; `burlap`, `twine`.
+
+### Serving plate
+- **Path:** `assets/models/tools/serving_plate.glb`
+- **Size:** a 0.32 × 0.224 m glazed oval.
+- **Origin:** the centre of its well, where food rests, like the board's top. The rim rises 7.5 mm above it.
+- **Material slots:** `glaze`, `band` (a blue rim).
+
+The old `pantry/basket.glb` is no longer placed in the kitchen, and is kept in the kit.
+
+## The caretaker's hand (built)
+
+- **Path:** `assets/models/player/hand.glb`
+- **What it is:** a right hand in four poses, one object each: `hand_open`, `hand_grip`, `hand_pinch` and `hand_press`. Each has a knitted cuff and the coat sleeve running back toward the eye.
+- **Origins:** each pose's origin is the point it touches with, so swapping poses never makes the hand jump:
+  - open: the index fingertip;
+  - grip: the middle of the grasp;
+  - pinch: where finger and thumb meet;
+  - press: the middle of the palm.
+- **Axes:** fingers along +Y (away from the cook), palm down. Godot mirrors it for the left hand and draws it at 0.86 of life size.
+- **Material slots:** `skin`, `sleeve`, `cuff`.

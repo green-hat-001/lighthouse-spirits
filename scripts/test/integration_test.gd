@@ -1604,16 +1604,16 @@ func _test_peek_mapping() -> void:
 func _test_mouse_is_always_locked() -> void:
 	_expect_equal("walking captures the mouse",
 		Kitchen.mouse_mode_for(KitchenViewMode.Mode.WALKING, false), Input.MOUSE_MODE_CAPTURED)
-	_expect_equal("the counter confines the cursor to the window",
-		Kitchen.mouse_mode_for(KitchenViewMode.Mode.AT_COUNTER, false), Input.MOUSE_MODE_CONFINED)
+	_expect_equal("the counter confines the mouse to the window, the hand standing in for the cursor",
+		Kitchen.mouse_mode_for(KitchenViewMode.Mode.AT_COUNTER, false), Input.MOUSE_MODE_CONFINED_HIDDEN)
 	_expect_equal("gliding in keeps it confined",
-		Kitchen.mouse_mode_for(KitchenViewMode.Mode.STEPPING_IN, false), Input.MOUSE_MODE_CONFINED)
+		Kitchen.mouse_mode_for(KitchenViewMode.Mode.STEPPING_IN, false), Input.MOUSE_MODE_CONFINED_HIDDEN)
 	_expect_equal("gliding back out captures it again",
 		Kitchen.mouse_mode_for(KitchenViewMode.Mode.STEPPING_OUT, false), Input.MOUSE_MODE_CAPTURED)
 	_expect_equal("only Esc while walking frees it",
 		Kitchen.mouse_mode_for(KitchenViewMode.Mode.WALKING, true), Input.MOUSE_MODE_VISIBLE)
 	_expect_equal("and even then the counter still confines it",
-		Kitchen.mouse_mode_for(KitchenViewMode.Mode.AT_COUNTER, true), Input.MOUSE_MODE_CONFINED)
+		Kitchen.mouse_mode_for(KitchenViewMode.Mode.AT_COUNTER, true), Input.MOUSE_MODE_CONFINED_HIDDEN)
 
 ## Physics needs real frames, so this runs after the lifecycle simulation,
 ## at normal time scale.
@@ -1741,12 +1741,17 @@ func _test_pantry_dresser() -> void:
 	_expect_equal("and shrunk to fit it", long.footprint.z <= 0.22 and long.footprint.x <= 0.06, true)
 	_expect_near("a small item is never made bigger", IngredientSource.fit(Vector3(0.012, 0.012, 0.012), Vector3(0.08, 0.12, 0.25)).scale, 1.0)
 
-	_expect_near("the eyes stay level with the mouse mid-screen", CounterViews.glance_up_degrees(0.0), 0.0)
-	_expect_near("and lift to the shelves at the top of the screen", CounterViews.glance_up_degrees(-1.0), CounterViews.GLANCE_MAX_DEG)
-	kitchen.counter_views.station_index = 1
-	_expect_equal("you can look up to the shelves from the board", kitchen.counter_views.can_glance_up(), true)
-	kitchen.counter_views.station_index = 2
-	_expect_equal("but not from the stove", kitchen.counter_views.can_glance_up(), false)
+	var views := kitchen.counter_views
+	views.station_index = 1
+	views.looking_out = false
+	_expect_equal("you can look up to the shelves from the board", views.can_glance_up(), true)
+	_expect_near("the eyes stay level with the mouse mid-screen", views.glance(0.0), 0.0)
+	_expect_near("and lift to the shelves when it reaches the top edge", views.glance(-1.0), CounterViews.GLANCE_MAX_DEG)
+	_expect_near("and stay lifted while the hand moves down the shelves", views.glance(0.2), CounterViews.GLANCE_MAX_DEG)
+	_expect_near("until it goes low on the screen", views.glance(0.7), 0.0)
+	views.glance(-1.0)
+	views.station_index = 2
+	_expect_near("the stove has no shelves to look up at", views.glance(-1.0), 0.0)
 	kitchen.queue_free()
 	await get_tree().process_frame
 

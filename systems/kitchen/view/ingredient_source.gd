@@ -75,6 +75,8 @@ func _ready() -> void:
 		var holder: Node3D = container.instantiate()
 		holder.name = "Container"
 		add_child(holder)
+	if ingredient and is_scooped(ingredient):
+		_grip.hand_pose = HandModel.Pose.PINCH
 	_grip.pressed.connect(_on_pressed)
 	_grip.dragged.connect(_on_dragged)
 	_grip.released.connect(_on_released)
@@ -198,6 +200,7 @@ func _on_pressed(point: Vector3) -> void:
 	_scoop_view = _still_view(FoodPiece.handful(ingredient, ingredient.scoop_g, 15.0))
 	_scoop_view.top_level = true
 	add_child(_scoop_view)
+	_grip.hand_anchor = _scoop_view
 	var on_plane: Variant = _grip.drag_plane.intersects_ray(get_viewport().get_camera_3d().global_position,
 		(point - get_viewport().get_camera_3d().global_position).normalized()) if get_viewport().get_camera_3d() else null
 	_on_dragged(on_plane if on_plane != null else point)
@@ -216,6 +219,7 @@ func _on_released(point: Vector3) -> void:
 
 func _end_scoop() -> void:
 	state = State.IDLE
+	_grip.hand_anchor = null
 	if _scoop_view:
 		_scoop_view.queue_free()
 		_scoop_view = null

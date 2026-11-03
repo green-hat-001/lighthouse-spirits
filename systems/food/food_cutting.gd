@@ -65,6 +65,9 @@ static func _make_side(
 	side.solids_g = parent.solids_g * share
 	side.water_g = parent.water_g * share
 	side.oil_g = parent.oil_g * share
+	# Spice on the outside goes with the outside it was on.
+	for spice in side.spices:
+		side.spices[spice] = parent.spices[spice] * share
 
 	# The cut face is fresh flesh at the temperature and moisture of the
 	# parent's core. Every other face keeps what it had, so a browned

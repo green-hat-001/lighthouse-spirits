@@ -99,6 +99,7 @@ func _ready() -> void:
 	_surface_material.shader = preload("res://shaders/cooking_liquid.gdshader")
 	_surface.material_override = _surface_material
 	_mouth.drag_plane = _rim_plane()
+	_mouth.hand_anchor = _spoon
 	_mouth.pressed.connect(_on_spoon_pressed)
 	_mouth.dragged.connect(_on_spoon_dragged)
 	_mouth.released.connect(_on_spoon_released)
@@ -192,6 +193,8 @@ func _sync_covering() -> void:
 		_covering_view = FoodPieceView.new(covering)
 		_covering_view.may_hover = false
 		add_child(_covering_view)
+		if covering.ingredient.draped_model and covering.cut_axes.is_empty():
+			_covering_view.wear_model(covering.ingredient.draped_model)
 		_on_pot_layer(_covering_view)
 		_covering_view.grip.pressed.connect(func(_point: Vector3) -> void:
 			var lifted := pot().uncover()
@@ -249,6 +252,7 @@ func _make_view(piece: FoodPiece) -> FoodPieceView:
 	view.may_hover = false
 	_pieces.add_child(view)
 	view.grip.drag_plane = _rim_plane()
+	view.grip.hand_anchor = _spoon
 	view.grip.pressed.connect(_on_spoon_pressed)
 	view.grip.dragged.connect(_on_spoon_dragged)
 	view.grip.released.connect(_on_spoon_released)

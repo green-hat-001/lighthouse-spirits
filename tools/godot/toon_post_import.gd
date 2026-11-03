@@ -23,7 +23,7 @@ const SPECULAR: float = 0.3
 ## times it repeats across the surface's UVs along U and V (unequal for a
 ## stretched grain like wood), and how fine its noise is.
 const PAINTED := {
-	"wood": [0.78, Vector2(2.0, 14.0), 0.09],
+	"wood": [0.86, Vector2(1.5, 8.0), 0.05],
 	"top": [0.9, Vector2(3.0, 12.0), 0.08],
 	"wicker": [0.72, Vector2(10.0, 10.0), 0.2],
 	"burlap": [0.74, Vector2(14.0, 14.0), 0.3],

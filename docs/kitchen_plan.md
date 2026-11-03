@@ -100,7 +100,7 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
   - per-face food shader polish;
   - the taste test with captions and synthesised bite sounds;
   - cutting polish.
-- **Waiting on assets:** the cut-piece kit (cut pieces are still boxes). Recorded bite samples are optional, since synthesised layers stand in.
+- **The polish pass (Section 9 below):** models for the whole larder, cut pieces as meshes, the pantry dresser, the hands, ink, light and motion. Recorded bite samples are optional, since synthesised layers stand in.
 
 *Changed in checkpoints 2 and 3:*
 - **Per-face heat transfer.** The simulation went further than the first draft. Each face of each piece is exposed to what it touches in the pot: the metal through a film of oil, the oil, or the air above it. The pot is three thermal masses (the base over the burner, the rim and walls, the liquid) out in the cliff-top wind. Food sinks or floats by buoyancy and displaces the oil. With hand-pressed oil the fry is shallow, so food browns underneath and must be turned. See the latest `CHANGELOG.md` entry.
@@ -112,14 +112,14 @@ The build plan for the simulated 3D kitchen described in `CLAUDE.md` under Cooki
 *Changed from the first draft:*
 - A cut is a drag across the bare board through the food. Pressing on a piece picks it up to move it, and right-clicking a piece rolls it onto its side. `kitchen_steady` (Space or Shift) holds the food during a cut.
 - One stroke cuts every piece it crosses, so laid-out planks can be cut into sticks in one pass.
-- Pieces render as axis-aligned boxes with the food cel shader. Unsteadied cuts show as pieces sliding apart, never rotating, so the view always matches the simulation.
+- Pieces are never rotated off the box's axes, and unsteadied cuts show as pieces sliding apart, so the view always matches the simulation. Cut pieces are drawn as meshes built for each cut (9.3), not boxes.
 - The camera keeps its horizontal field of view, so the counter stays framed in tiled or portrait windows.
 - **Decided:** oil is pressed by hand, at 0.05 turns per gram (about 29 turns for 200g of oil). Automated presses come later as a lighthouse retrofit. The pantry is unlimited until foraging exists.
 - The kitchen is outdoors, on the cliff top beside the lighthouse.
 
 - **6.1 Kitchen scene and camera** 🎨: counter, stove, pot, board. Greybox meshes until the kit exists.
 - **6.2 Interaction framework** ⚠: mouse raycast picking, grab and place, hold and drag inputs.
-- **6.3 Mezzaluna** 🎨⚠: a drag defines the cut, snapped to the piece's axes, with a rocking animation. A hold input steadies the food. Pieces render as the nearest match from a cut-piece kit (halves, planks, sticks, dice).
+- **6.3 Mezzaluna** 🎨⚠: a drag defines the cut, snapped to the piece's axes, with a rocking animation. A hold input steadies the food. *Changed:* pieces render as a mesh built for each cut (`FoodPieceMesh`), not the nearest match from a cut-piece kit; a kit can only approximate an arbitrary cut. See 9.3.
 - **6.4 Stove knob:** turned by dragging, with the flame visual following it.
 - **6.5 Pot:** pour oil, add pieces, lift them out with a slotted spoon.
 - **6.6 Oil press:** turn the handle by dragging in a circle.
@@ -146,6 +146,16 @@ Essences, ecosystems, butchery, rendering, grains, spices, pot coverings and the
 - **Weather that moves `KitchenAir`.**
 - **Models for the new ingredients:** see `docs/models_needed.md`.
 
+## 9. Polish: models, look and feel (added)
+
+*Status: done and covered by the suite, awaiting the user's play-test.* Decided with the user: the pantry is a dresser behind the counter, a first-person hand is drawn, and cut pieces are built per cut instead of from a kit.
+
+- **9.1 The larder's models:** every solid ingredient has a whole model, built from about 45 parametric shape families (`tools/blender/larder.py`), sized and coloured from its `.tres`. *Check:* `validate_models.py` passes, and the suite checks each model is within 10% of its ingredient's size.
+- **9.2 The pantry dresser:** four shelves behind the counter (garden, catch, grains, spices), every unlocked ingredient in a spot of its own, laid out from the catalog, never running out. The mouse at the top of the screen lifts the eyes to it. *Check:* the suite checks spots, hover, a hundred takes, a pinch into the pot and reading a label.
+- **9.3 Cut pieces:** `FoodPieceMesh` builds each piece's mesh from its size and skin: skin faces round over, cut faces stay flat, and the mesh fills exactly the piece's box. `FoodLook` (`data/looks/`) gives each ingredient its roundness and flesh grain. *Check:* the suite checks it stays in and fills its box, keeps its cut face flat, is closed, and builds in under 4 ms.
+- **9.4 Look:** the food shader paints flesh grain, browns crisp edges first, blisters crust, cracks char and curls cooked fillets; ink outlines; lighting tuned for cel shading (lower sun and ambient, ACES, a fill light from the cook's side, finer shadows); a painted grain on wood, wicker, clay and paint; the pot's liquid ripples, swirls and clouds to broth.
+- **9.5 Feel:** the hands (`HandView`, `HandModel`), which reach, grip, pinch and press on a spring; carried food that trails and sways, drops into place and squashes as it lands; parts that fall open when a creature is dressed; spice that falls as flecks and stays on the food; new synthesised one-shots for the sprinkle, the plop into water and food set down. A scripted reel (`tools/godot/kitchen_reel.tscn`) plays a turn at the counter through real input for recording.
+
 ## Assets (🎨)
 
-Mezzaluna, cutting board, potato, cut-piece kit, gas stove with knob, pot, oil surface, slotted spoon, oil press, plate, sunflower head, chilli, the moon, and recorded bite sounds.
+Mezzaluna, cutting board, potato, gas stove with knob, pot, oil surface, slotted spoon, oil press, plate, sunflower head, chilli, the moon, and recorded bite sounds.

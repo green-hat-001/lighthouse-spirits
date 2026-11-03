@@ -45,6 +45,7 @@ static func season_pieces(pieces: Array[FoodPiece], spice: Ingredient, grams: fl
 		piece.flavour = FlavourProfile.mix_by_mass(piece.flavour, piece.mass_g(), spice.flavour, weight)
 		piece.traits.mix_in(piece.mass_g(), spice.trait_doses(), weight)
 		piece.solids_g += per_kernel
+		piece.spices[spice] = piece.spices.get(spice, 0.0) + stuck
 		stuck_total += stuck
 	return stuck_total
 

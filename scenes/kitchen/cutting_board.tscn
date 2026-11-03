@@ -5,21 +5,10 @@
 [ext_resource type="Script" path="res://systems/kitchen/view/mezzaluna_view.gd" id="3"]
 [ext_resource type="PackedScene" path="res://assets/models/tools/cutting_board.glb" id="4"]
 [ext_resource type="PackedScene" path="res://assets/models/tools/mezzaluna.glb" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/player/hand.tscn" id="6"]
 
 [sub_resource type="BoxShape3D" id="surface_shape"]
 size = Vector3(0.4, 0.004, 0.28)
-
-[sub_resource type="StandardMaterial3D" id="hand"]
-transparency = 1
-albedo_color = Color(0.95, 0.8, 0.66, 0.55)
-roughness = 0.9
-diffuse_mode = 3
-specular_mode = 2
-
-[sub_resource type="SphereMesh" id="hand_mesh"]
-material = SubResource("hand")
-radius = 0.04
-height = 0.03
 
 [sub_resource type="ParticleProcessMaterial" id="crumb_process"]
 emission_shape = 3
@@ -61,9 +50,8 @@ script = ExtResource("3")
 
 [node name="Model" parent="Mezzaluna" instance=ExtResource("5")]
 
-[node name="SteadyHand" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
-mesh = SubResource("hand_mesh")
+[node name="SteadyHand" parent="." instance=ExtResource("6")]
+left = true
 
 [node name="Crumbs" type="GPUParticles3D" parent="."]
 emitting = false

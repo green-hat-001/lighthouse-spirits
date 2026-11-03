@@ -22,3 +22,8 @@ signal hover_exited
 ## World-space plane drags are projected onto. Owners set it; the default
 ## is the counter surface.
 var drag_plane: Plane = Plane(Vector3.UP, 0.0)
+## How the hand holds it, and where: a node the hand closes on (a handle)
+## instead of the point under the mouse. Owners set these; the default is
+## a grip wherever the mouse is.
+var hand_pose: HandModel.Pose = HandModel.Pose.GRIP
+var hand_anchor: Node3D

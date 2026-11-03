@@ -22,7 +22,7 @@ The loop: shelter and observe → forage → prepare → serve and elevate → r
 
 ## Cooking model
 
-Cooking is a physical simulation that stays close to real gastronomy, played in an outdoor kitchen on the cliff top beside the lighthouse. The caretaker is first-person: they walk about the cliff top, and step up to the counter to work, where the view becomes a fixed three-quarter look down at one station, panning between stations and glancing sideways when the mouse nears a screen edge. They stand still while working. The mouse is always locked: captured while walking, confined to the window at the counter.
+Cooking is a physical simulation that stays close to real gastronomy, played in an outdoor kitchen on the cliff top beside the lighthouse. The caretaker is first-person: they walk about the cliff top, and step up to the counter to work, where the view becomes a fixed three-quarter look down at one station, panning between stations, glancing sideways when the mouse nears a screen edge, and up to the pantry shelves when it nears the top. They stand still while working. The mouse is always locked: captured while walking, and confined to the window at the counter, where the cook's own hand stands in for the cursor.
 
 - **Cutting** uses a mezzaluna, chosen as an echo of the moon. The player drags it with the mouse to make precise cuts, and holds a button to steady the food so it doesn't fall apart while making the perpendicular cut.
 - **Heat is controlled directly.** The player sets the flame size and manages the temperature by hand. Nothing has a set recipe or time, including baking.
@@ -71,8 +71,14 @@ Phase 1 (spirit FSM, lighthouse progression) is complete and covered by the inte
 - All three checkpoints of Section 6.
 - 7.1 plating and 7.2 naming.
 - The mystical layer: essences, ecosystems, butchery, grains, spices and pot coverings.
+- Section 9, the polish pass:
+  - every ingredient modelled;
+  - cut pieces built per cut;
+  - the pantry dresser;
+  - the hands;
+  - ink, light and motion.
 
-None of the counter has been play-tested yet. The cut-piece kit and whole models for the new ingredients wait on assets. All sound is synthesised (`SoundSynth`) until recorded samples replace it. Section 5 waits on the open questions below, and 7.3 (what the service menu means for spirits) waits on the user. `FeedingResult` stays the only contract with the spirit FSM.
+None of the counter has been play-tested yet. All sound is synthesised (`SoundSynth`) until recorded samples replace it. Section 5 waits on the open questions below, and 7.3 (what the service menu means for spirits) waits on the user. `FeedingResult` stays the only contract with the spirit FSM.
 
 - **Patience is currently a real-time countdown** (`patience_seconds` 25s, then a 10s recovery window, then an `UNFED` outcome). This sits in tension with "coastal rhythm rather than a ticking clock." The loop has been played and approved as-is, so don't quietly re-time it — raise the question if the area comes up. Volatile weather is now the intended source of pressure, which strengthens the case for replacing the timer.
 - **What happens to a spirit that falls and isn't caught.** The stated stake is "don't let them die"; the actual mechanic is undecided.
@@ -109,9 +115,11 @@ godot --headless --editor --quit --path .
 # out; let a lifted sheet (hide, big leaf) go over the pot to cover it,
 # press it to lift it off. Jug/bottle/cup: drag over the pot or the serving
 # board to pour (right-click uncorks the bottle; hold Space with the cup
-# over the pot to dip it). Pantry: click a shelf to take from it,
-# right-click for the next ingredient; spices and grains are carried and
-# let go over the pot, the board or the plate. The first stroke through a
+# over the pot to dip it). Pantry (the dresser behind the pass and board;
+# mouse to the top of the screen to look up at it): click a spot to take
+# from it, right-click to read its label; spices and grains are carried
+# (along the counter with A/D too) and let go over the pot, the board or
+# the plate. The first stroke through a
 # whole fish, bird or crab dresses it. Pass: N names the plated dish, M
 # puts it on the menu. Press: click the sunflower head for seeds, drag
 # round the crank.
@@ -128,6 +136,20 @@ blender --background --factory-startup --python tools/blender/preview_models.py 
 # builder so it can never overwrite the kitchen kit. validate_models.py covers both.
 blender --background --factory-startup --python tools/blender/build_environment.py [-- lighthouse ...]
 
+# The larder's whole models (every ingredient, from parametric shape
+# families; size and colour come from each .tres). validate_models.py checks
+# these too. A contact sheet renders any models through the game's import.
+blender --background --factory-startup --python tools/blender/larder.py [-- id ...]
+godot --path . -s res://tools/godot/larder_sheet.gd -- <out.png> [folder_or_glb ...]
+
+# Screenshots staged in the real kitchen (board, dressed, fries, pantry,
+# pass, dum, closeup, broth, hands, carry, season), and a scripted turn at
+# the counter played through real input, for recording. Both need a display
+# (xvfb-run on a headless machine; with mesa-vulkan-drivers it renders in
+# Forward+, the game's real renderer).
+godot --path . res://tools/godot/kitchen_shots.tscn -- <out_dir> [scenario ...]
+godot --path . --write-movie reel.avi --fixed-fps 30 res://tools/godot/kitchen_reel.tscn
+
 # Write docs/ingredient_tree.md from the live catalog and food web.
 godot --headless --path . -s res://tools/godot/ingredient_tree_doc.gd
 
@@ -143,6 +165,8 @@ The food model checks build their ingredients in code. The exceptions read shipp
 - the validation check;
 - `_test_shipped_world`, which validates every ingredient, essence and species, and checks the food web's promises (cooked bream fillet hovers, grouse skin resists char, and so on);
 - `_test_every_carcass_dresses`;
+- `_test_every_whole_model_fits`, which checks every solid ingredient has a model within 10% of its size;
+- `_test_pantry_dresser`, which runs in the real scene: every unlocked ingredient has a spot on its larder's shelf;
 - the kitchen station checks (`_test_kitchen_stations`). They run in the real scene with the shipped pot, stove, press and oil, and expect 0.05 turns per gram and a 0.35 oil yield.
 
 The rest of the suite asserts against the shipped `data/` content, not fixtures, so some content-only changes break it:
@@ -195,6 +219,7 @@ Spirit FSM ──SpiritEventBus.spirit_lifecycle_complete("ASCENDED")──> Lig
   - `Ingredient` carries the physical, thermal and cooking-medium data all of these need, plus a `validate()`. This includes skin permeability, shrinkage and, for oils, smoke point and breakdown rates. The older ingredients (kelp, clam, herb, ember root) have no physical data yet and don't validate.
   - Equipment resources extend `KitchenEquipment` and live in `data/equipment/`. `LighthouseProgression.is_equipment_unlocked` gates them. `CookingVessel` carries the pot's real geometry and metal; `HeatSource` carries how far the flame spreads.
   - `FoodPerception` maps a piece's state to `FoodTexture`, `FoodAppearance` (with per-face values) and `BiteSound`. `TasteNote` puts a bite into words.
+  - `FoodPiece.spices` is the spice stuck to a piece's surface, by spice. `Seasoning` adds to it and cutting shares it out. The flavour is already in `flavour`; this is what the eye sees.
   - `Dish` holds plated pieces and `LiquidPortion`s and has a `fingerprint()` (via `DishDescriber`) and a `dominant_affinity()`. `DishNourishment` turns a `Dish` into a `FeedingResult`, including `ascension_strength`. `DishBook` keeps the player's names for dishes by fingerprint (`user://dish_book.cfg`), and which dishes are on the menu.
   - **Mystical essences:**
     - A `MysticTrait` (`data/traits/`) is one of eight effects the physics understands (LIFT, GLOW, EMBER, FROST, CHAR_WARD, BLOOM, SOOTHE, NOURISH). It names a trigger (`TraitEffects.activation`), its fat and water solubility, and how it travels by diet.
@@ -215,11 +240,18 @@ Spirit FSM ──SpiritEventBus.spirit_lifecycle_complete("ASCENDED")──> Lig
 - **Kitchen scene** (`scenes/kitchen/`, scripts in `systems/kitchen/view/`) is the playable view layer and the main scene.
   - `Kitchen` owns the one camera and a flat `KitchenViewMode` FSM: WALKING → STEPPING_IN → AT_COUNTER → STEPPING_OUT → WALKING. It gates every input by mode. It also routes food between the stations: board to pot, spoon to board, sunflower head to press. Tasting goes through it too.
   - `KitchenSimulation` owns every simulation object (pot, board, plate and held `RestingSurface`s, press, liquid stores) and steps them in `_physics_process`. The views (`CuttingBoard`, `StoveView`, `PotView`, `PourVesselView`, `PressView`, `SeedSource`, `IngredientSource`) only draw state and turn the player's hands into calls. No scene script holds food logic.
-  - `CuttingBoard` is any food surface. The serving board is an instance with `allows_cutting` off and room for liquids; what is on it is the `Dish`. `IngredientSource` is a pantry shelf (`Ingredient.Shelf`) whose right-click turns to the next ingredient. Spices and grains are carried as a pinch or handful and let go where they land.
+  - `FoodPieceView` draws one piece:
+    - an uncut item as its `whole_model`, a cut piece as a `FoodPieceMesh`, and a heap as its kernel model, instanced;
+    - all of them in the food shader (`food_cel.gdshader`);
+    - `move_to` moves the piece at once for the simulation while what is drawn trails on a spring, and `land()` squashes it.
+  - `FoodPieceMesh` builds a cut piece's mesh from its size and per-face skin. It is a rounded box with its own radius on each side, so skin rounds and cut faces stay flat. It fills exactly the piece's box and is cached by size. `FoodLook` (`resources/`, data in `data/looks/`) is an ingredient's roundness, flesh grain, curl and crust.
+  - `CuttingBoard` is any food surface. The serving board is an instance with `allows_cutting` off and room for liquids; what is on it is the `Dish`. `PantryDresser` lays out one `IngredientSource` per unlocked ingredient on its larder's shelf (garden, catch, grains, spices), from the catalog, and restocks when a retrofit is bought. An `IngredientSource` is one spot that never runs out: a fitted sample, a name on hover, its label read on a right-click. Spices and grains are carried as a pinch or handful and let go where they land, and a pinch falls as a `Sprinkle`.
   - `KitchenAudio` drives synthesised sound (`SoundSynth`) from the simulation: the sizzle follows steam, the crackle follows bubbling, and the pitch follows oil temperature. It also plays the one-shots of the hands. `KitchenAudio.recorded_bites` swaps in recorded bite layers.
   - The `Caretaker` (`systems/player/`, `scenes/player/`) is the first-person body. It has a ledge guard so it never walks off the cliff.
   - `CounterViews` supplies the station poses, the sea vista and the edge-peek.
-  - `KitchenPointer` raycasts mouse input into `Interactable` areas, and their owners turn it into simulation calls. Knobs and the crank read circular drags through `CircularDrag`. The pointer is live only at the counter, and cancels any hold when the player steps away.
+  - `KitchenPointer` raycasts mouse input into `Interactable` areas, and their owners turn it into simulation calls. It also reports hover, and keeps `hand_point`, where the hand is.
+  - `HandView` draws the cook's right hand (`HandModel`, `scenes/player/hand.tscn`) as the cursor at the counter. It follows on a spring and closes on what it takes, in the way and at the place the `Interactable` asks (`hand_pose`, `hand_anchor`). The board shows the left hand steadying a cut.
+  - The pot and everything in it draw on `PotView.POT_LAYER`, which the gas flame's light leaves out. Ink outlines are a screen pass on the kitchen camera (`ink_outline.gdshader`). Knobs and the crank read circular drags through `CircularDrag`. The pointer is live only at the counter, and cancels any hold when the player steps away.
 - **World** (`scenes/world/coast.tscn`, `systems/world/coast.gd`) is the outdoor setting: a painted sky shader, the sea shader, sun, fog and glow, the cliff top, the lighthouse, sea stacks and a wind-blown grass field. Imported `.glb` models get the toon look from `tools/godot/toon_post_import.gd`, which is set as each model's import script. The terrain, lighthouse and sea stacks get trimesh collision at import time through the per-node physics settings in their `.glb.import` files. That also works in headless runs, where building collision from a mesh at runtime does not. The terrain's faces must stay wound upward (see `build_environment.py`), or its collision is one-sided from below.
 - `ElementalAffinity.Type` is the shared tag enum. Ingredients and archetypes both use it, so neither module depends on the other's scripts.
 

@@ -13,4 +13,5 @@ signal taken(ingredient: Ingredient, grams: float)
 @onready var _grip: Interactable = $Grip
 
 func _ready() -> void:
+	_grip.hand_pose = HandModel.Pose.PINCH
 	_grip.pressed.connect(func(_point: Vector3) -> void: taken.emit(ingredient, scoop_g))

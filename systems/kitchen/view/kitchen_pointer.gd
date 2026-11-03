@@ -29,8 +29,18 @@ var enabled: bool = true:
 var _held: Interactable
 var _hovered: Interactable
 
+## Where the hand is on the world: the last point it pressed or dragged
+## to, or what it is over.
+var hand_point: Vector3 = Vector3.ZERO
+## Whether hand_point lies on something (false: on nothing, out in the air).
+var on_something: bool = false
+
 func is_holding() -> bool:
 	return state == State.HOLDING
+
+## What the hand holds, while holding.
+func held() -> Interactable:
+	return _held if state == State.HOLDING and is_instance_valid(_held) else null
 
 ## Lets go of whatever is held without releasing it onto anything.
 func cancel() -> void:
@@ -59,9 +69,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and state == State.HOLDING:
 		var point: Variant = _project(event.position, _held.drag_plane)
 		if point != null:
+			hand_point = point
 			_held.dragged.emit(point)
 	elif event is InputEventMouseMotion:
-		_hover(pick(event.position).interactable)
+		var hit := pick(event.position)
+		_hover(hit.interactable)
+		_track(event.position, hit)
 
 ## Moves the hover from whatever it was over to `over`.
 func _hover(over: Interactable) -> void:
@@ -77,6 +90,7 @@ func _press(screen_position: Vector2) -> void:
 	var hit := pick(screen_position)
 	if hit.interactable == null:
 		return
+	hand_point = hit.point
 	_hover(null)
 	state = State.HOLDING
 	_held = hit.interactable
@@ -90,6 +104,17 @@ func _release(screen_position: Vector2) -> void:
 		return
 	var point: Variant = _project(screen_position, held.drag_plane)
 	held.released.emit(point if point != null else held.global_position)
+
+## Keeps the hand over what the mouse is over, or over the counter when it
+## is over nothing.
+func _track(screen_position: Vector2, hit: PointerHit) -> void:
+	on_something = hit.interactable != null
+	if on_something:
+		hand_point = hit.point
+		return
+	var counter: Variant = _project(screen_position, Plane(Vector3.UP, 0.0))
+	if counter != null:
+		hand_point = counter
 
 ## The Interactable under a point on the screen, and where the ray meets it.
 func pick(screen_position: Vector2) -> PointerHit:

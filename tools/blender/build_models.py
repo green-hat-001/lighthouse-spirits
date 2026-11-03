@@ -701,10 +701,110 @@ def serving_plate():
     kit.save("serving_plate", "assets/models/tools/serving_plate.glb")
 
 
+# --------------------------------------------------------------------------
+# The caretaker's hand
+# --------------------------------------------------------------------------
+
+# Knuckle positions across the back of the hand (X; the thumb is at -X on a
+# right hand held palm down), finger lengths, and how each length is shared
+# between its three bones.
+_FINGERS = [(-0.027, 0.071), (-0.009, 0.079), (0.009, 0.073), (0.026, 0.059)]
+_BONES = (0.46, 0.30, 0.24)
+
+# Each pose: (curl of each finger's three joints in degrees, spread of each
+# finger in degrees, thumb (sweep in, curl) in degrees, what the origin is).
+HAND_POSES = {
+    "open": ([(14, 16, 10)] * 4, (-7, -2, 3, 8), (10, 10), "index_tip"),
+    "grip": ([(58, 66, 44), (60, 70, 46), (62, 72, 46), (64, 74, 48)], (-3, -1, 1, 3), (45, 35), "grasp"),
+    "pinch": ([(36, 44, 26), (66, 80, 54), (74, 86, 60), (80, 88, 62)], (-2, 0, 2, 4), (58, 26), "pinch"),
+    "press": ([(4, 3, 2)] * 4, (-11, -4, 4, 12), (-8, 4), "palm"),
+}
+
+
+def _finger(bm, base, length, curls, spread, radius):
+    """A finger from its knuckle: three bones bending down (toward -Z) by
+    `curls`, splayed by `spread` about Z. Returns its tip."""
+    pts, radii = [Vector(base)], [radius]
+    angle = 0.0
+    p = Vector(base)
+    for share, curl in zip(_BONES, curls):
+        angle += math.radians(curl)
+        d = Matrix.Rotation(math.radians(spread), 3, "Z") @ Vector((0.0, math.cos(angle), -math.sin(angle)))
+        p = p + d * length * share
+        pts.append(p.copy())
+        radii.append(radius * (0.92 if len(radii) < 3 else 0.82))
+    tip = p + d * radius * 0.6
+    pts.append(tip)
+    radii.append(0.0)
+    tube(bm, pts, radii, 7, 0, up=(0, 0, 1))
+    return tip
+
+
+def _hand(curls, spreads, thumb, origin):
+    bm = bmesh.new()
+    # The palm, knuckles at Y = 0.088, wrist at Y = 0: a flattened egg,
+    # narrowing to the wrist, the back rounded, the knuckles a low ridge.
+    palm = bmesh.new()
+    bmesh.ops.create_uvsphere(palm, u_segments=16, v_segments=10, radius=1.0)
+    for v in palm.verts:
+        x, y, z = v.co
+        t = (y + 1.0) * 0.5
+        x *= 0.82 + 0.18 * t
+        z *= 0.55 if z < 0 else 1.0
+        z += 0.12 * max(0.0, y - 0.55) * (1.0 - abs(x))
+        v.co = Vector((x * 0.041, 0.045 + y * 0.047, z * 0.0145))
+    for f in palm.faces:
+        f.material_index = 0
+    kit.merge(bm, palm)
+    tips = []
+    for (x, length), curl, spread in zip(_FINGERS, curls, spreads):
+        tips.append(_finger(bm, (x, 0.086, 0.002), length, curl, spread, 0.0088 if x < 0.02 else 0.0078))
+    # The thumb sweeps in across the palm and curls toward the fingers.
+    sweep, curl = math.radians(thumb[0]), math.radians(thumb[1])
+    base = Vector((-0.034, 0.026, -0.004))
+    d0 = Vector((-math.cos(sweep) * 0.75, 0.62, -0.25 - 0.5 * math.sin(sweep))).normalized()
+    p1 = base + d0 * 0.034
+    d1 = (Matrix.Rotation(-curl, 3, "Y") @ (Matrix.Rotation(-curl * 0.8, 3, "Z") @ d0)).normalized()
+    p2 = p1 + d1 * 0.028
+    thumb_tip = p2 + d1 * 0.006
+    tube(bm, [base, p1, p2, thumb_tip], [0.0125, 0.0105, 0.0095, 0.0], 7, 0, up=(0, 0, 1))
+    # Wrist, the knitted cuff, and the coat sleeve going back toward the eye.
+    tube(bm, [(0.0, 0.014, -0.002), (0.0, -0.02, 0.002), (0.0, -0.05, 0.008)], [(0.012, 0.027), (0.014, 0.026), (0.017, 0.028)], 10, 0,
+         up=(0, 0, 1))
+    tube(bm, [(0.0, -0.045, 0.01), (0.0, -0.072, 0.016)], [0.034, 0.035], 12, 2)
+    tube(bm, [(0.0, -0.066, 0.016), (0.0, -0.17, 0.05), (0.0, -0.30, 0.1)], [0.041, 0.046, 0.05], 12, 1)
+    if origin == "index_tip":
+        point = tips[0]
+    elif origin == "pinch":
+        point = (tips[0] + thumb_tip) / 2
+    elif origin == "grasp":
+        point = (sum(tips, Vector()) / 4 + Vector((0.0, 0.05, -0.013))) / 2
+    else:
+        point = Vector((0.0, 0.05, -0.013))
+    for v in bm.verts:
+        v.co -= point
+    return bm
+
+
+def hand():
+    """The caretaker's right hand in each of its poses, one object per pose,
+    each with its origin at the point it touches with: the index fingertip
+    (open, reaching), the middle of the grasp (grip), where finger and thumb
+    meet (pinch) and the middle of the palm (press). Fingers point +Y (away
+    from the cook), palm down. Godot mirrors it for the left hand."""
+    kit.reset()
+    skin = material("skin", "#e2b18b", roughness=0.7)
+    sleeve = material("sleeve", "#3f5867", roughness=0.9)
+    cuff = material("cuff", "#d6c7a2", roughness=0.95)
+    for name, (curls, spreads, thumb, origin) in HAND_POSES.items():
+        mesh_object("hand_" + name, _hand(curls, spreads, thumb, origin), [skin, sleeve, cuff], smooth_angle=60)
+    kit.save("hand", "assets/models/player/hand.glb")
+
+
 MODELS = {f.__name__: f for f in (
     potato, chilli, sunflower_head, sunflower_seed, gas_stove, pot, slotted_spoon, water_jug,
     oil_bottle, oil_press, oil_cup, sunflower_seed_cake, mezzaluna, cutting_board, basket, counter,
-    pantry_dresser, spice_crock, grain_sack, serving_plate)}
+    pantry_dresser, spice_crock, grain_sack, serving_plate, hand)}
 
 
 def main():

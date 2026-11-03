@@ -4,7 +4,8 @@ extends RefCounted
 ## Synthesised kitchen sounds, built once as AudioStreamWAV buffers: the
 ## looping beds the pot and stove play (sizzle, crackle, boiling, gas) and
 ## the one-shots of the hands (the spark, the crank's ratchet, the knock of
-## the blade on the board, and the five bite layers). They are physical in
+## the blade on the board, a pinch of spice pattering down, food dropped
+## into water, food set down on wood, and the five bite layers). They are physical in
 ## the way that matters for play: KitchenAudio drives their loudness and
 ## pitch from the simulation, so a hard sizzle means hard steaming. Recorded
 ## samples can replace any of them through KitchenAudio's exported slots.
@@ -14,7 +15,7 @@ extends RefCounted
 const MIX_RATE: int = 22050
 
 enum Bed { SIZZLE, CRACKLE, BOIL, GAS, POUR }
-enum Shot { SPARK, RATCHET, KNOCK }
+enum Shot { SPARK, RATCHET, KNOCK, SPRINKLE, PLOP, SET_DOWN }
 
 static func bed(kind: Bed) -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
@@ -87,6 +88,22 @@ static func shot(kind: Shot) -> AudioStreamWAV:
 			samples.resize(int(0.12 * MIX_RATE))
 			_ring(samples, 0, 190.0, 0.035, 0.8, rng)
 			_ring(samples, 0, 900.0, 0.01, 0.35, rng)
+		Shot.SPRINKLE:
+			# Grains of spice pattering down: a quick, thinning shower of ticks.
+			samples.resize(int(0.35 * MIX_RATE))
+			_scatter_pops(samples, rng, 900.0, 0.0003, 0.0009, 7000.0, 0.3)
+		Shot.PLOP:
+			# Food dropped into water: a falling bloop and a little splash.
+			samples.resize(int(0.25 * MIX_RATE))
+			for j in int(0.12 * MIX_RATE):
+				var t: float = float(j) / MIX_RATE
+				samples[j] += sin(TAU * lerpf(520.0, 180.0, t / 0.12) * t) * exp(-t / 0.04) * 0.8
+			_scatter_pops(samples, rng, 300.0, 0.001, 0.003, 3000.0, 0.15)
+		Shot.SET_DOWN:
+			# Food set down on wood: a soft, dull tap.
+			samples.resize(int(0.1 * MIX_RATE))
+			_ring(samples, 0, 140.0, 0.02, 0.6, rng)
+			_muffled_noise(samples, rng, 0, int(0.03 * MIX_RATE), 0.08, 0.2)
 	return _to_wav(samples, false)
 
 ## One layer of a bite (see BiteSound.Layer).

@@ -9,16 +9,24 @@ extends Node
 ##   STATION(i) --camera_look_out--> VISTA --camera_look_back--> STATION(i)
 ##
 ## Pushing the mouse towards either edge of the screen turns the view a
-## little that way, to glance at what's beside the station without moving;
-## at a station in front of the pantry, pushing it to the top edge lifts the
-## eyes to the shelves.
+## little that way, to glance at what's beside the station without moving.
+## At a station in front of the pantry, pushing it to the top edge lifts the
+## eyes to the shelves, and they stay lifted - so the hand can move about
+## the shelves - until the mouse goes down into the lower part of the
+## screen:
+##
+##   LEVEL --mouse at the top edge--> LIFTED --mouse low on the screen--> LEVEL
+##   LIFTED --another station, or out to sea--> LEVEL
 
 ## Only the outer part of the screen on each side peeks, so reaching for
 ## something near the edge doesn't swing the view.
 const PEEK_DEAD_ZONE: float = 0.62
 const PEEK_MAX_DEG: float = 26.0
-## Only the top of the screen lifts the eyes, and only this far.
-const GLANCE_DEAD_ZONE: float = 0.55
+## The mouse this near the top edge (-1) lifts the eyes to the shelves, and
+## this far down the screen (1 is the bottom) lowers them again.
+const LIFT_AT: float = -0.9
+const LOWER_AT: float = 0.45
+## How far the eyes lift.
 const GLANCE_MAX_DEG: float = 34.0
 
 @export var stations: Node3D
@@ -30,6 +38,8 @@ const GLANCE_MAX_DEG: float = 34.0
 var active: bool = false
 var station_index: int = 0
 var looking_out: bool = false
+## The eyes are lifted to the pantry shelves.
+var looking_up: bool = false
 
 var _anchors: Array[Marker3D] = []
 
@@ -57,11 +67,16 @@ func pose(peek_deg: float, glance_deg: float = 0.0) -> Transform3D:
 func can_glance_up() -> bool:
 	return not looking_out and below_shelves.has(station_index)
 
-## Degrees to lift the eyes for a mouse at `mouse_y_norm` (-1 top edge, 1
-## bottom): nothing below the top of the screen, easing up to
-## GLANCE_MAX_DEG at the very top.
-static func glance_up_degrees(mouse_y_norm: float) -> float:
-	return smoothstep(GLANCE_DEAD_ZONE, 1.0, -mouse_y_norm) * GLANCE_MAX_DEG
+## Lifts or lowers the eyes for a mouse at `mouse_y_norm` (-1 top edge, 1
+## bottom), and returns how far they should be lifted, in degrees.
+func glance(mouse_y_norm: float) -> float:
+	if not can_glance_up():
+		looking_up = false
+	elif not looking_up and mouse_y_norm <= LIFT_AT:
+		looking_up = true
+	elif looking_up and mouse_y_norm >= LOWER_AT:
+		looking_up = false
+	return GLANCE_MAX_DEG if looking_up else 0.0
 
 ## Degrees to turn for a mouse at `mouse_x_norm` (-1 left edge, 1 right
 ## edge): nothing in the middle, easing up to PEEK_MAX_DEG at the edges.
@@ -76,9 +91,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("camera_pan_left"):
 		station_index = maxi(station_index - 1, 0)
 		looking_out = false
+		looking_up = false
 	elif event.is_action_pressed("camera_pan_right"):
 		station_index = mini(station_index + 1, _anchors.size() - 1)
 		looking_out = false
+		looking_up = false
 	elif event.is_action_pressed("camera_look_out"):
 		looking_out = true
 	elif event.is_action_pressed("camera_look_back"):

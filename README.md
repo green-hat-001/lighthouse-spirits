@@ -17,9 +17,9 @@ godot --headless --editor --quit --path .
 # Walking: WASD to walk, mouse to look, E at the counter to step in, Esc to
 # free the mouse (click to take it back).
 # At the counter: A/D along the counter (pass, board, stove, press), W/S to look
-# out to sea and back, mouse to a screen edge to glance sideways, Esc to
-# step back.
-#   Board: click a basket for a whole item, drag across the board to cut
+# out to sea and back, mouse to a screen edge to glance sideways (to the top
+# to look up at the pantry), Esc to step back. Your hand is the cursor.
+#   Board: drag across the board to cut
 #     (hold Space to steady), drag a piece to move it, right-click to roll
 #     it, Space + drag to lift it with everything touching it, T to taste.
 #   Stove: drag round the knob to turn the gas.
@@ -30,8 +30,10 @@ godot --headless --editor --quit --path .
 #     right-click the bottle to pull its cork.
 #   Press: click the sunflower head to fill the hopper, drag round the crank
 #     to press oil into the cup.
-#   Pantry: click a shelf to take from it, right-click for the next item;
-#     spices and grains are carried and let go over the pot, board or plate.
+#   Pantry (the dresser behind the pass and board): click anything on it to
+#     take one, right-click to read its label; spices and grains are carried
+#     (A/D carries them along the counter) and let go over the pot, board
+#     or plate.
 #     The first stroke through a whole fish, bird or crab opens it up.
 #   Pot cover: let a lifted sheet (a hide, a big leaf) go over the pot to
 #     cover it (Space stretches it taut); press it to lift it off.
@@ -66,13 +68,14 @@ Everything listed here is covered by the integration suite and passes.
   - pressing sunflower seeds into oil;
   - tasting.
 - A mystical larder (`docs/ingredient_tree.md`). Every item has its own properties:
-  - **Pantry shelves:** 15 garden plants, 5 grains, 11 spices and six species, offered from the four pantry shelves.
+  - **The pantry dresser:** 15 garden plants, 5 grains, 11 spices and six species, each in its own spot on one of four shelves, never running out.
   - **Whole animals:** whole fish, birds and crabs are dressed on the board into every part, from fillet to eyes, teeth and swim bladder.
   - **Essences that come from diet:** a bream that grazes buoyant kelp has flesh that rises off the plate once cooked.
   - **New ways to cook:** fat renders into frying fat, grain drinks water as it cooks, and spices season what they stick to.
   - **Dum cooking:** a ram's hide stretched over the pot seals it, steaming what's inside, or turns a dry pot into an oven.
 - Plating at the pass: arrange food on the serving board, drizzle oil or ladle broth over it, name the dish (N), and put it on the menu (M).
 - Hearing it cook: synthesised sizzle and crackle that follow the steaming and bubbling, the burner's roar, the spark, the press's ratchet, the blade on the board, pouring, and bites layered from the food's texture.
+- Seeing it: every ingredient has its own model, cut pieces are shaped by their cut (skin rounded, cut faces flat, the flesh's own grain), the kitchen is cel-shaded and inked, and your hands reach, grip, pinch and steady. Carried food sways, set-down food drops and squashes, and spice falls as flecks and stays on the food.
 - Watching food cook: fries ringed by sizzle foam, oil that shimmers as it heats and smokes when abused, steam and smoke in the wind, and food that browns face by face, shrinks, and steams as it rests.
 
 **The simulation underneath**

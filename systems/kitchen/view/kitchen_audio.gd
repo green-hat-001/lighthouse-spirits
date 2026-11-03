@@ -45,6 +45,9 @@ var pour: AudioStreamPlayer3D
 var _spark: AudioStreamPlayer3D
 var _ratchet: AudioStreamPlayer3D
 var _knock: AudioStreamPlayer3D
+var _sprinkle: AudioStreamPlayer3D
+var _plop: AudioStreamPlayer3D
+var _set_down: AudioStreamPlayer3D
 var _bites: Dictionary[BiteSound.Layer, AudioStreamPlayer] = {}
 var _pouring: float = 0.0
 var _turns_since_click: float = 0.0
@@ -58,6 +61,9 @@ func _ready() -> void:
 	_spark = _shot_player(SoundSynth.shot(SoundSynth.Shot.SPARK), stove, -8.0)
 	_ratchet = _shot_player(SoundSynth.shot(SoundSynth.Shot.RATCHET), press_view, -10.0)
 	_knock = _shot_player(SoundSynth.shot(SoundSynth.Shot.KNOCK), board, -6.0)
+	_sprinkle = _shot_player(SoundSynth.shot(SoundSynth.Shot.SPRINKLE), board, -14.0)
+	_plop = _shot_player(SoundSynth.shot(SoundSynth.Shot.PLOP), pot_view, -10.0)
+	_set_down = _shot_player(SoundSynth.shot(SoundSynth.Shot.SET_DOWN), board, -12.0)
 	for layer in BiteSound.Layer.values():
 		var player := AudioStreamPlayer.new()
 		var recorded: AudioStream = recorded_bites[layer] if layer < recorded_bites.size() else null
@@ -68,8 +74,23 @@ func _ready() -> void:
 	press_view.cranked.connect(_on_cranked)
 	board.pieces_cut.connect(func(_count: int, _steadied: bool) -> void: _knock.play())
 	board.bitten.connect(play_bite)
+	board.piece_placed.connect(func(_view: FoodPieceView) -> void: play_at(_set_down, board.global_position))
+	pot_view.pieces_dropped_in.connect(func(_count: int) -> void:
+		if simulation.pot.has_pool() and simulation.pot.medium.fat_fraction < 0.5:
+			_plop.play())
 	for vessel in vessels:
 		vessel.poured.connect(func(grams: float) -> void: _pouring += grams)
+
+## A pinch of spice let go at a point patters down there.
+func play_sprinkle(at: Vector3) -> void:
+	play_at(_sprinkle, at)
+
+## Plays a one-shot from a point, a touch higher or lower each time so a
+## run of them doesn't sound mechanical.
+func play_at(player: AudioStreamPlayer3D, at: Vector3) -> void:
+	player.global_position = at
+	player.pitch_scale = randf_range(0.92, 1.08)
+	player.play()
 
 ## Plays a bite: each layer at its weight, pitched for the piece's size.
 func play_bite(sound: BiteSound) -> void:

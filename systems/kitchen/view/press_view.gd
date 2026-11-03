@@ -42,6 +42,9 @@ var _seeds_multimesh := MultiMesh.new()
 var _cake_multimesh := MultiMesh.new()
 var _drip_material := StandardMaterial3D.new()
 
+## Where the crank's wooden grip is, from its pivot.
+const CRANK_HANDLE: Vector3 = Vector3(0.035, 0.078, 0.0)
+
 @onready var _crank: Node3D = $Model/crank
 @onready var _grip: Interactable = $CrankGrip
 @onready var _spout: Node3D = $Model/oil_spout
@@ -51,6 +54,12 @@ var _drip_material := StandardMaterial3D.new()
 @onready var _drip: MeshInstance3D = $Drip
 
 func _ready() -> void:
+	# The hand closes on the crank's wooden grip and goes round with it.
+	var handle := Node3D.new()
+	handle.name = "Handle"
+	handle.position = CRANK_HANDLE
+	_crank.add_child(handle)
+	_grip.hand_anchor = handle
 	_grip.pressed.connect(_on_pressed)
 	_grip.dragged.connect(_on_dragged)
 	for pair in [[_seeds_multimesh, _seeds, simulation.seeds, MAX_SEEDS_SHOWN], [_cake_multimesh, _cake, simulation.seed_cake, MAX_PELLETS_SHOWN]]:

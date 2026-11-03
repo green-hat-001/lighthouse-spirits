@@ -33,6 +33,7 @@ func _ready() -> void:
 	_grip.dragged.connect(_on_dragged)
 	_flame.source = simulation.stove if simulation else null
 	_flame.air = simulation.air if simulation else null
+	_grip.hand_anchor = _knob
 	set_knob(0.0)
 
 ## 0 off through to 1 full.

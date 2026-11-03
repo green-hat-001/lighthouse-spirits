@@ -64,6 +64,10 @@ SPEC = {
                    {"grain_sack": "MESH"}, {"burlap", "twine"}),
     "serving_plate": ("assets/models/tools/serving_plate.glb", (300, 1200), (0.32, 0.224, 0.0215), 0.03, "top_well",
                       {"serving_plate": "MESH"}, {"glaze", "band"}),
+    # The caretaker's hand, one object per pose.
+    "hand": ("assets/models/player/hand.glb", (2000, 9000), (None, None, None), 0.0, "none",
+             {"hand_open": "MESH", "hand_grip": "MESH", "hand_pinch": "MESH", "hand_press": "MESH"},
+             {"skin", "sleeve", "cuff"}),
     # The outdoor setting (tools/blender/build_environment.py). The terrain and
     # grass are positioned around the kitchen origin, so their origin is not
     # checked.
