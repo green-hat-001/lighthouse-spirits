@@ -44,6 +44,9 @@ var size_mm: Vector3
 var solids_g: float
 var water_g: float
 var oil_g: float = 0.0
+## The piece's own fat that has melted out of it (see Ingredient render
+## fields), in g. Already taken out of solids_g.
+var fat_rendered_g: float = 0.0
 var core_temp_c: float
 ## 0 raw, 1 cooked all the way through. Keeps rising past 1 as the piece
 ## overcooks.
@@ -120,6 +123,7 @@ static func from_ingredient(p_ingredient: Ingredient, ambient_temp_c: float) -> 
 	piece.face_moisture.fill(p_ingredient.water_fraction)
 	piece.face_skin.fill(1.0)
 	piece.flavour = p_ingredient.flavour.copy() if p_ingredient.flavour else FlavourProfile.new()
+	IngredientCatalog.ensure_loaded()
 	piece.traits = p_ingredient.trait_doses()
 	return piece
 
@@ -150,6 +154,14 @@ func moisture() -> float:
 
 func oil_fraction() -> float:
 	return oil_g / mass_g()
+
+## Grams of its own fat still in it that could melt out.
+func renderable_fat_g() -> float:
+	var solids_share: float = 1.0 - ingredient.water_fraction
+	if solids_share <= 0.0:
+		return 0.0
+	var fat_in_solids: float = (solids_g + fat_rendered_g) * ingredient.fat_fraction / solids_share
+	return maxf(fat_in_solids - fat_rendered_g, 0.0)
 
 ## Overall density, in g/cm^3.
 func density_g_per_cm3() -> float:
@@ -314,6 +326,7 @@ func clone() -> FoodPiece:
 	copy.solids_g = solids_g
 	copy.water_g = water_g
 	copy.oil_g = oil_g
+	copy.fat_rendered_g = fat_rendered_g
 	copy.core_temp_c = core_temp_c
 	copy.core_doneness = core_doneness
 	copy.integrity = integrity

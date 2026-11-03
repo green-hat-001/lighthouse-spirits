@@ -38,6 +38,7 @@ extends RefCounted
 ##   8. The piece shrinks as it loses water, by the ingredient's shrinkage.
 ##   9. Awake essences act (TraitEffects): embers heat the core, frost
 ##      chills it, blooms draw out flavour; a char ward slows burning.
+##  10. Fatty food renders: its fat melts out once hot enough.
 ##
 ## Integration is explicit, split into substeps short enough for the
 ## fastest thermal time constant of any face or the core, so no step can
@@ -227,6 +228,7 @@ static func _integrate(piece: FoodPiece, exposure: HeatExposure, dt: float, exch
 	exchange.evaporated_g += total_evaporated_g
 	_migrate_water(piece, dt)
 	_absorb_fat(piece, exposure, (seeped_g + replaced_g) * exposure.uptake_boost, exchange)
+	_render_fat(piece, dt, exchange)
 	_cook_core(piece, dt)
 	_brown_and_char(piece, exposure, outer_temps, dt)
 	_exchange_flavour(piece, exposure, wetted_area_m2, dt)
@@ -298,6 +300,9 @@ static func _migrate_water(piece: FoodPiece, dt: float) -> void:
 static func _absorb_fat(piece: FoodPiece, exposure: HeatExposure, offered_g: float, exchange: HeatExchange) -> void:
 	if exposure.fat_fraction <= 0.0 or offered_g <= 0.0:
 		return
+	# Fat that is melting out of a piece holds other fat out.
+	if piece.ingredient.render_temp_c > 0.0 and piece.surface_temp_c > piece.ingredient.render_temp_c:
+		return
 	var available_g: float = exposure.medium_mass_g * exposure.fat_fraction - exchange.fat_absorbed_g
 	var absorbed_g: float = minf(offered_g * exposure.fat_fraction, maxf(available_g, 0.0))
 	if absorbed_g <= 0.0:
@@ -312,6 +317,27 @@ static func _absorb_fat(piece: FoodPiece, exposure: HeatExposure, offered_g: flo
 	piece.oil_g += absorbed_g
 	piece.restore_face_waters(waters)
 	exchange.fat_absorbed_g += absorbed_g
+
+## Fat melts out of fatty food once its surface passes the fat's rendering
+## temperature, faster the hotter it is and the more fat is left, and the
+## piece shrinks by the fat's volume.
+static func _render_fat(piece: FoodPiece, dt: float, exchange: HeatExchange) -> void:
+	var ingredient: Ingredient = piece.ingredient
+	if ingredient.render_temp_c <= 0.0 or ingredient.renders_into == null:
+		return
+	var above: float = piece.surface_temp_c - ingredient.render_temp_c
+	if above <= 0.0:
+		return
+	var rendered: float = minf(ingredient.render_rate_per_s_per_k * above * piece.renderable_fat_g() * dt, piece.renderable_fat_g())
+	if rendered <= 0.0:
+		return
+	var waters := piece.face_waters_g()
+	piece.solids_g -= rendered
+	piece.fat_rendered_g += rendered
+	piece.restore_face_waters(waters)
+	exchange.fat_rendered_g += rendered
+	var fat_density: float = maxf(ingredient.renders_into.density_g_per_cm3, 0.5)
+	piece.shrink_to_volume(maxf(piece.volume_mm3() - rendered / fat_density * 1000.0, piece.volume_mm3() * 0.3))
 
 static func _cook_core(piece: FoodPiece, dt: float) -> void:
 	var ingredient: Ingredient = piece.ingredient

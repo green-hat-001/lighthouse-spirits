@@ -274,6 +274,8 @@ func _step(dt: float) -> void:
 		placement.steam_g_per_s = exchange.steam_through_liquid_g / dt
 		if medium:
 			medium_mass_g = maxf(medium_mass_g - exchange.fat_absorbed_g, 0.0)
+		if exchange.fat_rendered_g > 0.0:
+			_take_rendered_fat(placement.piece, exchange.fat_rendered_g)
 	energy_to_food_j += drawn_from_liquid_j + drawn_from_base_j + drawn_from_rim_j
 
 	# Then the metal and the liquid, in as many internal steps as their own
@@ -292,7 +294,10 @@ func _step(dt: float) -> void:
 		var spilled: float = maxf(1.0 - flame_to_base - on_rim, 0.0)
 		flame_to_rim = on_rim + spilled * FLAME_LICK_SHARE
 
-	var medium_capacity: float = _medium_capacity()
+	# A film too thin to pool is no thermal mass of its own: it sits at the
+	# temperature of the metal it wets.
+	var film: bool = medium != null and not pool
+	var medium_capacity: float = 0.0 if film else _medium_capacity()
 	var lateral: float = _lateral_conductance_w_per_k()
 	var base_to_liquid: float = 0.0
 	var rim_to_liquid: float = 0.0
@@ -305,6 +310,11 @@ func _step(dt: float) -> void:
 	var food_from_base_w: float = drawn_from_base_j / dt
 	var food_from_rim_w: float = drawn_from_rim_j / dt
 	var food_from_liquid_w: float = drawn_from_liquid_j / dt
+	if film:
+		# What food draws from a film it draws from the metal under it.
+		food_from_base_w += food_from_liquid_w * _base_disc_share()
+		food_from_rim_w += food_from_liquid_w * (1.0 - _base_disc_share())
+		food_from_liquid_w = 0.0
 	var evaporated_surface_g: float = 0.0
 	for index in steps:
 		var h_base: float = _metal_to_liquid_h(base_temp_c)
@@ -316,13 +326,15 @@ func _step(dt: float) -> void:
 
 		base_temp_c += (flame_w * flame_to_base - across - into_liquid_from_base - food_from_base_w) * sub_dt / base_capacity
 		rim_temp_c += (flame_w * flame_to_rim + across - into_liquid_from_rim - rim_loss - food_from_rim_w) * sub_dt / rim_capacity
-		if medium and medium_capacity > 0.0:
+		if medium and medium_capacity > 0.0 and not film:
 			var surface := _liquid_surface_loss(temp_c, sub_dt)
 			evaporated_surface_g += surface.y
 			temp_c += (into_liquid_from_base + into_liquid_from_rim - surface.x - food_from_liquid_w) * sub_dt / medium_capacity
 			medium_capacity = _medium_capacity()
 	if medium == null:
 		temp_c = base_temp_c
+	elif film:
+		temp_c = lerpf(rim_temp_c, base_temp_c, _base_disc_share())
 
 	if evaporated_surface_g > 0.0 and medium:
 		medium_mass_g = maxf(medium_mass_g - evaporated_surface_g, 0.0)
@@ -347,6 +359,27 @@ func _step(dt: float) -> void:
 	if medium and medium_mass_g <= 0.0:
 		_empty_medium()
 	_settle()
+
+## Fat melting out of food runs into the pot: into an empty pot it becomes
+## the frying fat, into the same fat or any other fat it joins it, and on
+## water it is skimmed away.
+func _take_rendered_fat(piece: FoodPiece, grams: float) -> void:
+	var fat: Ingredient = piece.ingredient.renders_into
+	if medium == null:
+		medium = fat
+		medium_mass_g = 0.0
+		medium_flavour = fat.flavour.copy() if fat.flavour else FlavourProfile.new()
+		medium_traits = fat.trait_doses()
+		medium_breakdown = 0.0
+		temp_c = piece.surface_temp_c
+	elif medium != fat and not (medium.fat_fraction > 0.9 and fat.fat_fraction > 0.9):
+		return
+	var held: float = medium_mass_g * medium.specific_heat_j_per_g_k
+	var added: float = grams * fat.specific_heat_j_per_g_k
+	if held + added > 0.0:
+		temp_c = (temp_c * held + piece.surface_temp_c * added) / (held + added)
+	medium_traits.mix_in(medium_mass_g, piece.traits, grams)
+	medium_mass_g += grams
 
 ## How one piece's faces are exposed where it lies.
 func _exposure_for(placement: PotPlacement, pool: bool, agitation: float) -> HeatExposure:

@@ -18,3 +18,5 @@ var evaporated_g: float = 0.0
 ## The part of that steam boiled off faces wetted by the liquid: it bubbles
 ## up through the medium, stirring it and, in oil, breaking the oil down.
 var steam_through_liquid_g: float = 0.0
+## The food's own fat that melted out of it, into whatever it sits in.
+var fat_rendered_g: float = 0.0

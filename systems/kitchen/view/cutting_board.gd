@@ -21,13 +21,19 @@ extends Node3D
 ## The mezzaluna stroke is its own two-state machine:
 ##   IDLE --press on the bare board--> STROKING --drag--> STROKING --release--> IDLE
 ## On release, every piece the stroke crosses is cut. Holding
-## "kitchen_steady" during the stroke holds the food still.
+## "kitchen_steady" during the stroke holds the food still. The first
+## stroke through a whole creature dresses it instead: it opens into all of
+## its parts (see dress()).
 
 signal piece_placed(view: FoodPieceView)
 signal pieces_cut(count: int, steadied: bool)
 signal piece_tasted(note: String)
 ## A bite was taken, sounding like this.
 signal bitten(sound: BiteSound)
+## A whole creature was opened into its parts.
+signal dressed(creature: Creature)
+## Something needed more room than the board has.
+signal board_crowded
 
 const SIZE_M: Vector2 = Vector2(0.40, 0.28)
 ## Space between the two halves of a fresh cut, so the cut shows.
@@ -183,6 +189,10 @@ func cut_stroke(start: Vector3, end: Vector3, steadied: bool) -> int:
 		var intent := MezzalunaGesture.resolve(footprint_min, footprint_size, start_mm, end_mm)
 		if intent == null:
 			continue
+		if is_carcass(view.piece):
+			if dress(view):
+				cut_count += 1
+			continue
 		var scatter: bool = not steadied and FoodCutting.is_perpendicular(view.piece, intent.axis)
 		var sides := FoodCutting.cut(view.piece, intent.axis, intent.offset_mm, steadied)
 		if sides.is_empty():
@@ -192,6 +202,48 @@ func cut_stroke(start: Vector3, end: Vector3, steadied: bool) -> int:
 	if cut_count > 0:
 		pieces_cut.emit(cut_count, steadied)
 	return cut_count
+
+## True for a whole creature not yet opened up.
+static func is_carcass(piece: FoodPiece) -> bool:
+	return piece.ingredient.creature != null and piece.cut_axes.is_empty()
+
+## Opens a whole creature into every one of its parts, laid out on the
+## board around where it lay. Each part takes the carcass's temperature
+## and how cooked it was. Refused, leaving it whole, when the board has no
+## room for all of them.
+func dress(view: FoodPieceView) -> bool:
+	if not _views.has(view) or not is_carcass(view.piece):
+		return false
+	var carcass := view.piece
+	var near := Vector2(view.position.x, view.position.z) + view.footprint_m() * 0.5
+	_views.erase(view)
+	var parts: Array[FoodPiece] = []
+	for part in carcass.ingredient.creature.parts:
+		for index in part.count:
+			var piece := FoodPiece.from_ingredient(part.ingredient, carcass.core_temp_c)
+			piece.core_doneness = carcass.core_doneness
+			piece.surface_temp_c = carcass.surface_temp_c
+			parts.append(piece)
+	# Largest first, so the big cuts get the room.
+	parts.sort_custom(func(a: FoodPiece, b: FoodPiece) -> bool:
+		return a.size_mm.x * a.size_mm.z > b.size_mm.x * b.size_mm.z)
+	var spots: Array[Vector2] = []
+	var placed: Array[FoodPieceView] = []
+	for piece in parts:
+		var footprint := Vector2(piece.size_mm.x, piece.size_mm.z) * FoodPieceView.MM_TO_M
+		var spot: Variant = _free_spot(footprint, near - footprint * 0.5)
+		if spot == null:
+			for undo in placed:
+				_remove_view(undo)
+			_views.append(view)
+			board_crowded.emit()
+			return false
+		placed.append(_add_view(piece, Vector3(spot.x, 0.0, spot.y)))
+	if rest:
+		rest.remove_piece(carcass)
+	view.queue_free()
+	dressed.emit(carcass.ingredient.creature)
+	return true
 
 ## Tips a piece onto its side where it lies.
 func roll(view: FoodPieceView) -> void:

@@ -112,6 +112,8 @@ func _ready() -> void:
 	_test_char_ward_and_bloom()
 	_test_essence_infuses_broth()
 	_test_essences_reach_spirits()
+	_test_food_web_inheritance()
+	_test_fat_renders()
 	_test_shipped_transformations_validate()
 	_test_transformation_validation()
 	_test_press_turns_work_into_oil()
@@ -129,6 +131,7 @@ func _ready() -> void:
 	_test_mezzaluna_gesture()
 	_test_kitchen_input_actions()
 	_test_kitchen_board_wiring()
+	_test_dressing_a_carcass()
 	_test_view_mode_transitions()
 	_test_counter_reach()
 	_test_peek_mapping()
@@ -856,6 +859,98 @@ func _test_essences_reach_spirits() -> void:
 	var tasted := _fry_of(_with_trait(_make_test_ingredient(), noted, 1.0), 180.0, 360.0)
 	_expect_equal("tasting notices an awake essence", TasteNote.describe(tasted).contains("It lifts off the tongue."), true)
 
+# --- Food web, butchery and rendering checks ---------------------------------
+
+func _test_food_web_inheritance() -> void:
+	var updraft := _make_trait(MysticTrait.Effect.LIFT, 1.0, MysticTrait.Trigger.COOKED, 1.0)
+	updraft.carried_by_diet = true
+	updraft.diet_share = 0.8
+	updraft.tissues = [MysticTrait.Tissue.MUSCLE]
+	var kelp := _with_trait(_make_test_ingredient(), updraft, 1.0)
+	kelp.id = &"test_web_kelp"
+	var grazer := _make_test_creature(&"test_grazer", [kelp])
+	var hunter := _make_test_creature(&"test_hunter", [grazer.parts[0].ingredient.get_meta(&"carcass")])
+	FoodWeb.resolve([grazer.parts[0].ingredient.get_meta(&"carcass"), hunter.parts[0].ingredient.get_meta(&"carcass")])
+	var grazer_flesh: Ingredient = grazer.parts[0].ingredient
+	var grazer_bone: Ingredient = grazer.parts[1].ingredient
+	_expect_near("what an animal eats settles in the tissues it favours", grazer_flesh.trait_doses().get_dose(updraft), 0.8)
+	_expect_near("and not in the others", grazer_bone.trait_doses().get_dose(updraft), 0.0)
+	_expect_equal("a predator inherits a share of its prey's essence",
+		hunter.parts[0].ingredient.trait_doses().get_dose(updraft) > 0.1 and hunter.parts[0].ingredient.trait_doses().get_dose(updraft) < 0.8, true)
+
+	var grazed := _make_trait(MysticTrait.Effect.SOOTHE, 1.0, MysticTrait.Trigger.ALWAYS, 1.0)
+	grazed.carried_by_diet = true
+	grazed.diet_share = 1.5
+	grazed.tissues = [MysticTrait.Tissue.MUSCLE]
+	var herb := _with_trait(_make_test_ingredient(), grazed, 1.0)
+	var ram := _make_test_creature(&"test_ram", [herb])
+	FoodWeb.resolve([ram.parts[0].ingredient.get_meta(&"carcass")])
+	_expect_equal("grazers concentrate an essence past what their food had", ram.parts[0].ingredient.trait_doses().get_dose(grazed) > 1.0, true)
+
+	var ouroboros := _make_test_creature(&"test_cycle", [])
+	ouroboros.diet.append(ouroboros.parts[0].ingredient.get_meta(&"carcass"))
+	FoodWeb.resolve([ouroboros.parts[0].ingredient.get_meta(&"carcass")])
+	_expect_equal("a creature that eats itself doesn't break the web", ouroboros.validate().is_empty(), true)
+
+func _test_dressing_a_carcass() -> void:
+	var kitchen: Kitchen = load("res://scenes/kitchen/kitchen.tscn").instantiate()
+	add_child(kitchen)
+	var board := kitchen.board
+	var fish := _make_test_creature(&"test_fish", [])
+	var carcass: Ingredient = fish.parts[0].ingredient.get_meta(&"carcass")
+	var whole := board.add_whole(carcass)
+	_expect_equal("a whole creature lies on the board as a carcass", CuttingBoard.is_carcass(whole.piece), true)
+	var across := whole.position.z + whole.footprint_m().y * 0.5
+	board.cut_stroke(Vector3(whole.position.x - 0.02, 0.0, across), Vector3(whole.position.x + whole.footprint_m().x + 0.02, 0.0, across), true)
+	var names: Array[StringName] = []
+	for view in board.views():
+		names.append(view.piece.ingredient.id)
+	_expect_equal("the first stroke opens it into every part", names.size(), 4)
+	_expect_equal("flesh, both halves of it", names.count(&"test_fish_flesh"), 2)
+	_expect_equal("and its bones", names.count(&"test_fish_bone"), 1)
+	_expect_equal("and the carcass is gone", names.has(carcass.id), false)
+	_expect_equal("the parts rest in the board's simulation", kitchen.simulation.board.pieces.size(), 4)
+
+	for view in board.views().duplicate():
+		board.take(view)
+	# A creature with a part nearly as big as the board can't be opened
+	# while anything else is in the way.
+	var crowded_fish := _make_test_creature(&"test_fish_two", [])
+	crowded_fish.parts[0].ingredient.whole_size_mm = Vector3(380.0, 10.0, 250.0)
+	crowded_fish.parts[0].count = 1
+	var second := board.add_whole(crowded_fish.parts[0].ingredient.get_meta(&"carcass"))
+	board.add_whole(KITCHEN_INGREDIENTS[0])
+	_expect_equal("a carcass is left whole when there's no room to open it", board.dress(second), false)
+	_expect_equal("and stays on the board", board.views().has(second) and CuttingBoard.is_carcass(second.piece), true)
+	kitchen.queue_free()
+
+func _test_fat_renders() -> void:
+	var tallow := _make_test_oil()
+	tallow.id = &"test_tallow"
+	var suet := _make_test_ingredient()
+	suet.id = &"test_suet"
+	suet.water_fraction = 0.1
+	suet.starch_fraction = 0.0
+	suet.fat_fraction = 0.85
+	suet.protein_fraction = 0.03
+	suet.density_g_per_cm3 = 0.92
+	suet.render_temp_c = 50.0
+	suet.renders_into = tallow
+	suet.render_rate_per_s_per_k = 0.0004
+	_expect_equal("a rendering fat validates", suet.validate(), PackedStringArray())
+	var pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
+	pot.burner = _make_test_stove()
+	var cube := _cut_cube_of(suet, 25.0)
+	var volume_before: float = cube.volume_mm3()
+	var kcal_before: float = DishNourishment.piece_kcal(cube)
+	pot.add_piece(cube)
+	pot.set_flame(0.4)
+	pot.advance(600.0)
+	_expect_equal("fat in a dry pot renders into its own frying fat", pot.medium == tallow and pot.medium_mass_g > 5.0, true)
+	_expect_near("every gram that melts out ends up in the pot", pot.medium_mass_g, cube.fat_rendered_g)
+	_expect_equal("and the fat shrinks as it renders", cube.volume_mm3() < volume_before * 0.9, true)
+	_expect_equal("rendered fat feeds no one from the plate", DishNourishment.piece_kcal(cube) < kcal_before, true)
+
 # --- Equipment and transformation checks ---------------------------------------
 
 func _test_shipped_transformations_validate() -> void:
@@ -1552,6 +1647,44 @@ func _fry_of(ingredient: Ingredient, temp_c: float, seconds: float) -> FoodPiece
 	for step in roundi(seconds / 0.05):
 		FoodHeating.step(fry, exposure, 0.05)
 	return fry
+
+## A small creature with two parts (flesh x2 and a bone) and a carcass
+## ingredient, all made in code. The carcass is kept on the flesh
+## ingredient's meta for the tests to reach.
+func _make_test_creature(id: StringName, diet: Array[Ingredient]) -> Creature:
+	var creature := Creature.new()
+	creature.id = id
+	creature.display_name = str(id)
+	creature.diet = diet
+	var flesh := _make_test_ingredient()
+	flesh.id = StringName("%s_flesh" % id)
+	flesh.whole_size_mm = Vector3(80.0, 12.0, 40.0)
+	var bone := _make_test_ingredient()
+	bone.id = StringName("%s_bone" % id)
+	bone.whole_size_mm = Vector3(90.0, 8.0, 20.0)
+	bone.edible_share = 0.0
+	var flesh_part := CreaturePart.new()
+	flesh_part.part_name = "Flesh"
+	flesh_part.tissue = MysticTrait.Tissue.MUSCLE
+	flesh_part.ingredient = flesh
+	flesh_part.count = 2
+	var bone_part := CreaturePart.new()
+	bone_part.part_name = "Bone"
+	bone_part.tissue = MysticTrait.Tissue.BONE
+	bone_part.ingredient = bone
+	var head_part := CreaturePart.new()
+	head_part.part_name = "Head"
+	head_part.tissue = MysticTrait.Tissue.BONE
+	head_part.ingredient = bone.duplicate()
+	head_part.ingredient.id = StringName("%s_head" % id)
+	head_part.ingredient.whole_size_mm = Vector3(30.0, 20.0, 25.0)
+	creature.parts = [flesh_part, bone_part, head_part]
+	var carcass := _make_test_ingredient()
+	carcass.id = StringName("%s_whole" % id)
+	carcass.whole_size_mm = Vector3(120.0, 20.0, 50.0)
+	carcass.creature = creature
+	flesh.set_meta(&"carcass", carcass)
+	return creature
 
 ## Seconds of simulated time until the pot reaches the temperature, or the
 ## limit if it never does.

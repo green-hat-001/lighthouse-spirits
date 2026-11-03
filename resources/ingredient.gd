@@ -9,6 +9,11 @@ extends Resource
 ## stocks) are handled in bulk, by mass.
 enum PhysicalForm { SOLID, GRANULAR, LIQUID }
 
+## Which pantry shelf offers it. NONE for things that only come from
+## something else - the parts of a fish dressed at the board, oil from the
+## press.
+enum Shelf { NONE, GARDEN, CATCH, SPICE, GRAIN }
+
 ## Composition fractions may undershoot 1.0 by the unmodelled remainder
 ## (fibre, ash), but never exceed it beyond rounding.
 const COMPOSITION_TOLERANCE: float = 0.0001
@@ -109,6 +114,24 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 @export_group("Flavour")
 @export var flavour: FlavourProfile
 
+@export_group("Pantry")
+@export var pantry_shelf: Shelf = Shelf.NONE
+
+@export_group("Creature")
+## For the whole carcass of a creature: the species, whose parts it opens
+## into when it is dressed on the board.
+@export var creature: Creature
+
+@export_group("Rendering")
+## Fat that melts out of the food once it is hot enough - tallow from ram
+## fat, schmaltz from a bird's skin - and the liquid it becomes. 0 or no
+## liquid: nothing renders.
+@export var render_temp_c: float = 0.0
+@export var renders_into: Ingredient
+## Grams of fat rendered per second per gram of fat left, per degree above
+## the rendering temperature.
+@export var render_rate_per_s_per_k: float = 0.0
+
 @export_group("Mystical")
 ## The essences this ingredient carries of itself.
 @export var traits: Array[TraitDose] = []
@@ -186,6 +209,10 @@ func validate() -> PackedStringArray:
 			problems.append("a LIQUID that boils needs a latent heat")
 		if smoke_point_c < 0.0 or breakdown_per_hour_at_180c < 0.0 or breakdown_per_g_steam_per_kg < 0.0:
 			problems.append("smoke point and breakdown rates cannot be negative")
+	if render_temp_c > 0.0 and (renders_into == null or render_rate_per_s_per_k <= 0.0):
+		problems.append("a fat that renders needs the liquid it renders into and a rate")
+	if renders_into and renders_into.physical_form != PhysicalForm.LIQUID:
+		problems.append("fat can only render into a LIQUID")
 	if unsteadied_cut_integrity_loss < 0.0 or unsteadied_cut_integrity_loss > 1.0:
 		problems.append("unsteadied cut integrity loss must be within 0-1")
 

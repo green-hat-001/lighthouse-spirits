@@ -115,8 +115,8 @@ static func piece_quality(piece: FoodPiece) -> float:
 ## composition; cooking boils off water but not food, and adds fat.
 static func piece_kcal(piece: FoodPiece) -> float:
 	var ingredient: Ingredient = piece.ingredient
-	var raw_mass: float = piece.solids_g / maxf(1.0 - ingredient.water_fraction, 0.001)
-	return raw_mass * _kcal_per_raw_gram(ingredient) + piece.oil_g * KCAL_PER_G_FAT
+	var raw_mass: float = (piece.solids_g + piece.fat_rendered_g) / maxf(1.0 - ingredient.water_fraction, 0.001)
+	return raw_mass * _kcal_per_raw_gram(ingredient) - piece.fat_rendered_g * KCAL_PER_G_FAT + piece.oil_g * KCAL_PER_G_FAT
 
 static func liquid_kcal(portion: LiquidPortion) -> float:
 	return portion.grams * _kcal_per_raw_gram(portion.ingredient)

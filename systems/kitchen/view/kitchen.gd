@@ -73,6 +73,8 @@ func _ready() -> void:
 	board.rest = simulation.board
 	board.drop_target = drop_into_pot
 	board.piece_tasted.connect(show_caption)
+	board.dressed.connect(func(creature: Creature) -> void: show_caption(_dressing_note(creature)))
+	board.board_crowded.connect(func() -> void: show_caption("There's no room on the board for that. Clear some space first."))
 	pot_view.lifted_out.connect(_on_lifted_out)
 	seed_source.taken.connect(func(_ingredient: Ingredient, grams: float) -> void: simulation.load_seeds(grams))
 	for source in find_children("*", "IngredientSource", true, false):
@@ -127,6 +129,13 @@ func taste_under_hand() -> String:
 	if pot_view.view_of(view.piece) == view:
 		show_caption("Too hot to reach into the pot. Lift it out with the spoon first.")
 	return ""
+
+## What dressing a creature lays out, in words.
+static func _dressing_note(creature: Creature) -> String:
+	var names: PackedStringArray = []
+	for part in creature.parts:
+		names.append(part.part_name.to_lower() if part.count == 1 else "%d %s" % [part.count, part.part_name.to_lower()])
+	return "%s, opened: %s." % [creature.display_name, ", ".join(names)]
 
 func show_caption(text: String) -> void:
 	_caption.text = text
