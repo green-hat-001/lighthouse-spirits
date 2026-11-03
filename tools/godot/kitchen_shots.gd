@@ -8,11 +8,12 @@ extends Node
 ## Every scenario drives the kitchen through the same calls the player's
 ## hands make (cutting, dressing, dropping into the pot), and the
 ## simulation runs for real, sped up, so what is shown is what the game
-## would show. Needs a display (xvfb-run on a headless machine). With no
-## scenarios it runs them all.
+## would show. Needs a display (xvfb-run on a headless machine; install
+## mesa-vulkan-drivers so it renders in Forward+, the game's renderer,
+## rather than the OpenGL fallback). With no scenarios it runs them all.
 
 const SHOT_SIZE := Vector2i(1280, 720)
-const SCENARIOS: Array[String] = ["board", "dressed", "fries", "pantry", "pass", "dum", "closeup", "broth", "hands", "carry", "season"]
+const SCENARIOS: Array[String] = ["board", "dressed", "fries", "pantry", "pass", "dum", "closeup", "broth", "hands", "carry", "season", "vista"]
 
 var kitchen: Kitchen
 
@@ -29,7 +30,8 @@ func _ready() -> void:
 	for scenario in wanted:
 		await _stage(scenario)
 		var path := out_dir.path_join("kitchen_%s.png" % scenario)
-		await _settle_frames(6)
+		# Long enough for food that was just set down to drop and settle.
+		await _settle_frames(40)
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(path)
 		print("wrote ", path)
@@ -175,4 +177,8 @@ func _stage(scenario: String) -> void:
 			kitchen.let_go_of_scoop(_ingredient(&"ember_flakes"), 0.4, over + Vector3(0.03, 0.0, 0.0))
 			await _settle_frames(5)
 			_close_on(board.global_position + Vector3(0.02, 0.0, 0.03), 0.3)
+		"vista":
+			await _open(1)
+			kitchen.counter_views.looking_out = true
+			kitchen.camera.global_transform = kitchen.counter_views.pose(0.0)
 	await _settle_frames(4)

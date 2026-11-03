@@ -75,6 +75,7 @@ func _ready() -> void:
 		var holder: Node3D = container.instantiate()
 		holder.name = "Container"
 		add_child(holder)
+		_tint_contents(holder)
 	if ingredient and is_scooped(ingredient):
 		_grip.hand_pose = HandModel.Pose.PINCH
 	_grip.pressed.connect(_on_pressed)
@@ -90,6 +91,21 @@ func _ready() -> void:
 
 static func is_scooped(item: Ingredient) -> bool:
 	return item.physical_form == Ingredient.PhysicalForm.GRANULAR and item.scoop_g > 0.0
+
+## A container's `contents` (the heap in its mouth) takes the colour of what
+## it holds.
+func _tint_contents(holder: Node3D) -> void:
+	var contents := holder.find_child("contents", true, false) as MeshInstance3D
+	if contents == null or ingredient == null:
+		return
+	var heap := StandardMaterial3D.new()
+	heap.albedo_color = ingredient.tint_color
+	heap.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
+	heap.specular_mode = BaseMaterial3D.SPECULAR_TOON
+	heap.roughness = 0.95
+	heap.rim_enabled = true
+	heap.rim = 0.2
+	contents.material_override = heap
 
 ## The uniform scale and quarter-turn that fit an item of `size_m` (X, Y, Z)
 ## into a spot: its longer side runs along the longer side of the spot, and

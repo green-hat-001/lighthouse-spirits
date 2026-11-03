@@ -1119,6 +1119,9 @@ func _test_seasoning() -> void:
 	_expect_equal("salt sticks to oily food better than to dry", Seasoning.adhesion(oily_fry) > Seasoning.adhesion(dry_cube) + 0.2, true)
 	var stuck := Seasoning.season_pieces([oily_fry], salt, 1.0)
 	_expect_equal("a pinch seasons what it sticks to", oily_fry.flavour.salty > 0.3 and stuck > 0.5, true)
+	_expect_near("and what sticks stays on the food, to be seen", oily_fry.spices.get(salt, 0.0), stuck)
+	var halves := FoodCutting.cut(oily_fry, 2, oily_fry.size_mm.z * 0.5, true)
+	_expect_near("cutting shares the spice between the pieces", halves[0].spices[salt] + halves[1].spices[salt], stuck)
 
 	var water_pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
 	water_pot.add_medium(_make_test_water(), 500.0, AMBIENT_TEMP_C)
@@ -1747,8 +1750,8 @@ func _test_pantry_dresser() -> void:
 	_expect_equal("you can look up to the shelves from the board", views.can_glance_up(), true)
 	_expect_near("the eyes stay level with the mouse mid-screen", views.glance(0.0), 0.0)
 	_expect_near("and lift to the shelves when it reaches the top edge", views.glance(-1.0), CounterViews.GLANCE_MAX_DEG)
-	_expect_near("and stay lifted while the hand moves down the shelves", views.glance(0.2), CounterViews.GLANCE_MAX_DEG)
-	_expect_near("until it goes low on the screen", views.glance(0.7), 0.0)
+	_expect_near("and stay lifted while the hand moves down the shelves", views.glance(0.75), CounterViews.GLANCE_MAX_DEG)
+	_expect_near("until it reaches the bottom edge", views.glance(0.95), 0.0)
 	views.glance(-1.0)
 	views.station_index = 2
 	_expect_near("the stove has no shelves to look up at", views.glance(-1.0), 0.0)

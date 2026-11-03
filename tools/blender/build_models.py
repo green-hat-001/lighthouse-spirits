@@ -638,6 +638,17 @@ CROCK_MOUTH_Z = 0.074
 SACK_MOUTH_Z = 0.082
 
 
+def _contents_mound(radius, base_z, rise):
+    """What a container holds, heaped in its mouth: a separate object,
+    `contents`, which Godot tints the colour of what is in it."""
+    bm = bmesh.new()
+    profile = [(0, base_z), (radius, base_z), (radius * 0.98, base_z + rise * 0.35), (radius * 0.7, base_z + rise * 0.8),
+               (radius * 0.35, base_z + rise * 0.97), (0, base_z + rise)]
+    lathe(bm, profile, 16, 0, shape=lambda p, a, i: p * kit.bumpy(p * 30.0, 1.0, 0.04, 6) if 1 < i < 5 else p)
+    contents = material("contents", "#c8b89a", roughness=0.95)
+    mesh_object("contents", bm, [contents], smooth_angle=60, uv=None)
+
+
 def spice_crock():
     """A small glazed crock, open, its spice heaped at the mouth, with a
     paper label tied round its belly."""
@@ -655,6 +666,7 @@ def spice_crock():
                  (0.034, 0.028)], 18, 2, closed=True)
     kit.merge(bm, band)
     mesh_object("spice_crock", bm, [glaze, clay, label], smooth_angle=40)
+    _contents_mound(0.0255, CROCK_MOUTH_Z - 0.008, 0.012)
     kit.save("spice_crock", "assets/models/pantry/spice_crock.glb")
 
 
@@ -680,6 +692,7 @@ def grain_sack():
     tube(bm, [(0.071 * math.cos(TAU * k / 20), 0.071 * math.sin(TAU * k / 20), 0.078) for k in range(20)],
          0.003, 4, 1, closed=True)
     mesh_object("grain_sack", bm, [burlap, twine], smooth_angle=45)
+    _contents_mound(0.062, SACK_MOUTH_Z - 0.01, 0.022)
     kit.save("grain_sack", "assets/models/pantry/grain_sack.glb")
 
 
@@ -772,7 +785,9 @@ def _hand(curls, spreads, thumb, origin):
     tube(bm, [(0.0, 0.014, -0.002), (0.0, -0.02, 0.002), (0.0, -0.05, 0.008)], [(0.012, 0.027), (0.014, 0.026), (0.017, 0.028)], 10, 0,
          up=(0, 0, 1))
     tube(bm, [(0.0, -0.045, 0.01), (0.0, -0.072, 0.016)], [0.034, 0.035], 12, 2)
-    tube(bm, [(0.0, -0.066, 0.016), (0.0, -0.17, 0.05), (0.0, -0.30, 0.1)], [0.041, 0.046, 0.05], 12, 1)
+    # Long enough that its end is always behind the eye.
+    tube(bm, [(0.0, -0.066, 0.016), (0.0, -0.17, 0.05), (0.0, -0.36, 0.12), (0.0, -0.7, 0.26)],
+         [0.041, 0.046, 0.052, 0.06], 12, 1)
     if origin == "index_tip":
         point = tips[0]
     elif origin == "pinch":

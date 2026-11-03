@@ -12,10 +12,9 @@ extends Node
 ## little that way, to glance at what's beside the station without moving.
 ## At a station in front of the pantry, pushing it to the top edge lifts the
 ## eyes to the shelves, and they stay lifted - so the hand can move about
-## the shelves - until the mouse goes down into the lower part of the
-## screen:
+## the shelves - until the mouse goes to the bottom edge:
 ##
-##   LEVEL --mouse at the top edge--> LIFTED --mouse low on the screen--> LEVEL
+##   LEVEL --mouse at the top edge--> LIFTED --mouse at the bottom edge--> LEVEL
 ##   LIFTED --another station, or out to sea--> LEVEL
 
 ## Only the outer part of the screen on each side peeks, so reaching for
@@ -23,9 +22,10 @@ extends Node
 const PEEK_DEAD_ZONE: float = 0.62
 const PEEK_MAX_DEG: float = 26.0
 ## The mouse this near the top edge (-1) lifts the eyes to the shelves, and
-## this far down the screen (1 is the bottom) lowers them again.
+## this near the bottom edge (1) lowers them again; anywhere between, the
+## hand roams the shelves, down to the garden on the lowest.
 const LIFT_AT: float = -0.9
-const LOWER_AT: float = 0.45
+const LOWER_AT: float = 0.9
 ## How far the eyes lift.
 const GLANCE_MAX_DEG: float = 34.0
 

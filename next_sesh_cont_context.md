@@ -4,16 +4,25 @@ Read this first, then `CLAUDE.md` (vision, cooking model, architecture, commands
 
 ## State in one paragraph
 
-*Updated at the end of the session that built the mystical larder.* Work is on branch **`claude/youthful-pascal-25llfn`**, and everything is committed and pushed.
+*Updated at the end of the polish session (kitchen plan Section 9).* Work is on branch **`claude/youthful-pascal-25llfn`**, and everything is committed and pushed.
 
 The main scene is the **outdoor kitchen**, and the whole counter works:
 - **Pass:** plate on the serving board, drizzle and ladle over it, and name dishes.
 - **Board:** cut, dress whole creatures into every part, and taste.
 - **Stove and pot:** fry, boil, render, steam under a sealed covering (dum), and bake.
 - **Press:** turn sunflower seed into oil.
-- **Pantry:** four shelves (garden, catch, spice, grain).
+- **Pantry:** a four-shelf dresser behind the pass and board (garden, catch, grains, spices). Every item has its own spot and none runs out; the mouse at the top of the screen looks up at it.
 
-The crafting matrix is retired, so spirits are fed real plated food. The world has 14 essences, 15 plants, 5 grains, 11 spices and six species with 54 parts, all tied together by a food web (`docs/ingredient_tree.md`). The integration suite passes with **475 checks**. **None of the counter has been play-tested by the user yet.** See the latest `CHANGELOG.md` entry.
+The crafting matrix is retired, so spirits are fed real plated food. The world has 14 essences, 15 plants, 5 grains, 11 spices and six species with 54 parts, all tied together by a food web (`docs/ingredient_tree.md`).
+
+The polish pass gave the counter its look and feel:
+- every ingredient has a model;
+- cut pieces are meshes built for their cut;
+- ink outlines, and lighting tuned for cel shading;
+- the cook's hands as the cursor;
+- carried food that sways, food that drops and squashes, and spice that shows.
+
+The integration suite passes with **504 checks**, and 112 models pass validation. **None of the counter has been play-tested by the user yet.** See the latest `CHANGELOG.md` entry, and the reel in `docs/screenshots/`.
 
 ## Files to read, in order
 
@@ -81,7 +90,9 @@ A condensed copy of `docs/kitchen_plan.md`, which has the full pass/fail check f
 - Checkpoint 2 🟡 built, not yet play-tested: stove knob (6.4); pot with pouring, pieces in and slotted-spoon lift-out (6.5); the frying loop on screen, with per-face heat transfer
 - Checkpoint 3 🟡 built, not yet play-tested: oil press crank (6.6), food shader polish (6.7), taste test with captions (6.8; audio waits on recorded samples)
 - 6.9 Scene–simulation bridge: views wrap sim objects and no scene script holds food logic. This is the rule for every checkpoint; the board already follows it.
-- The **cut-piece kit** (halves, planks, sticks, dice) models are deferred until the rule for matching a cut piece to a mesh is written. Cut pieces are boxes for now.
+- The **cut-piece kit** is replaced: cut pieces are meshes built for each cut (`FoodPieceMesh`, Section 9.3).
+
+**9. Polish** 🟡 built, not yet play-tested: the larder's models, the pantry dresser, cut-piece meshes, ink and light, the hands, motion.
 
 **7. Dishes, naming and service** ⬜
 - 7.1 Plating onto a plate to make a `Dish` ⬜
@@ -94,9 +105,15 @@ A condensed copy of `docs/kitchen_plan.md`, which has the full pass/fail check f
 
 1. **Ask how the counter feels.** These have never been play-tested:
    - cutting, and lifting food (Space + drag) into the pot;
-   - the knob, the spoon, pouring and the crank.
+   - the knob, the spoon, pouring and the crank;
+   - the hands, carried food's sway, looking up at the pantry.
 
-   Tuning lives in constants: `PourVesselView.TILT_DEG_PER_S`, `PotView.SPOON_REACH_MM`, `CuttingBoard.CARRY_HEIGHT_M`, `StoveView.FULL_TURN_DEG`, and `CircularDrag` for the knob and crank.
+   Tuning lives in constants:
+   - `PourVesselView.TILT_DEG_PER_S`, `PotView.SPOON_REACH_MM`, `CuttingBoard.CARRY_HEIGHT_M` and `StoveView.FULL_TURN_DEG`;
+   - `CircularDrag` for the knob and crank;
+   - the hand's spring: `HandView.FOLLOW_HZ`, `FOLLOW_DAMPING` and `HOVER_M`, with `HandModel.SIZE`;
+   - food's sway: `FoodPieceView.LAG_HZ`, `TILT_PER_MPS` and `LANDING_SQUASH`;
+   - the look-up: `CounterViews.LIFT_AT`, `LOWER_AT` and `GLANCE_MAX_DEG`.
 2. **Recorded bite samples**, if wanted, go in `KitchenAudio.recorded_bites`; until then the bites are synthesised.
 3. **Waiting on the user:**
    - **Section 5:** falling and catching spirits, and the moon. It's blocked on the open questions in `CLAUDE.md`.
@@ -126,7 +143,10 @@ godot --headless --path . res://scenes/integration_test.tscn      # the suite (~
 godot --headless --editor --quit --path .                         # after adding/renaming a class_name, or to reimport assets
 blender --background --factory-startup --python tools/blender/build_models.py -- <name>        # kitchen kit
 blender --background --factory-startup --python tools/blender/build_environment.py -- <name>   # environment
-blender --background --factory-startup --python tools/blender/validate_models.py               # all 20 models
+blender --background --factory-startup --python tools/blender/larder.py -- <id>              # an ingredient's whole model
+blender --background --factory-startup --python tools/blender/validate_models.py               # all 112 models
+godot --path . res://tools/godot/kitchen_shots.tscn -- <out_dir> [scenario ...]                # screenshots in the real kitchen
+godot --path . --write-movie reel.avi --fixed-fps 30 res://tools/godot/kitchen_reel.tscn       # a scripted turn at the counter
 ```
 
 ## Gotchas learned the hard way
@@ -135,10 +155,13 @@ blender --background --factory-startup --python tools/blender/validate_models.py
 - **Never run `build_models.py` with no names** unless you mean to rebuild and overwrite all 16 kitchen models. The environment has its own builder for this reason.
 - **The terrain's faces must stay wound upward** (`recalc=False` in `cliff_top()`). Recalculating normals flipped the open heightfield, and the caretaker sank through the one-sided collision.
 - **Collision for environment models is generated at import time** (per-node physics in their `.glb.import` `_subresources`). Building trimesh collision from a mesh at runtime returns nothing in headless runs.
-- **Imported models get the cel look** from `tools/godot/toon_post_import.gd`, set as each `.glb`'s import script. New `.glb` files need that line added to their `.import` file, followed by a reimport. Delete `.godot/imported/<name>.glb-*` to force it.
+- **Imported models get the cel look** from `tools/godot/toon_post_import.gd`. It is the project's default scene import script (`[importer_defaults]` in `project.godot`), so new `.glb` files get it on their own. Changing the script doesn't reimport anything: delete `.godot/imported/*.glb-*` and run the headless editor to force it.
+- **Vertex colours from Blender:** the glTF exporter writes a fake white `COLOR_0` unless told otherwise. `kit.save(..., vertex_colors=True)` exports only the active colour attribute, and marks it for rendering.
+- **Blender in a cloud container:** download the official tarball (5.2 matches the `.blend` files). Workbench previews need `libegl1`.
+- **Toon shading lights everything in a light's range at full strength.** Keep extra lights small and close (the gas flame), and give the pot its own render layer (`PotView.POT_LAYER`) when a light must not reach inside it.
 - **Screenshots:** the user's tiling Wayland window manager ignores the requested window size. Render into a fixed-size `SubViewport` from a `-s` SceneTree script, save the PNG and view it. That's how every visual here was checked.
 - **In bash heredocs with `'EOF'`**, write GDScript line continuations as a single `\`. A doubled one broke parsing once.
 - **When slicing in tests or scripts**, stop while a full step plus `FoodCutting.MIN_PIECE_THICKNESS_MM` still fits. `FoodCutting.cut` correctly refuses thinner remainders and returns an empty array.
 - **Every section so far was mutation-checked:** break the central rule on purpose and confirm the suite fails. One mutant survived at first (conduction ignoring thickness) until a stronger test was added.
-- **Screenshots from a cloud container** work under `xvfb-run` (Godot falls back to OpenGL on llvmpipe, so the lighting is flatter than Forward+). The kitchen's `docs/screenshots/kitchen_*.png` were made that way.
+- **Screenshots from a cloud container** work under `xvfb-run`. Install `mesa-vulkan-drivers` (lavapipe) and Godot renders in Forward+, the game's real renderer. Without it, it falls back to OpenGL and the lighting is flatter. The current `docs/screenshots/kitchen_*.png` and the reel are Forward+.
 - **Warnings are errors** in this project: a `:=` that infers a Variant fails to parse. Type it explicitly (`var x: Variant = ...`).
