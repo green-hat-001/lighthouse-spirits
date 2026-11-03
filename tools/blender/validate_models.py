@@ -58,7 +58,7 @@ SPEC = {
     # The pantry and the pass.
     "pantry_dresser": ("assets/models/pantry/pantry_dresser.glb", (1500, 6000), (1.34, 0.33, 1.53), 0.03, "none",
                        {"pantry_dresser": "MESH"}, {"paint", "wood", "zinc", "ice", "straw", "brass"}),
-    "spice_crock": ("assets/models/pantry/spice_crock.glb", (200, 700), (0.072, 0.072, 0.082), 0.03, "base",
+    "spice_crock": ("assets/models/pantry/spice_crock.glb", (200, 900), (0.072, 0.072, 0.082), 0.03, "base",
                     {"spice_crock": "MESH", "contents": "MESH"}, {"glaze", "clay", "label", "contents"}),
     "grain_sack": ("assets/models/pantry/grain_sack.glb", (200, 900), (0.16, 0.16, 0.10), 0.06, "base",
                    {"grain_sack": "MESH", "contents": "MESH"}, {"burlap", "twine", "contents"}),
