@@ -47,6 +47,18 @@ static func evaporation_g_per_s(
 		return 0.0
 	return convective_w_per_m2_k / AIR_VOLUMETRIC_HEAT_J_PER_M3_K * area_m2 * driving * 1000.0
 
+## Water moving between a surface and the air around it, in g/s: positive
+## when the surface dries into the air, negative when vapour condenses onto
+## a surface colder than the air's dew point - how food steams in a covered
+## pot, picking up water and heat at once.
+static func exchange_g_per_s(
+		convective_w_per_m2_k: float, area_m2: float, surface_temp_c: float,
+		wetness: float, air_vapour_kg_m3: float) -> float:
+	var saturated: float = saturation_density_kg_m3(surface_temp_c)
+	# Condensing onto a surface doesn't depend on how wet it already is.
+	var surface_vapour: float = saturated * clampf(wetness, 0.0, 1.0) if air_vapour_kg_m3 < saturated else saturated
+	return convective_w_per_m2_k / AIR_VOLUMETRIC_HEAT_J_PER_M3_K * area_m2 * (surface_vapour - air_vapour_kg_m3) * 1000.0
+
 ## The extra effective heat transfer coefficient, in W/(m^2 K), that
 ## evaporation adds to a wet surface at this temperature.
 static func evaporative_w_per_m2_k(convective_w_per_m2_k: float, surface_temp_c: float, wetness: float) -> float:

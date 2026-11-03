@@ -16,7 +16,9 @@ extends RefCounted
 ##      less, insulating the core.
 ##   2. A face above 100 degrees C that still holds water spends the excess
 ##      heat boiling it off, pinning it at 100 until it dries. A cooler wet
-##      face in open air dries by evaporation, which cools it. The core
+##      face in open air dries by evaporation, which cools it; a face colder
+##      than the air's dew point - food in a pot full of steam - gathers
+##      condensate instead, and its heat. The core
 ##      likewise cannot pass 100 while it holds water: the excess boils it.
 ## Then, for the piece:
 ##   3. Water migrates from the wetter core back out to each face.
@@ -206,15 +208,27 @@ static func _integrate(piece: FoodPiece, exposure: HeatExposure, dt: float, exch
 		var new_temp: float = temp + (from_liquid_w + from_contact_w + from_air_w - to_core_w) * dt / capacity
 		var face_water: float = piece.face_moisture[face] * shell_mass * share
 		var lost_g: float = 0.0
-		if face_water > 0.0:
-			if new_temp > WATER_BOILING_POINT_C:
-				lost_g = minf((new_temp - WATER_BOILING_POINT_C) * capacity / WATER_LATENT_HEAT_J_PER_G, face_water)
-				replaced_g += lost_g * liquid_share * OIL_REPLACES_WATER_RATIO
-				exchange.steam_through_liquid_g += lost_g * liquid_share
-			elif air_h > 0.0:
-				var rate: float = WaterVapour.evaporation_g_per_s(
-					air_h, face_m2, new_temp, face_wetness(piece, face), exposure.air_vapour_kg_m3)
+		if face_water > 0.0 and new_temp > WATER_BOILING_POINT_C:
+			lost_g = minf((new_temp - WATER_BOILING_POINT_C) * capacity / WATER_LATENT_HEAT_J_PER_G, face_water)
+			replaced_g += lost_g * liquid_share * OIL_REPLACES_WATER_RATIO
+			exchange.steam_through_liquid_g += lost_g * liquid_share
+		elif air_h > 0.0 and new_temp < WATER_BOILING_POINT_C:
+			# Drying into the air, or steam condensing onto a face colder
+			# than the air's dew point (negative). A face can't take on
+			# more condensate than leaves it fully wet.
+			var rate: float = WaterVapour.exchange_g_per_s(
+				air_h, face_m2, new_temp, face_wetness(piece, face), exposure.air_vapour_kg_m3)
+			if rate >= 0.0:
 				lost_g = minf(rate * dt, face_water)
+			else:
+				# Condensate gives up its heat, but never past the steam's own
+				# temperature. The face keeps what it can hold; the rest runs
+				# off, back into the pot, having given its heat all the same.
+				var condensed: float = minf(-rate * dt, maxf(exposure.air_temp_c - new_temp, 0.0) * capacity / WATER_LATENT_HEAT_J_PER_G)
+				var kept: float = minf(condensed, maxf(shell_mass * share - face_water, 0.0))
+				new_temp += condensed * WATER_LATENT_HEAT_J_PER_G / capacity
+				lost_g = -kept
+		if lost_g > 0.0:
 			new_temp -= lost_g * WATER_LATENT_HEAT_J_PER_G / capacity
 		evaporated[face] = lost_g
 		total_evaporated_g += lost_g
@@ -230,7 +244,8 @@ static func _integrate(piece: FoodPiece, exposure: HeatExposure, dt: float, exch
 	var core_boiled_g: float = _boil_core(piece, core_capacity, exposure, exchange)
 	total_evaporated_g += core_boiled_g
 
-	if total_evaporated_g > core_boiled_g:
+	# Faces dried (or, condensing, gained water): settle it in the shell.
+	if total_evaporated_g != core_boiled_g:
 		_remove_face_water(piece, evaporated, total_evaporated_g - core_boiled_g)
 	exchange.evaporated_g += total_evaporated_g
 	_migrate_water(piece, dt)

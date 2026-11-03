@@ -116,6 +116,7 @@ func _ready() -> void:
 	_test_fat_renders()
 	_test_grain_drinks_and_cooks()
 	_test_seasoning()
+	_test_coverings()
 	_test_shipped_transformations_validate()
 	_test_transformation_validation()
 	_test_press_turns_work_into_oil()
@@ -1014,6 +1015,52 @@ func _test_seasoning() -> void:
 	Seasoning.season_pot(oil_pot, chilli_flakes, 5.0)
 	_expect_equal("while chilli heat goes into oil", oil_pot.medium_flavour.heat > 0.1, true)
 
+# --- Covering checks ---------------------------------------------------------
+
+func _test_coverings() -> void:
+	var hide := _make_test_hide()
+	var pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
+	_expect_equal("a wide, thin sheet can lie across the rim", pot.can_cover(FoodPiece.from_ingredient(hide, AMBIENT_TEMP_C)), true)
+	var scrap := hide.duplicate() as Ingredient
+	scrap.whole_size_mm = Vector3(100.0, 3.0, 100.0)
+	_expect_equal("a scrap too small to reach the rim can't", pot.can_cover(FoodPiece.from_ingredient(scrap, AMBIENT_TEMP_C)), false)
+	var slab := hide.duplicate() as Ingredient
+	slab.whole_size_mm = Vector3(220.0, 30.0, 220.0)
+	_expect_equal("nor can a thick slab", pot.can_cover(FoodPiece.from_ingredient(slab, AMBIENT_TEMP_C)), false)
+	pot.cover_with(FoodPiece.from_ingredient(hide, AMBIENT_TEMP_C), true)
+	_expect_equal("a pliable hide stretched over it seals well", pot.seal > 0.85, true)
+	pot.uncover()
+	var stiff := hide.duplicate() as Ingredient
+	stiff.pliability = 0.0
+	pot.cover_with(FoodPiece.from_ingredient(stiff, AMBIENT_TEMP_C), false)
+	_expect_equal("a stiff sheet dropped on loosely seals far worse", pot.seal < 0.55, true)
+
+	# Dum: sealed and on the lowest of flames.
+	var open_pot := _make_simmering_pot(null)
+	var dum := _make_simmering_pot(FoodPiece.from_ingredient(hide, AMBIENT_TEMP_C))
+	for pot_under_test in [open_pot, dum]:
+		pot_under_test.burner.max_power_w = 1000.0
+		pot_under_test.set_flame(0.15)
+		pot_under_test.advance(1800.0)
+	_expect_equal("a sealed pot holds a simmer on a flame too low for an open one", dum.temp_c > open_pot.temp_c + 8.0, true)
+	_expect_equal("and keeps its water: little boils or steams away", dum.boiled_off_g < open_pot.boiled_off_g * 0.5, true)
+	var above_open: FoodPiece = open_pot.pieces[0]
+	var above_dum: FoodPiece = dum.pieces[0]
+	_expect_equal("food above the water steams under a seal", above_dum.face_moisture[FoodPiece.TOP] > above_open.face_moisture[FoodPiece.TOP] + 0.05, true)
+	_expect_equal("and heats through further than it would in the open", above_dum.core_temp_c > above_open.core_temp_c + 10.0, true)
+	_expect_equal("the covering cooks too, warmed by the steam under it", dum.covering.core_temp_c > 55.0, true)
+
+	var oven := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C, KitchenAir.still(AMBIENT_TEMP_C))
+	var hob := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C, KitchenAir.still(AMBIENT_TEMP_C))
+	oven.cover_with(FoodPiece.from_ingredient(hide, AMBIENT_TEMP_C), true)
+	for dry_pot in [oven, hob]:
+		dry_pot.burner = _make_test_stove()
+		dry_pot.add_piece(_cut_cube(25.0))
+		dry_pot.set_flame(0.25)
+		dry_pot.advance(900.0)
+	_expect_equal("a sealed dry pot bakes like an oven", oven.headspace_temp_c() > hob.headspace_temp_c() + 30.0, true)
+	_expect_equal("cooking what's in it faster", oven.pieces[0].core_doneness > hob.pieces[0].core_doneness + 0.2, true)
+
 # --- Equipment and transformation checks ---------------------------------------
 
 func _test_shipped_transformations_validate() -> void:
@@ -1524,6 +1571,25 @@ func _test_kitchen_stations() -> void:
 	var bitten: FoodPieceView = board.views()[board.views().size() - 1]
 	_expect_equal("a bite comes off the piece", bitten.piece.mass_g() < mass_before - 1.0, true)
 
+	var hide_piece := FoodPiece.from_ingredient(_make_test_hide(), AMBIENT_TEMP_C)
+	_expect_equal("a sheet let go over the pot is laid across it", kitchen.drop_into_pot([hide_piece], kitchen.pot_view.global_position + Vector3(0.0, 0.2, 0.0)), true)
+	_expect_equal("as its covering, not in the oil", pot.covering == hide_piece and not pot.pieces.has(hide_piece), true)
+	for frame in 3:
+		await get_tree().process_frame
+	var lid_view: FoodPieceView = null
+	for child in kitchen.pot_view.get_children():
+		if child is FoodPieceView and (child as FoodPieceView).piece == hide_piece:
+			lid_view = child
+	_expect_equal("the covering is drawn over the rim", lid_view != null, true)
+	for view in board.views().duplicate():
+		board.take(view)
+	if lid_view:
+		lid_view.grip.pressed.emit(lid_view.global_position)
+	var on_board: bool = false
+	for view in board.views():
+		on_board = on_board or view.piece == hide_piece
+	_expect_equal("pressing it lifts it off onto the board", pot.covering == null and on_board, true)
+
 	kitchen.stove.set_knob(270.0)
 	var oil_before: float = pot.temp_c
 	for frame in 30:
@@ -1776,6 +1842,30 @@ func _make_test_spice() -> Ingredient:
 	spice.flavour_potency = 40.0
 	spice.flavour = FlavourProfile.new()
 	return spice
+
+## A sheet of hide 220 mm square and 3 mm thick: wide enough to stretch
+## over the test pot's 186 mm rim.
+func _make_test_hide() -> Ingredient:
+	var hide := _make_test_ingredient()
+	hide.id = &"test_hide"
+	hide.whole_size_mm = Vector3(220.0, 3.0, 220.0)
+	hide.water_fraction = 0.6
+	hide.starch_fraction = 0.0
+	hide.protein_fraction = 0.35
+	hide.stable_thickness_mm = 1.0
+	hide.pliability = 0.9
+	return hide
+
+## A little water with a 25 mm cube standing proud of it, the pot covered
+## or not.
+func _make_simmering_pot(covering: FoodPiece) -> CookingPot:
+	var pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
+	pot.burner = _make_test_stove()
+	pot.add_medium(_make_test_water(), 250.0, AMBIENT_TEMP_C)
+	pot.add_piece(_cut_cube(25.0))
+	if covering:
+		pot.cover_with(covering, true)
+	return pot
 
 ## Seconds of simulated time until the pot reaches the temperature, or the
 ## limit if it never does.

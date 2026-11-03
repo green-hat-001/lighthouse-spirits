@@ -14,13 +14,17 @@ extends Node3D
 ##   LIFTING --release--> IDLE (lifted_out reports where it was released)
 ##
 ## A right-click on a piece in the pot turns it over; a right-click in the
-## pot away from food tips the liquid out, keeping the food in.
+## pot away from food tips the liquid out, keeping the food in. A covering
+## laid over the rim is drawn across it; pressing it lifts it off, and while
+## it is on the spoon can't reach in.
 
 ## The spoon let go of what it lifted, at this world point. The kitchen
 ## decides where it lands; whatever it doesn't place is returned with
 ## return_to_pot().
 signal lifted_out(pieces: Array[FoodPiece], world_point: Vector3)
 signal pieces_dropped_in(count: int)
+## The covering was lifted off the pot and is in the hand.
+signal covering_lifted(piece: FoodPiece)
 
 enum SpoonState { IDLE, STIRRING, LIFTING }
 
@@ -55,6 +59,7 @@ var spoon_state: SpoonState = SpoonState.IDLE
 var lifted: Array[FoodPiece] = []
 
 var _views: Dictionary[FoodPiece, FoodPieceView] = {}
+var _covering_view: FoodPieceView
 var _lifted_views: Array[FoodPieceView] = []
 var _spoon_mm: Vector2
 var _spoon_world: Vector3
@@ -148,11 +153,30 @@ func turn(piece: FoodPiece) -> void:
 		view.rolled_about(axis)
 
 func _process(delta: float) -> void:
+	_sync_covering()
 	_sync_views(delta)
 	_draw_liquid()
 	_draw_foam()
 	_draw_air()
 	_place_spoon(delta)
+
+## Draws the covering lying over the rim, centred on the pot.
+func _sync_covering() -> void:
+	var covering := pot().covering
+	if _covering_view and (covering == null or _covering_view.piece != covering):
+		_covering_view.queue_free()
+		_covering_view = null
+	if covering and _covering_view == null:
+		_covering_view = FoodPieceView.new(covering)
+		_covering_view.may_hover = false
+		add_child(_covering_view)
+		_covering_view.grip.pressed.connect(func(_point: Vector3) -> void:
+			var lifted := pot().uncover()
+			if lifted:
+				covering_lifted.emit(lifted))
+	if _covering_view:
+		var size: Vector3 = covering.size_mm * MM_TO_M
+		_covering_view.position = Vector3(-size.x * 0.5, RIM_Y_M, -size.z * 0.5)
 
 func _sync_views(delta: float) -> void:
 	var cooking := pot()
@@ -279,8 +303,10 @@ static func _perimeter_point(size: Vector2, around: float) -> Vector2:
 func _draw_air() -> void:
 	var cooking := pot()
 	var surface_y: float = FLOOR_Y_M + cooking.liquid_level_mm * MM_TO_M
+	# Under a covering, what steam escapes leaves from the rim.
+	var steam_y: float = RIM_Y_M + 0.005 if cooking.covering else surface_y
 	for emitter in [_steam, _smoke]:
-		(emitter as GPUParticles3D).position.y = surface_y
+		(emitter as GPUParticles3D).position.y = steam_y
 	_steam.amount_ratio = clampf(cooking.steam_g_per_s / FULL_STEAM_G_PER_S, 0.0, 1.0)
 	_steam.emitting = _steam.amount_ratio > 0.02
 	_smoke.amount_ratio = cooking.smoke
@@ -304,6 +330,8 @@ func _rim_plane() -> Plane:
 	return Plane(Vector3.UP, global_position.y + RIM_Y_M)
 
 func _on_spoon_pressed(point: Vector3) -> void:
+	if pot().covering:
+		return
 	spoon_state = SpoonState.STIRRING
 	_spoon_mm = to_pot_mm(point)
 	_spoon_world = point

@@ -76,6 +76,10 @@ func _ready() -> void:
 	board.dressed.connect(func(creature: Creature) -> void: show_caption(_dressing_note(creature)))
 	board.board_crowded.connect(func() -> void: show_caption("There's no room on the board for that. Clear some space first."))
 	pot_view.lifted_out.connect(_on_lifted_out)
+	pot_view.covering_lifted.connect(func(piece: FoodPiece) -> void:
+		if not board.receive([piece], board.global_position).is_empty():
+			simulation.pot.cover_with(piece, true)
+			show_caption("There's no room on the board to set the covering down."))
 	seed_source.taken.connect(func(_ingredient: Ingredient, grams: float) -> void: simulation.load_seeds(grams))
 	for source in find_children("*", "IngredientSource", true, false):
 		(source as IngredientSource).taken.connect(func(ingredient: Ingredient) -> void: board.add_whole(ingredient))
@@ -110,6 +114,12 @@ func counter_in_reach() -> bool:
 func drop_into_pot(pieces: Array[FoodPiece], world_point: Vector3, held_at: Array[Vector3] = []) -> bool:
 	if not pot_view.is_over(world_point):
 		return false
+	# A single sheet wide enough to span the rim is laid across it, not
+	# dropped in. Steadying while letting go stretches it taut.
+	if pieces.size() == 1 and simulation.pot.covering == null and simulation.pot.can_cover(pieces[0]):
+		simulation.pot.cover_with(pieces[0], Input.is_action_pressed("kitchen_steady"))
+		show_caption(_seal_note(simulation.pot.seal))
+		return true
 	pot_view.drop_in(pieces, world_point, held_at)
 	var spilled: Array[FoodPiece] = []
 	for piece in pieces:
@@ -151,6 +161,14 @@ func taste_under_hand() -> String:
 	if pot_view.view_of(view.piece) == view:
 		show_caption("Too hot to reach into the pot. Lift it out with the spoon first.")
 	return ""
+
+## How well a covering sits, in words.
+static func _seal_note(seal: float) -> String:
+	if seal >= 0.85:
+		return "Stretched taut over the rim and sealed tight: the steam stays in."
+	if seal >= 0.5:
+		return "It covers the pot, but the edges lift; steam will find its way out."
+	return "It barely covers the pot. Most of the steam will escape."
 
 ## What dressing a creature lays out, in words.
 static func _dressing_note(creature: Creature) -> String:

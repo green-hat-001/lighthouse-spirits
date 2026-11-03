@@ -48,6 +48,11 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 @export_range(0.0, 1.0) var fat_fraction: float = 0.0
 @export_range(0.0, 1.0) var protein_fraction: float = 0.0
 
+@export_group("Handling")
+## How well it stretches and drapes, 0 stiff to 1 like a wet hide: a pliable
+## sheet laid over a pot seals it.
+@export_range(0.0, 1.0) var pliability: float = 0.0
+
 @export_group("Cutting")
 ## A piece cut thinner than this starts to crumble: its integrity scales
 ## down in proportion to how far below this thickness the cut went.
