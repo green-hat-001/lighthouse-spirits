@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="Creature" load_steps=17 format=3]
+
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="1"]
+[ext_resource type="Script" path="res://resources/creature_part.gd" id="2"]
+[ext_resource type="Resource" path="res://data/ingredients/sea_kelp.tres" id="3"]
+[ext_resource type="Resource" path="res://data/ingredients/driftwood_ember_root.tres" id="4"]
+[ext_resource type="Resource" path="res://data/ingredients/tide_pool_clam.tres" id="5"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/cinder_crab/cinder_crab_claw_meat.tres" id="6"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/cinder_crab/cinder_crab_body_meat.tres" id="7"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/cinder_crab/cinder_crab_shell.tres" id="8"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/cinder_crab/cinder_crab_coral.tres" id="9"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/cinder_crab/cinder_crab_tomalley.tres" id="10"]
+[ext_resource type="Script" path="res://resources/creature.gd" id="11"]
+
+[sub_resource type="Resource" id="part_0"]
+script = ExtResource("2")
+part_name = "Claw Meat"
+tissue = 0
+ingredient = ExtResource("6")
+count = 2
+uses = "Steam or poach; it holds its heat on the plate."
+
+[sub_resource type="Resource" id="part_1"]
+script = ExtResource("2")
+part_name = "Body Meat"
+tissue = 0
+ingredient = ExtResource("7")
+count = 1
+uses = "Fold into anything; it warms it."
+
+[sub_resource type="Resource" id="part_2"]
+script = ExtResource("2")
+part_name = "Shell"
+tissue = 6
+ingredient = ExtResource("8")
+count = 1
+uses = "Toast it dry, then simmer for a sweet, red stock."
+
+[sub_resource type="Resource" id="part_3"]
+script = ExtResource("2")
+part_name = "Coral"
+tissue = 7
+ingredient = ExtResource("9")
+count = 1
+uses = "Stir into a sauce or broth at the end."
+
+[sub_resource type="Resource" id="part_4"]
+script = ExtResource("2")
+part_name = "Tomalley"
+tissue = 4
+ingredient = ExtResource("10")
+count = 1
+uses = "Mash into butter or oil."
+
+[resource]
+script = ExtResource("11")
+id = &"cinder_crab"
+display_name = "Cinder Crab"
+lore = "A rust-red crab of the tide rocks that scavenges sea kelp, clams and the ember-root that washes down off the cliff. The root's coal gathers in its meat: cooked, a crab claw stays hot in the hand."
+habitat = "The Kelp Shallows, rock crevices"
+diet = Array[ExtResource("1")]([ExtResource("3"), ExtResource("4"), ExtResource("5")])
+parts = Array[ExtResource("2")]([SubResource("part_0"), SubResource("part_1"), SubResource("part_2"), SubResource("part_3"), SubResource("part_4")])

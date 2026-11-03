@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bladderlift"
+display_name = "Bladderlift"
+lore = "A fish's swim bladder, still holding its gas. It floats in anything."
+taste_note = "It springs and floats in the mouth."
+effect = 0
+magnitude = 1.2
+trigger = 0
+trigger_threshold = 1.0
+fat_solubility = 0.1
+water_solubility = 0.2

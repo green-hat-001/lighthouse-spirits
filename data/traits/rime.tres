@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"rime"
+display_name = "Rime"
+lore = "Frostcaps grow where the fog settles longest. They drink heat from whatever warms them, and a carp that grazes them carries the cold in its flesh."
+taste_note = "Cold at the heart, however hot the outside."
+effect = 3
+magnitude = 1.0
+trigger = 4
+trigger_threshold = 45.0
+fuel_j_per_g = 1500.0
+fat_solubility = 0.3
+water_solubility = 0.4
+diet_share = 0.6
+carried_by_diet = true
+tissues = Array[int]([1, 4, 0])

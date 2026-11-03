@@ -117,6 +117,7 @@ func _ready() -> void:
 	_test_grain_drinks_and_cooks()
 	_test_seasoning()
 	_test_coverings()
+	_test_shipped_world()
 	_test_shipped_transformations_validate()
 	_test_transformation_validation()
 	_test_press_turns_work_into_oil()
@@ -1061,6 +1062,54 @@ func _test_coverings() -> void:
 		dry_pot.advance(900.0)
 	_expect_equal("a sealed dry pot bakes like an oven", oven.headspace_temp_c() > hob.headspace_temp_c() + 30.0, true)
 	_expect_equal("cooking what's in it faster", oven.pieces[0].core_doneness > hob.pieces[0].core_doneness + 0.2, true)
+
+# --- The shipped world --------------------------------------------------------
+# Reads the authored content: meant to fail if it breaks.
+
+func _test_shipped_world() -> void:
+	var all := IngredientCatalog.all()
+	_expect_equal("the coast has a full larder", all.size() >= 90, true)
+	var invalid: PackedStringArray = []
+	for ingredient in all:
+		var problems := ingredient.validate()
+		if not problems.is_empty():
+			invalid.append("%s: %s" % [ingredient.id, ", ".join(problems)])
+	_expect_equal("every shipped ingredient validates", invalid, PackedStringArray())
+	for shelf in [Ingredient.Shelf.GARDEN, Ingredient.Shelf.CATCH, Ingredient.Shelf.SPICE, Ingredient.Shelf.GRAIN]:
+		_expect_equal("pantry shelf %d has plenty on it" % shelf, IngredientCatalog.on_shelf(shelf).size() >= 4, true)
+	for file_name in DirAccess.get_files_at("res://data/traits"):
+		if file_name.ends_with(".tres"):
+			var mystic_trait := load("res://data/traits/" + file_name) as MysticTrait
+			_expect_equal("essence %s validates" % file_name, mystic_trait.validate(), PackedStringArray())
+	var species := IngredientCatalog.creatures()
+	_expect_equal("six species live on the coast", species.size(), 6)
+	for creature in species:
+		_expect_equal("%s validates" % creature.id, creature.validate(), PackedStringArray())
+	for ingredient in all:
+		if ingredient.creature and not ingredient.creature.dressed_in_field:
+			var parts: float = ingredient.creature.parts_mass_g()
+			_expect_equal("a whole %s weighs about what its parts do" % ingredient.creature.id,
+				absf(ingredient.whole_mass_g() - parts) < 0.3 * parts, true)
+
+	var bream_fillet := IngredientCatalog.by_id(&"driftback_bream_fillet")
+	var cooked := FoodPiece.from_ingredient(bream_fillet, AMBIENT_TEMP_C)
+	_expect_near("raw bream is as heavy as any fish", TraitEffects.lift_share(cooked), 0.0)
+	cooked.core_doneness = 1.0
+	_expect_equal("cooked, bream fillet rises off the plate - from the kelp it ate", RestingSurface.is_hovering(cooked), true)
+	var eel := FoodPiece.from_ingredient(IngredientCatalog.by_id(&"lantern_eel_fillet"), AMBIENT_TEMP_C)
+	eel.core_doneness = 1.0
+	_expect_equal("the eel that eats the bream is lightened, not lifted", TraitEffects.lift_share(eel) > 0.2 and TraitEffects.lift_share(eel) < 1.0, true)
+	var grouse_skin := FoodPiece.from_ingredient(IngredientCatalog.by_id(&"heath_grouse_skin"), AMBIENT_TEMP_C)
+	_expect_equal("grouse skin keeps the stonecap's ward", TraitEffects.char_ward(grouse_skin) > 0.4, true)
+	var ram_fat := FoodPiece.from_ingredient(IngredientCatalog.by_id(&"gale_ram_tallow"), AMBIENT_TEMP_C)
+	_expect_equal("ram fat holds the gale from the herbs", TraitEffects.lift_share(ram_fat) > 0.2, true)
+	var claw := FoodPiece.from_ingredient(IngredientCatalog.by_id(&"cinder_crab_claw_meat"), AMBIENT_TEMP_C)
+	claw.core_doneness = 1.0
+	_expect_equal("crab that eats ember-root warms itself, cooked", TraitEffects.strength(claw, MysticTrait.Effect.EMBER) > 0.0, true)
+	var hide := FoodPiece.from_ingredient(IngredientCatalog.by_id(&"gale_ram_hide"), AMBIENT_TEMP_C)
+	var pot := CookingPot.new(STARTING_EQUIPMENT[1], AMBIENT_TEMP_C)
+	pot.cover_with(hide, true)
+	_expect_equal("a ram's hide stretched over the pot seals a dum", pot.seal > 0.85, true)
 
 # --- Equipment and transformation checks ---------------------------------------
 

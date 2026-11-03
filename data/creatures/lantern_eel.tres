@@ -1,0 +1,79 @@
+[gd_resource type="Resource" script_class="Creature" load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="1"]
+[ext_resource type="Script" path="res://resources/creature_part.gd" id="2"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/driftback_bream/driftback_bream_whole.tres" id="3"]
+[ext_resource type="Resource" path="res://data/ingredients/garden/lanternwrack.tres" id="4"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/lantern_eel/lantern_eel_fillet.tres" id="5"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/lantern_eel/lantern_eel_skin.tres" id="6"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/lantern_eel/lantern_eel_bones.tres" id="7"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/lantern_eel/lantern_eel_head.tres" id="8"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/lantern_eel/lantern_eel_eye.tres" id="9"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/lantern_eel/lantern_eel_liver.tres" id="10"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/lantern_eel/lantern_eel_teeth.tres" id="11"]
+[ext_resource type="Script" path="res://resources/creature.gd" id="12"]
+
+[sub_resource type="Resource" id="part_0"]
+script = ExtResource("2")
+part_name = "Fillet"
+tissue = 0
+ingredient = ExtResource("5")
+count = 2
+uses = "Grill or braise; it holds together where bream would fall apart."
+
+[sub_resource type="Resource" id="part_1"]
+script = ExtResource("2")
+part_name = "Skin"
+tissue = 2
+ingredient = ExtResource("6")
+count = 1
+uses = "Wrap and tie food with it; crisp it to a glowing ribbon."
+
+[sub_resource type="Resource" id="part_2"]
+script = ExtResource("2")
+part_name = "Bones"
+tissue = 3
+ingredient = ExtResource("7")
+count = 1
+uses = "Simmer for broth."
+
+[sub_resource type="Resource" id="part_3"]
+script = ExtResource("2")
+part_name = "Head"
+tissue = 3
+ingredient = ExtResource("8")
+count = 1
+uses = "Simmer with the bones."
+
+[sub_resource type="Resource" id="part_4"]
+script = ExtResource("2")
+part_name = "Eye"
+tissue = 5
+ingredient = ExtResource("9")
+count = 2
+uses = "Eaten raw, a cold shimmer; drop one in a broth to light it."
+
+[sub_resource type="Resource" id="part_5"]
+script = ExtResource("2")
+part_name = "Liver"
+tissue = 4
+ingredient = ExtResource("10")
+count = 1
+uses = "Sear; it glows in the pan."
+
+[sub_resource type="Resource" id="part_6"]
+script = ExtResource("2")
+part_name = "Teeth"
+tissue = 3
+ingredient = ExtResource("11")
+count = 1
+uses = "Steep them in warm oil: they give it their glow."
+
+[resource]
+script = ExtResource("12")
+id = &"lantern_eel"
+display_name = "Lantern Eel"
+lore = "A long dark eel that hunts the bream beds at night and grazes lanternwrack. Its skin, teeth and eyes carry the weed's light; its flesh, a little of the bream's lift."
+habitat = "The Kelp Shallows, under the ledges"
+diet = Array[ExtResource("1")]([ExtResource("3"), ExtResource("4")])
+parts = Array[ExtResource("2")]([SubResource("part_0"), SubResource("part_1"), SubResource("part_2"), SubResource("part_3"), SubResource("part_4"), SubResource("part_5"), SubResource("part_6")])

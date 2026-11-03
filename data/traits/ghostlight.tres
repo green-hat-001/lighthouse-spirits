@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ghostlight"
+display_name = "Ghostlight"
+lore = "The eyes of a lantern eel glow on their own for days after it is caught, and go dark the moment they are cooked."
+taste_note = "A faint, cold shimmer, gone as you swallow."
+effect = 1
+magnitude = 0.8
+trigger = 1
+trigger_threshold = 0.4
+glow_color = Color(0.7, 0.8, 1.0, 1)
+fat_solubility = 0.5
+water_solubility = 0.2

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"stillwater"
+display_name = "Stillwater"
+lore = "Things that live where the water is calm - kelp beds, bog pools - hold that calm. Boiled, it comes out into the broth."
+taste_note = "A slow calm settles over you."
+effect = 6
+magnitude = 0.5
+trigger = 0
+trigger_threshold = 1.0
+fat_solubility = 0.1
+water_solubility = 0.9
+diet_share = 0.6
+carried_by_diet = true
+tissues = Array[int]([3, 6, 8])

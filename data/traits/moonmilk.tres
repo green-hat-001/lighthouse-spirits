@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"moonmilk"
+display_name = "Moonmilk"
+lore = "Moonbarley ripens under the fog by moonlight. Simmered, its starch glows a soft white, and the water it cooks in glows with it."
+taste_note = "Soft and milky, and it glows faintly as you eat."
+effect = 1
+magnitude = 0.7
+trigger = 2
+trigger_threshold = 0.8
+glow_color = Color(0.95, 0.95, 0.8, 1)
+fat_solubility = 0.1
+water_solubility = 0.9
+diet_share = 1.2
+carried_by_diet = true
+tissues = Array[int]([1, 7, 2])

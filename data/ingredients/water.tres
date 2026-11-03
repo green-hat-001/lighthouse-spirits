@@ -20,5 +20,6 @@ thermal_conductivity_w_per_m_k = 0.6
 boiling_point_c = 100.0
 latent_heat_j_per_g = 2257.0
 medium_heat_transfer_w_per_m2_k = 600.0
+lore = "Fresh water from the lighthouse cistern, fed by the rain."
 flavour = SubResource("Resource_flavour")
 available_from_start = true

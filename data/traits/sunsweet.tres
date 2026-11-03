@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://resources/flavour_profile.gd" id="1"]
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="2"]
+
+[sub_resource type="Resource" id="bloom"]
+script = ExtResource("1")
+sweet = 0.9
+sour = 0.25
+aroma = 0.5
+
+[resource]
+script = ExtResource("2")
+id = &"sunsweet"
+display_name = "Sunsweet"
+lore = "Heathberries are tart off the bush. Warm them and they give up a jammy sweetness they were saving."
+taste_note = "Jammy and bright."
+effect = 5
+magnitude = 0.2
+trigger = 4
+trigger_threshold = 70.0
+bloom_flavour = SubResource("bloom")
+water_solubility = 0.5

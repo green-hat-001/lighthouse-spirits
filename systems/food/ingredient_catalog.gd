@@ -7,8 +7,10 @@ extends RefCounted
 ## species and parts are picked up by dropping .tres files in.
 
 const ROOT: String = "res://data/ingredients"
+const CREATURES: String = "res://data/creatures"
 
 static var _all: Array[Ingredient] = []
+static var _creatures: Array[Creature] = []
 static var _loaded: bool = false
 
 static func all() -> Array[Ingredient]:
@@ -22,7 +24,20 @@ static func ensure_loaded() -> void:
 	_all.clear()
 	_collect(ROOT)
 	_all.sort_custom(func(a: Ingredient, b: Ingredient) -> bool: return a.display_name < b.display_name)
-	FoodWeb.resolve(_all)
+	_creatures.clear()
+	if DirAccess.dir_exists_absolute(CREATURES):
+		for file_name in DirAccess.get_files_at(CREATURES):
+			var resource_name := file_name.trim_suffix(".remap")
+			if resource_name.ends_with(".tres"):
+				var creature := load(CREATURES.path_join(resource_name)) as Creature
+				if creature:
+					_creatures.append(creature)
+	FoodWeb.resolve(_all, _creatures)
+
+## Every species authored under res://data/creatures/.
+static func creatures() -> Array[Creature]:
+	ensure_loaded()
+	return _creatures
 
 ## The ingredients on one pantry shelf, alphabetical.
 static func on_shelf(shelf: Ingredient.Shelf) -> Array[Ingredient]:

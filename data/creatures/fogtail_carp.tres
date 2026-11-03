@@ -1,0 +1,98 @@
+[gd_resource type="Resource" script_class="Creature" load_steps=25 format=3]
+
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="1"]
+[ext_resource type="Script" path="res://resources/creature_part.gd" id="2"]
+[ext_resource type="Resource" path="res://data/ingredients/garden/frostcap.tres" id="3"]
+[ext_resource type="Resource" path="res://data/ingredients/grains/moonbarley.tres" id="4"]
+[ext_resource type="Resource" path="res://data/ingredients/garden/mirewort.tres" id="5"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/fogtail_carp/fogtail_carp_fillet.tres" id="6"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/fogtail_carp/fogtail_carp_skin.tres" id="7"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/fogtail_carp/fogtail_carp_scales.tres" id="8"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/fogtail_carp/fogtail_carp_frame.tres" id="9"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/fogtail_carp/fogtail_carp_head.tres" id="10"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/fogtail_carp/fogtail_carp_eye.tres" id="11"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/fogtail_carp/fogtail_carp_roe.tres" id="12"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/fogtail_carp/fogtail_carp_liver.tres" id="13"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/fogtail_carp/fogtail_carp_swim_bladder.tres" id="14"]
+[ext_resource type="Script" path="res://resources/creature.gd" id="15"]
+
+[sub_resource type="Resource" id="part_0"]
+script = ExtResource("2")
+part_name = "Fillet"
+tissue = 0
+ingredient = ExtResource("6")
+count = 2
+uses = "Poach slowly; it stays cool at the heart however long it cooks."
+
+[sub_resource type="Resource" id="part_1"]
+script = ExtResource("2")
+part_name = "Skin"
+tissue = 2
+ingredient = ExtResource("7")
+count = 2
+uses = "Poach it to glow; fry it to crisp."
+
+[sub_resource type="Resource" id="part_2"]
+script = ExtResource("2")
+part_name = "Scales"
+tissue = 6
+ingredient = ExtResource("8")
+count = 1
+uses = "Fry in hot oil until they puff into crisp chips."
+
+[sub_resource type="Resource" id="part_3"]
+script = ExtResource("2")
+part_name = "Frame"
+tissue = 3
+ingredient = ExtResource("9")
+count = 1
+uses = "Simmer it with mirewort for the calmest broth there is."
+
+[sub_resource type="Resource" id="part_4"]
+script = ExtResource("2")
+part_name = "Head"
+tissue = 3
+ingredient = ExtResource("10")
+count = 1
+uses = "Braise whole; pick the cheeks."
+
+[sub_resource type="Resource" id="part_5"]
+script = ExtResource("2")
+part_name = "Eye"
+tissue = 5
+ingredient = ExtResource("11")
+count = 2
+uses = "Poach in the broth."
+
+[sub_resource type="Resource" id="part_6"]
+script = ExtResource("2")
+part_name = "Roe"
+tissue = 7
+ingredient = ExtResource("12")
+count = 1
+uses = "Poach gently and it glows."
+
+[sub_resource type="Resource" id="part_7"]
+script = ExtResource("2")
+part_name = "Liver"
+tissue = 4
+ingredient = ExtResource("13")
+count = 1
+uses = "Fry fast; it fights the heat."
+
+[sub_resource type="Resource" id="part_8"]
+script = ExtResource("2")
+part_name = "Swim Bladder"
+tissue = 4
+ingredient = ExtResource("14")
+count = 1
+uses = "Dried or fresh, it floats in any soup and thickens it as it softens."
+
+[resource]
+script = ExtResource("15")
+id = &"fogtail_carp"
+display_name = "Fogtail Carp"
+lore = "A heavy golden carp of the moor pools that feeds on fallen moonbarley, frostcap and mirewort. Its fat stays cold whatever the fire, its roe and skin glow when poached, and its bones make the calmest broth on the coast."
+habitat = "The Fog Moor, deep pools"
+diet = Array[ExtResource("1")]([ExtResource("3"), ExtResource("4"), ExtResource("5")])
+parts = Array[ExtResource("2")]([SubResource("part_0"), SubResource("part_1"), SubResource("part_2"), SubResource("part_3"), SubResource("part_4"), SubResource("part_5"), SubResource("part_6"), SubResource("part_7"), SubResource("part_8")])

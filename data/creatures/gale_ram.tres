@@ -1,0 +1,135 @@
+[gd_resource type="Resource" script_class="Creature" load_steps=33 format=3]
+
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="1"]
+[ext_resource type="Script" path="res://resources/creature_part.gd" id="2"]
+[ext_resource type="Resource" path="res://data/ingredients/cliff_garden_herb.tres" id="3"]
+[ext_resource type="Resource" path="res://data/ingredients/driftwood_ember_root.tres" id="4"]
+[ext_resource type="Resource" path="res://data/ingredients/garden/heathberry.tres" id="5"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_loin.tres" id="6"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_shoulder.tres" id="7"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_tongue.tres" id="8"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_tallow.tres" id="9"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_hide.tres" id="10"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_horn.tres" id="11"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_marrow_bones.tres" id="12"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_heart.tres" id="13"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_liver.tres" id="14"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_kidney.tres" id="15"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_eye.tres" id="16"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_teeth.tres" id="17"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/gale_ram_hoof.tres" id="18"]
+[ext_resource type="Script" path="res://resources/creature.gd" id="19"]
+
+[sub_resource type="Resource" id="part_0"]
+script = ExtResource("2")
+part_name = "Loin"
+tissue = 0
+ingredient = ExtResource("6")
+count = 1
+uses = "Sear hard and rest; serve it pink. It keeps its warmth on the plate."
+
+[sub_resource type="Resource" id="part_1"]
+script = ExtResource("2")
+part_name = "Shoulder"
+tissue = 0
+ingredient = ExtResource("7")
+count = 1
+uses = "Braise low and long, sealed under its own hide, until it pulls apart."
+
+[sub_resource type="Resource" id="part_2"]
+script = ExtResource("2")
+part_name = "Tongue"
+tissue = 0
+ingredient = ExtResource("8")
+count = 1
+uses = "Simmer until soft, peel, then sear."
+
+[sub_resource type="Resource" id="part_3"]
+script = ExtResource("2")
+part_name = "Fat"
+tissue = 1
+ingredient = ExtResource("9")
+count = 1
+uses = "Render it in a dry pot for tallow to fry in: what fries in it grows lighter."
+
+[sub_resource type="Resource" id="part_4"]
+script = ExtResource("2")
+part_name = "Hide"
+tissue = 2
+ingredient = ExtResource("10")
+count = 1
+uses = "Stretch it over the pot and tie it down for a dum: it seals in the steam. It cooks too; long-simmered, it softens to eat."
+
+[sub_resource type="Resource" id="part_5"]
+script = ExtResource("2")
+part_name = "Horn"
+tissue = 6
+ingredient = ExtResource("11")
+count = 1
+uses = "Shave it into a broth: the broth takes on the gale."
+
+[sub_resource type="Resource" id="part_6"]
+script = ExtResource("2")
+part_name = "Marrow Bones"
+tissue = 3
+ingredient = ExtResource("12")
+count = 1
+uses = "Roast for the marrow, or simmer for a deep, calming stock."
+
+[sub_resource type="Resource" id="part_7"]
+script = ExtResource("2")
+part_name = "Heart"
+tissue = 4
+ingredient = ExtResource("13")
+count = 1
+uses = "Slice thin and sear fast."
+
+[sub_resource type="Resource" id="part_8"]
+script = ExtResource("2")
+part_name = "Liver"
+tissue = 4
+ingredient = ExtResource("14")
+count = 1
+uses = "Sear pink; it carries the ember-root warmth."
+
+[sub_resource type="Resource" id="part_9"]
+script = ExtResource("2")
+part_name = "Kidney"
+tissue = 4
+ingredient = ExtResource("15")
+count = 2
+uses = "Halve and grill."
+
+[sub_resource type="Resource" id="part_10"]
+script = ExtResource("2")
+part_name = "Eye"
+tissue = 5
+ingredient = ExtResource("16")
+count = 2
+uses = "Braise in the pot with the shoulder."
+
+[sub_resource type="Resource" id="part_11"]
+script = ExtResource("2")
+part_name = "Teeth"
+tissue = 3
+ingredient = ExtResource("17")
+count = 1
+uses = "Simmer in a stock for its calm."
+
+[sub_resource type="Resource" id="part_12"]
+script = ExtResource("2")
+part_name = "Hoof"
+tissue = 6
+ingredient = ExtResource("18")
+count = 4
+uses = "Simmer all day for a broth that sets."
+
+[resource]
+script = ExtResource("19")
+id = &"gale_ram"
+display_name = "Gale Ram"
+lore = "A shaggy, spiral-horned ram that grazes the windward herbs all summer and ember-root through the winter. The gale gathers in its fat and horn; the ember-root keeps its flesh warm long after it leaves the fire. Its hide, stretched over a pot, seals it."
+habitat = "The Cliff Heath, windward slopes"
+diet = Array[ExtResource("1")]([ExtResource("3"), ExtResource("3"), ExtResource("4"), ExtResource("5")])
+parts = Array[ExtResource("2")]([SubResource("part_0"), SubResource("part_1"), SubResource("part_2"), SubResource("part_3"), SubResource("part_4"), SubResource("part_5"), SubResource("part_6"), SubResource("part_7"), SubResource("part_8"), SubResource("part_9"), SubResource("part_10"), SubResource("part_11"), SubResource("part_12")])
+dressed_in_field = true

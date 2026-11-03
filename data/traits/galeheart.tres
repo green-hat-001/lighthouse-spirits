@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"galeheart"
+display_name = "Galeheart"
+lore = "The windward herbs hold the gale in their leaves. Rams that graze them all summer store it in their fat and their horn, and walk the cliff edges as if the wind held them up."
+taste_note = "A breath of the cliff wind goes through you."
+effect = 0
+magnitude = 0.5
+trigger = 0
+trigger_threshold = 1.0
+fat_solubility = 0.6
+water_solubility = 0.3
+diet_share = 1.5
+carried_by_diet = true
+tissues = Array[int]([1, 2, 6])

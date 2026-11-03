@@ -1,0 +1,50 @@
+[gd_resource type="Resource" script_class="Ingredient" load_steps=7 format=3]
+
+[ext_resource type="Resource" path="res://data/traits/stillwater.tres" id="1"]
+[ext_resource type="Script" path="res://resources/trait_dose.gd" id="2"]
+[ext_resource type="Script" path="res://resources/flavour_profile.gd" id="3"]
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="4"]
+
+[sub_resource type="Resource" id="dose_0"]
+script = ExtResource("2")
+mystic_trait = ExtResource("1")
+concentration = 0.2
+
+[sub_resource type="Resource" id="flavour"]
+script = ExtResource("3")
+sweet = 0.15
+salty = 0.15
+bitter = 0.1
+aroma = 0.2
+
+[resource]
+script = ExtResource("4")
+id = &"sea_cabbage_leaf"
+display_name = "Sea Cabbage Leaf"
+lore = "The outer leaf of a sea cabbage from the dunes, wide as a platter and supple as cloth. Cooks lay it over a pot to seal it."
+tint_color = Color(0.35, 0.55, 0.4, 1)
+flesh_color = Color(0.65, 0.8, 0.6, 1)
+elemental_affinity = 1
+physical_form = 0
+whole_size_mm = Vector3(260.0, 2.0, 240.0)
+density_g_per_cm3 = 0.9
+water_fraction = 0.91
+sugar_fraction = 0.04
+protein_fraction = 0.015
+specific_heat_j_per_g_k = 3.7
+thermal_conductivity_w_per_m_k = 0.5
+stable_thickness_mm = 0.8
+unsteadied_cut_integrity_loss = 0.15
+char_susceptibility = 1.5
+skin_permeability = 0.5
+shrinkage_per_water_lost = 0.6
+available_from_start = true
+pantry_shelf = 1
+cook_temp_c = 60.0
+cook_seconds = 60.0
+overcook_softening_per_s = 0.002
+ideal_doneness_min = 0.5
+ideal_doneness_max = 2.0
+pliability = 0.95
+traits = Array[ExtResource("2")]([SubResource("dose_0")])
+flavour = SubResource("flavour")

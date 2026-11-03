@@ -37,5 +37,7 @@ ideal_doneness_max = 2.0
 skin_permeability = 0.3
 shrinkage_per_water_lost = 0.5
 whole_model = ExtResource("3")
+lore = "A floury potato from the cliff garden. Cut, fried and salted, it is the first thing every keeper learns to cook."
+pantry_shelf = 1
 flavour = SubResource("Resource_flavour")
 available_from_start = true

@@ -111,10 +111,14 @@ func _init() -> void:
 	face_skin.fill(0.0)
 
 ## A whole, raw item at the given ambient temperature, or null (with an
-## error) when the ingredient is not a SOLID that can exist as a piece.
+## error) when the ingredient can't exist as a piece (a liquid, or a
+## granule with no size).
 static func from_ingredient(p_ingredient: Ingredient, ambient_temp_c: float) -> FoodPiece:
-	if p_ingredient == null or p_ingredient.physical_form != Ingredient.PhysicalForm.SOLID:
-		push_error("FoodPiece: only SOLID ingredients can be made into pieces")
+	# A granule - a grain, a seed, a fleck of spice - is a solid particle
+	# too, sized by its whole_size_mm.
+	if p_ingredient == null or p_ingredient.physical_form == Ingredient.PhysicalForm.LIQUID \
+			or p_ingredient.whole_size_mm.x <= 0.0 or p_ingredient.whole_size_mm.y <= 0.0 or p_ingredient.whole_size_mm.z <= 0.0:
+		push_error("FoodPiece: only SOLID ingredients, and granules with a size, can be made into pieces")
 		return null
 	var piece := FoodPiece.new()
 	piece.ingredient = p_ingredient

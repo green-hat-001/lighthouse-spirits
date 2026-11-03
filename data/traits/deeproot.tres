@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"deeproot"
+display_name = "Deeproot"
+lore = "Bog lotus roots run down into the peat for years. What they store there feeds far beyond what they weigh."
+taste_note = "Deeply, quietly filling."
+effect = 7
+magnitude = 0.3
+trigger = 2
+trigger_threshold = 0.8
+fat_solubility = 0.1
+water_solubility = 0.6
+diet_share = 0.6
+carried_by_diet = true
+tissues = Array[int]([0, 4, 7, 8])

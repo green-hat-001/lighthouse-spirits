@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"lanternlight"
+display_name = "Lanternlight"
+lore = "Lanternwrack lights the shallows on summer nights. Warm it and it glows again; the eels that eat it carry that light in their skin, eyes and teeth."
+taste_note = "A cool light spreads behind your eyes."
+effect = 1
+magnitude = 1.0
+trigger = 4
+trigger_threshold = 60.0
+glow_color = Color(0.45, 0.95, 0.85, 1)
+fat_solubility = 0.8
+water_solubility = 0.1
+diet_share = 0.6
+carried_by_diet = true
+tissues = Array[int]([2, 5, 4, 7, 3])

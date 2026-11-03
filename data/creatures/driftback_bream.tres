@@ -1,0 +1,97 @@
+[gd_resource type="Resource" script_class="Creature" load_steps=24 format=3]
+
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="1"]
+[ext_resource type="Script" path="res://resources/creature_part.gd" id="2"]
+[ext_resource type="Resource" path="res://data/ingredients/garden/skybladder_kelp.tres" id="3"]
+[ext_resource type="Resource" path="res://data/ingredients/sea_kelp.tres" id="4"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/driftback_bream/driftback_bream_fillet.tres" id="5"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/driftback_bream/driftback_bream_belly.tres" id="6"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/driftback_bream/driftback_bream_skin.tres" id="7"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/driftback_bream/driftback_bream_frame.tres" id="8"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/driftback_bream/driftback_bream_head.tres" id="9"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/driftback_bream/driftback_bream_eye.tres" id="10"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/driftback_bream/driftback_bream_roe.tres" id="11"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/driftback_bream/driftback_bream_liver.tres" id="12"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/driftback_bream/driftback_bream_fins.tres" id="13"]
+[ext_resource type="Script" path="res://resources/creature.gd" id="14"]
+
+[sub_resource type="Resource" id="part_0"]
+script = ExtResource("2")
+part_name = "Fillet"
+tissue = 0
+ingredient = ExtResource("5")
+count = 2
+uses = "Pan-fry, poach or steam. Cooked, it rises off the plate and lightens the spirit that eats it."
+
+[sub_resource type="Resource" id="part_1"]
+script = ExtResource("2")
+part_name = "Belly"
+tissue = 1
+ingredient = ExtResource("6")
+count = 1
+uses = "Crisp it skin-down; it carries the most lift of all."
+
+[sub_resource type="Resource" id="part_2"]
+script = ExtResource("2")
+part_name = "Skin"
+tissue = 2
+ingredient = ExtResource("7")
+count = 2
+uses = "Fry it flat until it shatters, or wrap a fillet in it."
+
+[sub_resource type="Resource" id="part_3"]
+script = ExtResource("2")
+part_name = "Frame"
+tissue = 3
+ingredient = ExtResource("8")
+count = 1
+uses = "Simmer for a clear, light broth; it gives the water its calm."
+
+[sub_resource type="Resource" id="part_4"]
+script = ExtResource("2")
+part_name = "Head"
+tissue = 3
+ingredient = ExtResource("9")
+count = 1
+uses = "Roast or simmer; pick the cheeks."
+
+[sub_resource type="Resource" id="part_5"]
+script = ExtResource("2")
+part_name = "Eye"
+tissue = 5
+ingredient = ExtResource("10")
+count = 2
+uses = "A delicacy, poached."
+
+[sub_resource type="Resource" id="part_6"]
+script = ExtResource("2")
+part_name = "Roe"
+tissue = 7
+ingredient = ExtResource("11")
+count = 1
+uses = "Poach gently; it floats, cooked."
+
+[sub_resource type="Resource" id="part_7"]
+script = ExtResource("2")
+part_name = "Liver"
+tissue = 4
+ingredient = ExtResource("12")
+count = 1
+uses = "Sear quickly; mash into a sauce."
+
+[sub_resource type="Resource" id="part_8"]
+script = ExtResource("2")
+part_name = "Fins"
+tissue = 3
+ingredient = ExtResource("13")
+count = 1
+uses = "Fry until they crackle."
+
+[resource]
+script = ExtResource("14")
+id = &"driftback_bream"
+display_name = "Driftback Bream"
+lore = "A silver bream that grazes the skybladder beds and little else. It eats so much of the kelp that its flesh learns the trick: cooked, a bream fillet rises off the plate."
+habitat = "The Kelp Shallows"
+diet = Array[ExtResource("1")]([ExtResource("3"), ExtResource("3"), ExtResource("4")])
+parts = Array[ExtResource("2")]([SubResource("part_0"), SubResource("part_1"), SubResource("part_2"), SubResource("part_3"), SubResource("part_4"), SubResource("part_5"), SubResource("part_6"), SubResource("part_7"), SubResource("part_8")])

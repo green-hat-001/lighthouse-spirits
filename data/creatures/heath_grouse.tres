@@ -1,0 +1,98 @@
+[gd_resource type="Resource" script_class="Creature" load_steps=25 format=3]
+
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="1"]
+[ext_resource type="Script" path="res://resources/creature_part.gd" id="2"]
+[ext_resource type="Resource" path="res://data/ingredients/garden/heathberry.tres" id="3"]
+[ext_resource type="Resource" path="res://data/ingredients/garden/stonecap.tres" id="4"]
+[ext_resource type="Resource" path="res://data/ingredients/sunflower_seeds.tres" id="5"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/heath_grouse/heath_grouse_breast.tres" id="6"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/heath_grouse/heath_grouse_thigh.tres" id="7"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/heath_grouse/heath_grouse_skin.tres" id="8"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/heath_grouse/heath_grouse_liver.tres" id="9"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/heath_grouse/heath_grouse_heart.tres" id="10"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/heath_grouse/heath_grouse_gizzard.tres" id="11"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/heath_grouse/heath_grouse_carcass.tres" id="12"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/heath_grouse/heath_grouse_foot.tres" id="13"]
+[ext_resource type="Resource" path="res://data/ingredients/catch/heath_grouse/heath_grouse_eye.tres" id="14"]
+[ext_resource type="Script" path="res://resources/creature.gd" id="15"]
+
+[sub_resource type="Resource" id="part_0"]
+script = ExtResource("2")
+part_name = "Breast"
+tissue = 0
+ingredient = ExtResource("6")
+count = 2
+uses = "Roast fast and rest."
+
+[sub_resource type="Resource" id="part_1"]
+script = ExtResource("2")
+part_name = "Thigh"
+tissue = 0
+ingredient = ExtResource("7")
+count = 2
+uses = "Braise or confit in its own fat."
+
+[sub_resource type="Resource" id="part_2"]
+script = ExtResource("2")
+part_name = "Skin"
+tissue = 2
+ingredient = ExtResource("8")
+count = 1
+uses = "Render it slowly; it crisps like glass and never burns, and leaves its fat behind to fry in."
+
+[sub_resource type="Resource" id="part_3"]
+script = ExtResource("2")
+part_name = "Liver"
+tissue = 4
+ingredient = ExtResource("9")
+count = 1
+uses = "Sear on toast-hot metal."
+
+[sub_resource type="Resource" id="part_4"]
+script = ExtResource("2")
+part_name = "Heart"
+tissue = 4
+ingredient = ExtResource("10")
+count = 1
+uses = "Skewer and grill with the liver."
+
+[sub_resource type="Resource" id="part_5"]
+script = ExtResource("2")
+part_name = "Gizzard"
+tissue = 4
+ingredient = ExtResource("11")
+count = 1
+uses = "Simmer until tender, then fry crisp."
+
+[sub_resource type="Resource" id="part_6"]
+script = ExtResource("2")
+part_name = "Carcass"
+tissue = 3
+ingredient = ExtResource("12")
+count = 1
+uses = "Roast, then simmer for a dark stock."
+
+[sub_resource type="Resource" id="part_7"]
+script = ExtResource("2")
+part_name = "Foot"
+tissue = 6
+ingredient = ExtResource("13")
+count = 2
+uses = "Simmer in the stock for body."
+
+[sub_resource type="Resource" id="part_8"]
+script = ExtResource("2")
+part_name = "Eye"
+tissue = 5
+ingredient = ExtResource("14")
+count = 2
+uses = "Into the stock pot."
+
+[resource]
+script = ExtResource("15")
+id = &"heath_grouse"
+display_name = "Heath Grouse"
+lore = "A plump, speckled grouse that picks heathberries, sunflower seed and the stonecaps of burnt ground. The stonecap's ward gathers in its skin: it crisps to glass and never burns."
+habitat = "The Cliff Heath, in the burnt patches"
+diet = Array[ExtResource("1")]([ExtResource("3"), ExtResource("4"), ExtResource("5")])
+parts = Array[ExtResource("2")]([SubResource("part_0"), SubResource("part_1"), SubResource("part_2"), SubResource("part_3"), SubResource("part_4"), SubResource("part_5"), SubResource("part_6"), SubResource("part_7"), SubResource("part_8")])

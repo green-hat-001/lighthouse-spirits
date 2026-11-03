@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://resources/flavour_profile.gd" id="1"]
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="2"]
+
+[sub_resource type="Resource" id="bloom"]
+script = ExtResource("1")
+sweet = 0.8
+aroma = 0.6
+
+[resource]
+script = ExtResource("2")
+id = &"honeybloom"
+display_name = "Honeybloom"
+lore = "Cliff carrots and moonbark keep a honey locked in them that only browning lets out."
+taste_note = "A honeyed sweetness opens up as you chew."
+effect = 5
+magnitude = 0.15
+trigger = 3
+trigger_threshold = 0.3
+bloom_flavour = SubResource("bloom")

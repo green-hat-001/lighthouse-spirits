@@ -14,12 +14,17 @@ extends RefCounted
 ## The result is written to each part ingredient's inherited_traits, and
 ## the whole-carcass ingredient gets the mass-weighted mean of its parts.
 
-## Resolves every creature reachable from these ingredients.
-static func resolve(ingredients: Array[Ingredient]) -> void:
+## Resolves every creature reachable from these ingredients, and any
+## species given directly - those dressed in the field have no carcass in
+## the kitchen to reach them through.
+static func resolve(ingredients: Array[Ingredient], species: Array[Creature] = []) -> void:
 	var creatures: Array[Creature] = []
 	for ingredient in ingredients:
 		if ingredient.creature and not creatures.has(ingredient.creature):
 			creatures.append(ingredient.creature)
+	for creature in species:
+		if creature and not creatures.has(creature):
+			creatures.append(creature)
 	for creature in creatures:
 		for part in creature.parts:
 			if part and part.ingredient:
@@ -29,6 +34,8 @@ static func resolve(ingredients: Array[Ingredient]) -> void:
 			ingredient.inherited_traits.clear()
 	var resolved: Dictionary[Creature, TraitDoses] = {}
 	var visiting: Array[Creature] = []
+	for creature in creatures:
+		_body(creature, resolved, visiting)
 	for ingredient in ingredients:
 		if ingredient.creature:
 			var body := _body(ingredient.creature, resolved, visiting)

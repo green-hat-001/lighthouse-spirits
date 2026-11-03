@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="Ingredient" load_steps=5 format=3]
+
+[ext_resource type="Resource" path="res://data/ingredients/catch/gale_ram/ram_tallow.tres" id="1"]
+[ext_resource type="Script" path="res://resources/flavour_profile.gd" id="2"]
+[ext_resource type="Script" path="res://resources/ingredient.gd" id="3"]
+
+[sub_resource type="Resource" id="flavour"]
+script = ExtResource("2")
+umami = 0.2
+aroma = 0.3
+
+[resource]
+script = ExtResource("3")
+id = &"gale_ram_tallow"
+display_name = "Gale Ram Fat"
+lore = "Thick, creamy fat. It holds the gale."
+tint_color = Color(0.95, 0.92, 0.85, 1)
+flesh_color = Color(0.97, 0.94, 0.88, 1)
+elemental_affinity = 2
+physical_form = 0
+whole_size_mm = Vector3(100.0, 40.0, 80.0)
+density_g_per_cm3 = 0.92
+water_fraction = 0.1
+fat_fraction = 0.85
+protein_fraction = 0.03
+available_from_start = true
+pantry_shelf = 2
+skin_permeability = 1.0
+specific_heat_j_per_g_k = 2.6
+thermal_conductivity_w_per_m_k = 0.22
+cook_temp_c = 60.0
+cook_seconds = 200.0
+overcook_softening_per_s = 0.0
+ideal_doneness_min = 0.8
+ideal_doneness_max = 3.0
+stable_thickness_mm = 3.0
+unsteadied_cut_integrity_loss = 0.05
+char_susceptibility = 2.0
+shrinkage_per_water_lost = 0.3
+render_temp_c = 55.0
+render_rate_per_s_per_k = 8e-05
+renders_into = ExtResource("1")
+flavour = SubResource("flavour")

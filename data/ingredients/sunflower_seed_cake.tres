@@ -27,4 +27,5 @@ protein_fraction = 0.35
 specific_heat_j_per_g_k = 1.9
 thermal_conductivity_w_per_m_k = 0.2
 whole_model = ExtResource("3")
+lore = "What is left of the seeds once the press has had their oil: dry, nutty and full of protein."
 flavour = SubResource("Resource_flavour")

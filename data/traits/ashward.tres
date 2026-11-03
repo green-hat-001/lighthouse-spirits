@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ashward"
+display_name = "Ashward"
+lore = "Stonecaps grow only on heath that has burned. Fire passes them by, and a grouse that eats them grows a skin that crisps without ever burning."
+taste_note = "No bitterness, even where it should have burnt."
+effect = 4
+magnitude = 0.85
+trigger = 0
+trigger_threshold = 1.0
+fat_solubility = 0.3
+water_solubility = 0.1
+diet_share = 2.0
+carried_by_diet = true
+tissues = Array[int]([2, 6, 3])

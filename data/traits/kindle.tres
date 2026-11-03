@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"kindle"
+display_name = "Kindle"
+lore = "Ember-root grows from driftwood that burned on the beach. Cooked, it keeps a coal burning inside itself, and so does anything that ate it."
+taste_note = "Warm all the way down, and it stays warm."
+effect = 2
+magnitude = 0.35
+trigger = 2
+trigger_threshold = 0.5
+fuel_j_per_g = 900.0
+fat_solubility = 0.6
+water_solubility = 0.2
+diet_share = 0.8
+carried_by_diet = true
+tissues = Array[int]([0, 1, 4, 8])

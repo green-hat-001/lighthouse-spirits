@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MysticTrait" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/mystic_trait.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"tidesalt"
+display_name = "Tidesalt"
+lore = "Salt from the tide pans holds the rhythm of the tide. A spirit that tastes it breathes slower."
+taste_note = "The taste of the sea, and the calm of it."
+effect = 6
+magnitude = 0.25
+trigger = 0
+trigger_threshold = 1.0
+water_solubility = 1.0

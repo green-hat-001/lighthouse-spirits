@@ -38,5 +38,7 @@ ideal_doneness_max = 1.5
 skin_permeability = 0.4
 shrinkage_per_water_lost = 0.6
 whole_model = ExtResource("3")
+lore = "A long red chilli from the sheltered wall of the garden. Its heat goes into oil, not water."
+pantry_shelf = 1
 flavour = SubResource("Resource_flavour")
 available_from_start = true
