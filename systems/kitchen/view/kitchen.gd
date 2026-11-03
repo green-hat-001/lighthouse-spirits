@@ -79,6 +79,7 @@ func _ready() -> void:
 	seed_source.taken.connect(func(_ingredient: Ingredient, grams: float) -> void: simulation.load_seeds(grams))
 	for source in find_children("*", "IngredientSource", true, false):
 		(source as IngredientSource).taken.connect(func(ingredient: Ingredient) -> void: board.add_whole(ingredient))
+		(source as IngredientSource).scooped.connect(let_go_of_scoop)
 	_caption.modulate.a = 0.0
 	pointer.enabled = false
 	counter_views.active = false
@@ -117,6 +118,27 @@ func drop_into_pot(pieces: Array[FoodPiece], world_point: Vector3, held_at: Arra
 	if not spilled.is_empty():
 		board.receive.call_deferred(spilled, board.global_position)
 	return true
+
+## Where a pinch or handful from the pantry lands. A spice seasons
+## whatever it is scattered over - the pot's liquid, or the food it falls
+## on - and a handful of grain goes into the pot or sits as a heap on the
+## board. Let go anywhere else, it is put back. Returns true if it landed.
+const PINCH_REACH_M: float = 0.03
+
+func let_go_of_scoop(ingredient: Ingredient, grams: float, world_point: Vector3) -> bool:
+	var spice: bool = ingredient.pantry_shelf == Ingredient.Shelf.SPICE
+	if pot_view.is_over(world_point):
+		if spice:
+			return Seasoning.season_pot(simulation.pot, ingredient, grams) > 0.0
+		return simulation.pot.add_piece(FoodPiece.handful(ingredient, grams, simulation.air.temp_c), pot_view.to_pot_mm(world_point))
+	for surface in [board]:
+		if not surface.is_over(world_point):
+			continue
+		if spice:
+			var under: Array[FoodPiece] = surface.pieces_near(world_point, PINCH_REACH_M)
+			return not under.is_empty() and Seasoning.season_pieces(under, ingredient, grams) > 0.0
+		return surface.receive([FoodPiece.handful(ingredient, grams, simulation.air.temp_c)], world_point).is_empty()
+	return false
 
 ## Bites whatever piece on the board is under the hand.
 func taste_under_hand() -> String:

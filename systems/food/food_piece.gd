@@ -56,6 +56,10 @@ var integrity: float = 1.0
 var flavour: FlavourProfile
 ## The mystical essences it carries now (see MysticTrait).
 var traits := TraitDoses.new()
+## How many identical pieces this stands for: 1 for a piece of food, many
+## for a handful of grain, where one kernel is simulated for them all.
+## Every quantity on the piece is per kernel; total_mass_g() is the lot.
+var count: int = 1
 ## Every axis (Vector3.AXIS_*) this piece, or any piece it was cut from,
 ## has been cut along. A cut along any other axis is a perpendicular cut.
 var cut_axes: Array[int] = []
@@ -126,6 +130,33 @@ static func from_ingredient(p_ingredient: Ingredient, ambient_temp_c: float) -> 
 	IngredientCatalog.ensure_loaded()
 	piece.traits = p_ingredient.trait_doses()
 	return piece
+
+## A handful of a bulk ingredient - grain, seeds - as one kernel standing
+## for all of them. The kernel is the ingredient's whole item.
+static func handful(p_ingredient: Ingredient, grams: float, ambient_temp_c: float) -> FoodPiece:
+	var kernel := from_ingredient(p_ingredient, ambient_temp_c)
+	if kernel:
+		kernel.count = maxi(roundi(grams / kernel.mass_g()), 1)
+	return kernel
+
+## Share of a heap's floor a loose heap of kernels covers.
+const HEAP_PACKING: float = 0.55
+
+func is_heap() -> bool:
+	return count > 1
+
+func total_mass_g() -> float:
+	return mass_g() * count
+
+## The box a piece takes up: itself, or for a heap, the kernels spread in
+## an even layer no wider than `widest_mm` across, as deep as they need.
+func bulk_size_mm(widest_mm: float = 120.0) -> Vector3:
+	if count <= 1:
+		return size_mm
+	var area: float = size_mm.x * size_mm.z * count / HEAP_PACKING
+	var side: float = minf(sqrt(area), widest_mm)
+	var layers: float = maxf(area / (side * side), 1.0)
+	return Vector3(side, size_mm.y * layers, side)
 
 ## The axis (Vector3.AXIS_*) a face is perpendicular to.
 static func face_axis(face: int) -> int:
@@ -327,6 +358,7 @@ func clone() -> FoodPiece:
 	copy.water_g = water_g
 	copy.oil_g = oil_g
 	copy.fat_rendered_g = fat_rendered_g
+	copy.count = count
 	copy.core_temp_c = core_temp_c
 	copy.core_doneness = core_doneness
 	copy.integrity = integrity

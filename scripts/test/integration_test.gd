@@ -114,6 +114,8 @@ func _ready() -> void:
 	_test_essences_reach_spirits()
 	_test_food_web_inheritance()
 	_test_fat_renders()
+	_test_grain_drinks_and_cooks()
+	_test_seasoning()
 	_test_shipped_transformations_validate()
 	_test_transformation_validation()
 	_test_press_turns_work_into_oil()
@@ -951,6 +953,67 @@ func _test_fat_renders() -> void:
 	_expect_equal("and the fat shrinks as it renders", cube.volume_mm3() < volume_before * 0.9, true)
 	_expect_equal("rendered fat feeds no one from the plate", DishNourishment.piece_kcal(cube) < kcal_before, true)
 
+# --- Grain and seasoning checks ------------------------------------------------
+
+func _test_grain_drinks_and_cooks() -> void:
+	var rice := _make_test_grain()
+	var handful := FoodPiece.handful(rice, 60.0, AMBIENT_TEMP_C)
+	_expect_equal("a handful is one kernel standing for many", handful.count > 100, true)
+	_expect_near("weighing what was taken", handful.total_mass_g(), 60.0, 1.0)
+	_expect_equal("a heap of grain isn't cut", FoodCutting.cut(handful, Vector3.AXIS_X, 2.0, true).is_empty(), true)
+
+	var pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
+	pot.burner = _make_test_stove()
+	pot.add_medium(_make_test_water(), 300.0, AMBIENT_TEMP_C)
+	pot.add_piece(handful)
+	var volume_before: float = handful.volume_mm3()
+	var water_before: float = handful.water_g
+	pot.set_flame(0.7)
+	pot.advance(240.0)
+	_hold_temperature(pot, 99.0, 900.0)
+	_expect_equal("grain simmered in water drinks it up", handful.water_g > water_before * 4.0, true)
+	_expect_equal("and swells", handful.volume_mm3() > volume_before * 1.8, true)
+	_expect_equal("until it is cooked through", handful.core_doneness >= 1.0, true)
+	_expect_equal("taking the water out of the pot", pot.medium_mass_g + pot.boiled_off_g < 300.0 - 100.0, true)
+
+	var toasted := FoodPiece.handful(rice, 60.0, AMBIENT_TEMP_C)
+	var dry_pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
+	dry_pot.burner = _make_test_stove()
+	dry_pot.add_piece(toasted)
+	dry_pot.set_flame(0.3)
+	dry_pot.advance(600.0)
+	_expect_equal("dry heat toasts grain but can't cook it", toasted.core_doneness < 0.3, true)
+	_expect_equal("though it browns", toasted.surface_browning > 0.1, true)
+
+	var plate_of_rice := DishNourishment.feeding_result_of(CookedPlates.plate([handful]))
+	var one_kernel := handful.clone()
+	one_kernel.count = 1
+	_expect_near("a heap on a plate feeds as every kernel in it",
+		plate_of_rice.nourishment, DishNourishment.feeding_result_of(CookedPlates.plate([one_kernel])).nourishment * handful.count, 0.5)
+
+func _test_seasoning() -> void:
+	var salt := _make_test_spice()
+	salt.flavour.salty = 1.0
+	var oily_fry := _fry(180.0, 360.0)
+	var dry_cube := _cut_cube(20.0)
+	dry_cube.surface_moisture = 0.0
+	_expect_equal("salt sticks to oily food better than to dry", Seasoning.adhesion(oily_fry) > Seasoning.adhesion(dry_cube) + 0.2, true)
+	var stuck := Seasoning.season_pieces([oily_fry], salt, 1.0)
+	_expect_equal("a pinch seasons what it sticks to", oily_fry.flavour.salty > 0.3 and stuck > 0.5, true)
+
+	var water_pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
+	water_pot.add_medium(_make_test_water(), 500.0, AMBIENT_TEMP_C)
+	Seasoning.season_pot(water_pot, salt, 5.0)
+	_expect_equal("salt dissolves into water", water_pot.medium_flavour.salty > 0.1, true)
+	var oil_pot := CookingPot.new(_make_test_vessel(), AMBIENT_TEMP_C)
+	oil_pot.add_medium(_make_test_oil(), 500.0, AMBIENT_TEMP_C)
+	Seasoning.season_pot(oil_pot, salt, 5.0)
+	_expect_near("but never into oil", oil_pot.medium_flavour.salty, 0.0)
+	var chilli_flakes := _make_test_spice()
+	chilli_flakes.flavour.heat = 1.0
+	Seasoning.season_pot(oil_pot, chilli_flakes, 5.0)
+	_expect_equal("while chilli heat goes into oil", oil_pot.medium_flavour.heat > 0.1, true)
+
 # --- Equipment and transformation checks ---------------------------------------
 
 func _test_shipped_transformations_validate() -> void:
@@ -1686,6 +1749,34 @@ func _make_test_creature(id: StringName, diet: Array[Ingredient]) -> Creature:
 	flesh.set_meta(&"carcass", carcass)
 	return creature
 
+## A dry grain like rice: a 6 x 2 x 2 mm kernel that drinks up to 2.3 times
+## its solids in water.
+func _make_test_grain() -> Ingredient:
+	var grain := _make_test_ingredient()
+	grain.id = &"test_rice"
+	grain.whole_size_mm = Vector3(6.0, 2.0, 2.0)
+	grain.density_g_per_cm3 = 1.45
+	grain.water_fraction = 0.12
+	grain.starch_fraction = 0.78
+	grain.protein_fraction = 0.07
+	grain.sugar_fraction = 0.0
+	grain.stable_thickness_mm = 1.0
+	grain.cook_temp_c = 70.0
+	grain.cook_seconds = 300.0
+	grain.water_uptake_capacity = 2.3
+	grain.hydration_rate_per_s = 0.004
+	grain.shrinkage_per_water_lost = 0.0
+	return grain
+
+func _make_test_spice() -> Ingredient:
+	var spice := Ingredient.new()
+	spice.id = StringName("test_spice_%d" % randi())
+	spice.physical_form = Ingredient.PhysicalForm.GRANULAR
+	spice.density_g_per_cm3 = 1.2
+	spice.flavour_potency = 40.0
+	spice.flavour = FlavourProfile.new()
+	return spice
+
 ## Seconds of simulated time until the pot reaches the temperature, or the
 ## limit if it never does.
 func _heat_until(pot: CookingPot, target_c: float, limit_s: float) -> float:
@@ -1962,7 +2053,7 @@ func _expect_equal(what: String, actual: Variant, expected: Variant) -> void:
 	if actual != expected:
 		_failures.append("%s: expected %s, got %s" % [what, expected, actual])
 
-func _expect_near(what: String, actual: float, expected: float) -> void:
+func _expect_near(what: String, actual: float, expected: float, tolerance: float = EPSILON) -> void:
 	_checks_run += 1
-	if absf(actual - expected) > EPSILON:
+	if absf(actual - expected) > tolerance:
 		_failures.append("%s: expected %s, got %s" % [what, expected, actual])

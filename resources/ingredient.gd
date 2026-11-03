@@ -87,6 +87,24 @@ const COMPOSITION_TOLERANCE: float = 0.0001
 ## SOLID only.
 @export_range(0.0, 1.0) var shrinkage_per_water_lost: float = 0.0
 
+@export_group("Hydration")
+## For dry grains and pulses: the water they can drink in, in grams per
+## gram of their solids, once fully cooked (rice about 2.3). 0 for food that
+## never takes up water.
+@export var water_uptake_capacity: float = 0.0
+## Share of what they could still take up that they drink per second in
+## boiling water, while wetted. Slower in cooler water.
+@export var hydration_rate_per_s: float = 0.0
+
+@export_group("Seasoning")
+## How strongly its flavour and essences count, gram for gram, when it
+## seasons food or a pot - a pinch of salt tastes of far more than a pinch
+## of potato.
+@export var flavour_potency: float = 1.0
+## Grams the caretaker takes at a time from the pantry: a pinch of spice, a
+## handful of grain.
+@export var scoop_g: float = 0.0
+
 @export_group("As a Cooking Medium")
 ## For LIQUID ingredients food can be cooked in. 0 means the liquid does not
 ## boil within kitchen temperatures (oils).
@@ -209,6 +227,14 @@ func validate() -> PackedStringArray:
 			problems.append("a LIQUID that boils needs a latent heat")
 		if smoke_point_c < 0.0 or breakdown_per_hour_at_180c < 0.0 or breakdown_per_g_steam_per_kg < 0.0:
 			problems.append("smoke point and breakdown rates cannot be negative")
+	if water_uptake_capacity < 0.0 or hydration_rate_per_s < 0.0:
+		problems.append("hydration cannot be negative")
+	if water_uptake_capacity > 0.0 and hydration_rate_per_s <= 0.0:
+		problems.append("food that takes up water needs a hydration rate")
+	if flavour_potency <= 0.0:
+		problems.append("flavour potency must be positive")
+	if (pantry_shelf == Shelf.SPICE or pantry_shelf == Shelf.GRAIN) and scoop_g <= 0.0:
+		problems.append("spices and grains need a scoop size")
 	if render_temp_c > 0.0 and (renders_into == null or render_rate_per_s_per_k <= 0.0):
 		problems.append("a fat that renders needs the liquid it renders into and a rate")
 	if renders_into and renders_into.physical_form != PhysicalForm.LIQUID:

@@ -20,3 +20,5 @@ var evaporated_g: float = 0.0
 var steam_through_liquid_g: float = 0.0
 ## The food's own fat that melted out of it, into whatever it sits in.
 var fat_rendered_g: float = 0.0
+## Water a dry food drank in from the medium (grain swelling as it cooks).
+var water_absorbed_g: float = 0.0

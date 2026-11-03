@@ -175,7 +175,7 @@ func _sync_views(delta: float) -> void:
 		view.position = view.position.lerp(target, ease)
 
 func _view_position(placement: PotPlacement) -> Vector3:
-	var size: Vector3 = placement.piece.size_mm
+	var size: Vector3 = placement.size_mm()
 	return Vector3(
 		(placement.centre_mm.x - size.x * 0.5) * MM_TO_M,
 		FLOOR_Y_M + placement.bottom_mm * MM_TO_M,
@@ -228,7 +228,7 @@ func _draw_foam() -> void:
 			if placement.immersion <= 0.0:
 				continue
 			var bubbles: int = mini(int(placement.steam_g_per_s * FOAM_PER_G_PER_S), FOAM_PER_PIECE)
-			var size: Vector3 = placement.piece.size_mm * MM_TO_M
+			var size: Vector3 = placement.size_mm() * MM_TO_M
 			var centre := Vector3(placement.centre_mm.x * MM_TO_M, surface_y, placement.centre_mm.y * MM_TO_M)
 			for bubble in bubbles:
 				if count >= FOAM_INSTANCES:
@@ -342,7 +342,8 @@ func _lift() -> void:
 	spoon_state = SpoonState.LIFTING
 	var footprint: float = 0.0
 	for piece in pot().pieces_near(_spoon_mm, SPOON_REACH_MM):
-		var area: float = piece.cross_section_mm2(Vector3.AXIS_Y)
+		var bulk := piece.bulk_size_mm()
+		var area: float = bulk.x * bulk.z
 		if footprint + area > SPOON_CAPACITY_MM2 and not lifted.is_empty():
 			break
 		footprint += area

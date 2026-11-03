@@ -39,6 +39,8 @@ extends RefCounted
 ##   9. Awake essences act (TraitEffects): embers heat the core, frost
 ##      chills it, blooms draw out flavour; a char ward slows burning.
 ##  10. Fatty food renders: its fat melts out once hot enough.
+##  11. Dry grain drinks water from a watery medium and swells, and cooks
+##      only as far as it has drunk.
 ##
 ## Integration is explicit, split into substeps short enough for the
 ## fastest thermal time constant of any face or the core, so no step can
@@ -46,6 +48,11 @@ extends RefCounted
 
 const WATER_BOILING_POINT_C: float = 100.0
 const WATER_LATENT_HEAT_J_PER_G: float = 2257.0
+const WATER_SPECIFIC_HEAT_J_PER_G_K: float = 4.18
+## Grain drinks twice as fast for every this many degrees hotter.
+const HYDRATION_DOUBLING_C: float = 12.0
+## Share of its full water a grain must hold before its starch cooks freely.
+const HYDRATED_TO_COOK: float = 0.6
 ## The longest substep allowed, as a fraction of the fastest thermal time
 ## constant in the piece.
 const MAX_SUBSTEP_FRACTION_OF_TAU: float = 0.2
@@ -229,6 +236,7 @@ static func _integrate(piece: FoodPiece, exposure: HeatExposure, dt: float, exch
 	_migrate_water(piece, dt)
 	_absorb_fat(piece, exposure, (seeped_g + replaced_g) * exposure.uptake_boost, exchange)
 	_render_fat(piece, dt, exchange)
+	_hydrate(piece, exposure, dt, exchange)
 	_cook_core(piece, dt)
 	_brown_and_char(piece, exposure, outer_temps, dt)
 	_exchange_flavour(piece, exposure, wetted_area_m2, dt)
@@ -339,11 +347,47 @@ static func _render_fat(piece: FoodPiece, dt: float, exchange: HeatExchange) -> 
 	var fat_density: float = maxf(ingredient.renders_into.density_g_per_cm3, 0.5)
 	piece.shrink_to_volume(maxf(piece.volume_mm3() - rendered / fat_density * 1000.0, piece.volume_mm3() * 0.3))
 
+## Dry grain drinks in the water it is wetted by, faster the hotter the
+## water, until it holds what it can; it swells by the water's volume. The
+## water comes at the medium's temperature.
+static func _hydrate(piece: FoodPiece, exposure: HeatExposure, dt: float, exchange: HeatExchange) -> void:
+	var ingredient: Ingredient = piece.ingredient
+	if ingredient.water_uptake_capacity <= 0.0 or exposure.water_fraction <= 0.0:
+		return
+	var wetted: float = 0.0
+	for face in FoodPiece.FACE_COUNT:
+		wetted += exposure.liquid_share(face) * piece.face_share(face)
+	var room_g: float = ingredient.water_uptake_capacity * piece.solids_g - piece.water_g
+	if wetted <= 0.0 or room_g <= 0.0:
+		return
+	var warmth: float = pow(2.0, (exposure.temp_c - WATER_BOILING_POINT_C) / HYDRATION_DOUBLING_C)
+	var available: float = maxf(exposure.medium_mass_g * exposure.water_fraction - exchange.water_absorbed_g, 0.0)
+	var drunk_g: float = minf(minf(ingredient.hydration_rate_per_s * room_g * wetted * warmth * dt, room_g), available)
+	if drunk_g <= 0.0:
+		return
+	var capacity_before: float = piece.mass_g() * ingredient.specific_heat_j_per_g_k
+	var waters := piece.face_waters_g()
+	piece.water_g += drunk_g
+	piece.restore_face_waters(waters)
+	piece.core_temp_c = (piece.core_temp_c * capacity_before + exposure.temp_c * drunk_g * WATER_SPECIFIC_HEAT_J_PER_G_K) \
+		/ (capacity_before + drunk_g * WATER_SPECIFIC_HEAT_J_PER_G_K)
+	var volume: float = piece.volume_mm3()
+	piece.size_mm *= pow((volume + drunk_g * 1000.0) / volume, 1.0 / 3.0)
+	exchange.water_absorbed_g += drunk_g
+
+## For food that cooks only once it has drunk water (dry grain), how far it
+## has: its starch can't gelatinise dry.
+static func hydration_readiness(piece: FoodPiece) -> float:
+	var capacity: float = piece.ingredient.water_uptake_capacity
+	if capacity <= 0.0:
+		return 1.0
+	return clampf(piece.water_g / (capacity * piece.solids_g * HYDRATED_TO_COOK), 0.0, 1.0)
+
 static func _cook_core(piece: FoodPiece, dt: float) -> void:
 	var ingredient: Ingredient = piece.ingredient
 	var above_cook_temp: float = piece.core_temp_c - ingredient.cook_temp_c
 	if above_cook_temp > 0.0:
-		var rate: float = above_cook_temp / COOK_REFERENCE_SPAN_C / ingredient.cook_seconds
+		var rate: float = above_cook_temp / COOK_REFERENCE_SPAN_C / ingredient.cook_seconds * hydration_readiness(piece)
 		piece.core_doneness = minf(piece.core_doneness + rate * dt, MAX_DONENESS)
 
 	var overcooked: float = piece.core_doneness - 1.0

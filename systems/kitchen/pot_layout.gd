@@ -76,7 +76,7 @@ static func _place_all(placements: Array[PotPlacement], level: float, liquid_den
 	var sunk: Array[PotPlacement] = []
 	for placement in placements:
 		var piece := placement.piece
-		var height: float = piece.size_mm.y
+		var height: float = placement.size_mm().y
 		var density: float = effective_density(placement)
 		var floats: bool = level > 0.0 and density < liquid_density
 		if floats:
@@ -96,7 +96,7 @@ static func _place_all(placements: Array[PotPlacement], level: float, liquid_den
 			placement.resting = PotPlacement.Resting.FLOOR if support <= 0.0 else PotPlacement.Resting.ON_FOOD
 			sunk.append(placement)
 		placement.immersion = clampf((level - placement.bottom_mm) / height, 0.0, 1.0) if level > 0.0 else 0.0
-		submerged_mm3 += piece.volume_mm3() * placement.immersion
+		submerged_mm3 += piece.volume_mm3() * piece.count * placement.immersion
 	return submerged_mm3
 
 static func _overlap_share(a: PotPlacement, b: PotPlacement) -> float:
@@ -133,7 +133,7 @@ static func _separate(placements: Array[PotPlacement], agitation: float) -> void
 			b.centre_mm += push
 
 static func _keep_inside(placement: PotPlacement, radius_mm: float) -> void:
-	var half := Vector2(placement.piece.size_mm.x, placement.piece.size_mm.z) * 0.5
+	var half := Vector2(placement.size_mm().x, placement.size_mm().z) * 0.5
 	var limit: float = radius_mm - WALL_CLEARANCE_MM
 	var corner := Vector2(absf(placement.centre_mm.x) + half.x, absf(placement.centre_mm.y) + half.y)
 	if corner.length() <= limit:

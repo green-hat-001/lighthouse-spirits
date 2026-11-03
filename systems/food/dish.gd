@@ -24,7 +24,7 @@ func dominant_affinity() -> ElementalAffinity.Type:
 	var mass_by_affinity: Dictionary[ElementalAffinity.Type, float] = {}
 	for piece in pieces:
 		var affinity: ElementalAffinity.Type = piece.ingredient.elemental_affinity
-		mass_by_affinity[affinity] = mass_by_affinity.get(affinity, 0.0) + piece.mass_g()
+		mass_by_affinity[affinity] = mass_by_affinity.get(affinity, 0.0) + piece.total_mass_g()
 	for portion in liquids:
 		var affinity: ElementalAffinity.Type = portion.ingredient.elemental_affinity
 		mass_by_affinity[affinity] = mass_by_affinity.get(affinity, 0.0) + portion.grams

@@ -34,6 +34,9 @@ static func cut(piece: FoodPiece, axis: int, offset_mm: float, steadied: bool) -
 		push_error("FoodCutting: a cut needs a piece and an axis of X, Y or Z")
 		return pieces
 
+	# A heap of grain isn't cut; it is scooped.
+	if piece.is_heap():
+		return pieces
 	var length: float = piece.size_mm[axis]
 	if offset_mm < MIN_PIECE_THICKNESS_MM or length - offset_mm < MIN_PIECE_THICKNESS_MM:
 		return pieces

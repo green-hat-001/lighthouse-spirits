@@ -34,9 +34,14 @@ func _init(p_piece: FoodPiece, p_centre_mm: Vector2) -> void:
 	piece = p_piece
 	centre_mm = p_centre_mm
 
+## The box it takes up in the pot: the piece, or for a heap of grain, the
+## layer its kernels make.
+func size_mm() -> Vector3:
+	return piece.bulk_size_mm()
+
 func top_mm() -> float:
-	return bottom_mm + piece.size_mm.y
+	return bottom_mm + size_mm().y
 
 func footprint() -> Rect2:
-	var size := Vector2(piece.size_mm.x, piece.size_mm.z)
+	var size := Vector2(size_mm().x, size_mm().z)
 	return Rect2(centre_mm - size * 0.5, size)

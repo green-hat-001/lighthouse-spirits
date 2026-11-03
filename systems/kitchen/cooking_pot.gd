@@ -169,7 +169,7 @@ func pour_out(grams: float) -> float:
 func add_piece(piece: FoodPiece, at_mm: Vector2 = Vector2.ZERO) -> bool:
 	if piece == null or pieces.has(piece):
 		return false
-	if _contents_volume_ml() + piece.volume_mm3() / 1000.0 > vessel.capacity_ml:
+	if _contents_volume_ml() + piece.volume_mm3() * piece.count / 1000.0 > vessel.capacity_ml:
 		return false
 	pieces.append(piece)
 	placements.append(PotPlacement.new(piece, at_mm))
@@ -265,17 +265,22 @@ func _step(dt: float) -> void:
 	var agitation: float = lerpf(AGITATION_QUIET, AGITATION_BUSY, maxf(bubbling, _stirring))
 	for placement in placements:
 		var exposure := _exposure_for(placement, pool, agitation)
+		# A heap of grain steps one kernel; everything it exchanges, the
+		# whole heap exchanges.
+		var kernels: float = placement.piece.count
+		if kernels > 1.0:
+			exposure.medium_mass_g /= kernels
 		var exchange := FoodHeating.step(placement.piece, exposure, dt)
-		drawn_from_liquid_j += exchange.liquid_energy_j
-		drawn_from_base_j += exchange.contact_energy_j * placement.over_burner
-		drawn_from_rim_j += exchange.contact_energy_j * (1.0 - placement.over_burner)
-		steam_through_liquid_g += exchange.steam_through_liquid_g
-		steam_total_g += exchange.evaporated_g
-		placement.steam_g_per_s = exchange.steam_through_liquid_g / dt
+		drawn_from_liquid_j += exchange.liquid_energy_j * kernels
+		drawn_from_base_j += exchange.contact_energy_j * placement.over_burner * kernels
+		drawn_from_rim_j += exchange.contact_energy_j * (1.0 - placement.over_burner) * kernels
+		steam_through_liquid_g += exchange.steam_through_liquid_g * kernels
+		steam_total_g += exchange.evaporated_g * kernels
+		placement.steam_g_per_s = exchange.steam_through_liquid_g * kernels / dt
 		if medium:
-			medium_mass_g = maxf(medium_mass_g - exchange.fat_absorbed_g, 0.0)
+			medium_mass_g = maxf(medium_mass_g - (exchange.fat_absorbed_g + exchange.water_absorbed_g) * kernels, 0.0)
 		if exchange.fat_rendered_g > 0.0:
-			_take_rendered_fat(placement.piece, exchange.fat_rendered_g)
+			_take_rendered_fat(placement.piece, exchange.fat_rendered_g * kernels)
 	energy_to_food_j += drawn_from_liquid_j + drawn_from_base_j + drawn_from_rim_j
 
 	# Then the metal and the liquid, in as many internal steps as their own
@@ -389,6 +394,8 @@ func _exposure_for(placement: PotPlacement, pool: bool, agitation: float) -> Hea
 	exposure.air_vapour_kg_m3 = air.vapour_density_kg_m3()
 	var contact_temp: float = lerpf(rim_temp_c, base_temp_c, placement.over_burner)
 	var interior_air_h: float = air.convective_w_per_m2_k(INTERIOR_SHELTER)
+	# In a heap only the bottom layer of kernels lies on the metal.
+	var on_metal: float = clampf(piece.size_mm.y / placement.size_mm().y, 0.0, 1.0)
 
 	if not pool:
 		# A dry pot, or one with only a film of liquid: the bottom sits on
@@ -407,7 +414,7 @@ func _exposure_for(placement: PotPlacement, pool: bool, agitation: float) -> Hea
 			exposure.temp_c = temp_c
 		for face in FoodPiece.FACE_COUNT:
 			if face == FoodPiece.BOTTOM and placement.bottom_mm <= 0.0:
-				exposure.set_face(face, 1.0 if film else 0.0, 0.0, contact_h, contact_temp, 0.0)
+				exposure.set_face(face, 1.0 if film else 0.0, 0.0, contact_h * on_metal, contact_temp, interior_air_h * (1.0 - on_metal))
 			else:
 				exposure.set_face(face, 0.0, 0.0, 0.0, 0.0, interior_air_h)
 		return exposure
@@ -428,7 +435,7 @@ func _exposure_for(placement: PotPlacement, pool: bool, agitation: float) -> Hea
 		if face == FoodPiece.BOTTOM:
 			match placement.resting:
 				PotPlacement.Resting.FLOOR:
-					exposure.set_face(face, 1.0, 0.0, vessel.wet_contact_w_per_m2_k, contact_temp, 0.0)
+					exposure.set_face(face, 1.0, liquid_h * (1.0 - on_metal), vessel.wet_contact_w_per_m2_k * on_metal, contact_temp, 0.0)
 				PotPlacement.Resting.ON_FOOD:
 					if bottom_wet:
 						exposure.set_face(face, STACKED_CONTACT_SHARE, liquid_h * STACKED_CONTACT_SHARE, 0.0, 0.0, 0.0)
@@ -483,7 +490,7 @@ func _wetted_metal_areas_m2() -> Vector2:
 	var covered_ring: float = 0.0
 	for placement in placements:
 		if placement.resting == PotPlacement.Resting.FLOOR:
-			var footprint_mm2: float = placement.piece.cross_section_mm2(Vector3.AXIS_Y)
+			var footprint_mm2: float = placement.footprint().get_area()
 			covered_disc += footprint_mm2 * placement.over_burner
 			covered_ring += footprint_mm2 * (1.0 - placement.over_burner)
 	var cover: float = 1.0
@@ -516,7 +523,7 @@ func _liquid_surface_loss(liquid_temp_c: float, dt: float) -> Vector2:
 	var open_mm2: float = vessel.floor_area_mm2()
 	for placement in placements:
 		if placement.resting == PotPlacement.Resting.FLOATING:
-			open_mm2 -= placement.piece.cross_section_mm2(Vector3.AXIS_Y)
+			open_mm2 -= placement.footprint().get_area()
 	var open_m2: float = maxf(open_mm2, vessel.floor_area_mm2() * 0.1) * 1e-6
 	var h: float = air.convective_w_per_m2_k(0.5)
 	var heat_w: float = h * open_m2 * (liquid_temp_c - air.temp_c) \
@@ -578,5 +585,5 @@ func _empty_medium() -> void:
 func _contents_volume_ml() -> float:
 	var volume: float = medium_mass_g / medium.density_g_per_cm3 if medium else 0.0
 	for piece in pieces:
-		volume += piece.volume_mm3() / 1000.0
+		volume += piece.volume_mm3() * piece.count / 1000.0
 	return volume

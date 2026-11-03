@@ -28,6 +28,8 @@ const STEAM_FULL_C: float = 95.0
 const GLOW_LIGHT_FROM: float = 0.4
 ## How high food lifted beyond its weight hangs above what it rests on.
 const MAX_HOVER_M: float = 0.025
+## The most kernels of a heap drawn one by one.
+const MAX_KERNELS_DRAWN: int = 400
 
 var piece: FoodPiece
 var grip: Interactable
@@ -52,6 +54,8 @@ var _model_meshes: Array[MeshInstance3D] = []
 var _model_basis: Basis = Basis.IDENTITY
 var _model_wears_food_shader: bool = false
 var _model_rest: Vector3 = Vector3.ZERO
+var _heap: MultiMeshInstance3D
+var _heap_laid_size: Vector3 = Vector3.ZERO
 
 func _init(p_piece: FoodPiece) -> void:
 	piece = p_piece
@@ -72,7 +76,19 @@ func _init(p_piece: FoodPiece) -> void:
 	_box_instance.mesh = _box
 	add_child(_box_instance)
 
-	if piece.cut_axes.is_empty() and piece.ingredient.whole_model:
+	if piece.is_heap():
+		_heap = MultiMeshInstance3D.new()
+		_heap.name = "Heap"
+		_heap.material_override = _material
+		var kernels := MultiMesh.new()
+		kernels.transform_format = MultiMesh.TRANSFORM_3D
+		var kernel := BoxMesh.new()
+		kernel.size = Vector3.ONE
+		kernels.mesh = kernel
+		kernels.instance_count = mini(piece.count, MAX_KERNELS_DRAWN)
+		_heap.multimesh = kernels
+		add_child(_heap)
+	elif piece.cut_axes.is_empty() and piece.ingredient.whole_model:
 		_model = piece.ingredient.whole_model.instantiate()
 		_model.name = "Model"
 		add_child(_model)
@@ -88,9 +104,11 @@ func _init(p_piece: FoodPiece) -> void:
 	add_child(grip)
 	refresh_shape()
 
-## Size in metres on the board surface, as Vector2(x, z).
+## Size in metres on the board surface, as Vector2(x, z) - for a heap of
+## grain, the layer its kernels make.
 func footprint_m() -> Vector2:
-	return Vector2(piece.size_mm.x, piece.size_mm.z) * MM_TO_M
+	var size := piece.bulk_size_mm()
+	return Vector2(size.x, size.z) * MM_TO_M
 
 ## Turns the whole-item model with the piece after FoodPiece.roll().
 func rolled_about(axis: int) -> void:
@@ -101,11 +119,15 @@ func rolled_about(axis: int) -> void:
 
 ## Call after the piece's size or orientation changes.
 func refresh_shape() -> void:
-	var size_m: Vector3 = piece.size_mm * MM_TO_M
+	var size_m: Vector3 = piece.bulk_size_mm() * MM_TO_M
 	_box.size = size_m
 	_box_instance.position = size_m * 0.5
 	_shape.size = size_m
 	_collision.position = size_m * 0.5
+	if _heap:
+		_box_instance.visible = false
+		_lay_kernels()
+		return
 
 	var show_model: bool = _model != null and piece.cut_axes.is_empty()
 	_box_instance.visible = not show_model
@@ -118,6 +140,25 @@ func refresh_shape() -> void:
 			var bounds := _model_bounds()
 			_model_rest = -bounds.position
 			_model.position = _model_rest
+
+## Scatters the drawn kernels through the heap's layer, the same way each
+## time for the same heap.
+func _lay_kernels() -> void:
+	var bulk: Vector3 = piece.bulk_size_mm() * MM_TO_M
+	var kernel: Vector3 = piece.size_mm * MM_TO_M
+	var drawn: int = _heap.multimesh.instance_count
+	var layers: float = maxf(bulk.y / maxf(kernel.y, 0.0001), 1.0)
+	for index in drawn:
+		var a: float = fmod(index * 0.618034, 1.0)
+		var b: float = fmod(index * 0.414214, 1.0)
+		var c: float = fmod(index * 0.732051, 1.0)
+		# Kernels pile higher in the middle of the heap.
+		var centred := Vector2(a - 0.5, b - 0.5)
+		var height: float = floor(c * layers * (1.0 - centred.length())) * kernel.y
+		var turn := Basis(Vector3.UP, index * 2.4)
+		var spot := Vector3(a * (bulk.x - kernel.x) + kernel.x * 0.5, height + kernel.y * 0.5, b * (bulk.z - kernel.z) + kernel.z * 0.5)
+		_heap.multimesh.set_instance_transform(index, Transform3D(turn.scaled(kernel), spot))
+	_heap_laid_size = piece.size_mm
 
 ## Glow and hover, from the essences awake in the piece.
 func _draw_essences(delta: float) -> void:
@@ -143,7 +184,12 @@ func _draw_essences(delta: float) -> void:
 		target += sin(Time.get_ticks_msec() * 0.002 + piece.size_mm.x) * 0.002
 	hover_m = lerpf(hover_m, target, 1.0 - exp(-3.0 * delta))
 	var lifted := Vector3(0.0, hover_m, 0.0)
-	_box_instance.position = piece.size_mm * MM_TO_M * 0.5 + lifted
+	_box_instance.position = piece.bulk_size_mm() * MM_TO_M * 0.5 + lifted
+	if _heap:
+		_heap.position = lifted
+		# Swelling grain grows its heap.
+		if not piece.size_mm.is_equal_approx(_heap_laid_size):
+			refresh_shape()
 	if _model and _model.visible:
 		_model.position = _model_rest + lifted
 

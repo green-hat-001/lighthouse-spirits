@@ -59,6 +59,8 @@ static func most_common(descriptions: Array) -> String:
 	return best
 
 static func _shape(piece: FoodPiece) -> String:
+	if piece.is_heap():
+		return "heap"
 	if piece.cut_axes.is_empty():
 		return "whole"
 	var dims: Array[float] = [piece.size_mm.x, piece.size_mm.y, piece.size_mm.z]

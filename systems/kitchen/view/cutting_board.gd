@@ -51,6 +51,8 @@ const CARRY_HEIGHT_M: float = 0.22
 const TOUCHING_M: float = 0.003
 ## A bite takes this much off the end of a piece, in mm.
 const BITE_MM: float = 12.0
+## A taste of a heap of grain takes this much of it, in g.
+const HEAP_MOUTHFUL_G: float = 8.0
 ## How long the two sides of a cut take to ease apart.
 const SLIDE_APART_S: float = 0.14
 ## A cut that costs more integrity than this sheds crumbs.
@@ -126,8 +128,9 @@ func receive(pieces: Array[FoodPiece], world_point: Vector3) -> Array[FoodPiece]
 	var rejected: Array[FoodPiece] = []
 	var target := to_local(world_point)
 	for piece in pieces:
-		var footprint := Vector2(piece.size_mm.x, piece.size_mm.z) * FoodPieceView.MM_TO_M
-		var spot: Variant = _free_spot(footprint, Vector2(target.x, target.z))
+		var bulk := piece.bulk_size_mm()
+		var footprint := Vector2(bulk.x, bulk.z) * FoodPieceView.MM_TO_M
+		var spot: Variant = _free_spot(footprint, Vector2(target.x, target.z) - footprint * 0.5)
 		if spot == null:
 			rejected.append(piece)
 			continue
@@ -149,6 +152,16 @@ func taste(view: FoodPieceView) -> String:
 	var piece := view.piece
 	var note := TasteNote.describe(piece)
 	bitten.emit(FoodPerception.bite_of(piece))
+	if piece.is_heap():
+		# A mouthful of a heap is a spoonful of its kernels.
+		var eaten: int = maxi(roundi(HEAP_MOUTHFUL_G / piece.mass_g()), 1)
+		piece.count -= eaten
+		if piece.count <= 0:
+			_remove_view(view)
+		else:
+			view.refresh_shape()
+		piece_tasted.emit(note)
+		return note
 	var axis: int = Vector3.AXIS_X
 	for candidate in [Vector3.AXIS_Y, Vector3.AXIS_Z]:
 		if piece.size_mm[candidate] > piece.size_mm[axis]:
@@ -160,6 +173,22 @@ func taste(view: FoodPieceView) -> String:
 		_add_view(sides[0], origin)
 	piece_tasted.emit(note)
 	return note
+
+## Pieces whose footprint lies within reach of a world point - what a
+## pinch scattered there lands on.
+func pieces_near(world_point: Vector3, reach_m: float) -> Array[FoodPiece]:
+	var local := to_local(world_point)
+	var at := Vector2(local.x, local.z)
+	var found: Array[FoodPiece] = []
+	for view in _views:
+		if _footprint_rect(view).grow(reach_m).has_point(at):
+			found.append(view.piece)
+	return found
+
+## True if a world point lies over the board.
+func is_over(world_point: Vector3) -> bool:
+	var local := to_local(world_point)
+	return absf(local.x) <= SIZE_M.x * 0.5 and absf(local.z) <= SIZE_M.y * 0.5
 
 ## The pieces touching a piece, and the pieces touching those, and so on -
 ## everything that lifts with it.

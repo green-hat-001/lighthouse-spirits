@@ -65,10 +65,10 @@ static func feeding_result_of(dish: Dish) -> FeedingResult:
 		var quality: float = piece_quality(piece)
 		# Only what can be eaten feeds: bones and horn on a plate are there
 		# for what they gave the food, not to be eaten.
-		var mass: float = piece.mass_g() * piece.ingredient.edible_share
+		var mass: float = piece.total_mass_g() * piece.ingredient.edible_share
 		if mass <= 0.0:
 			continue
-		result.nourishment += piece_kcal(piece) * piece.ingredient.edible_share * quality * NOURISHMENT_PER_KCAL
+		result.nourishment += piece_kcal(piece) * piece.count * piece.ingredient.edible_share * quality * NOURISHMENT_PER_KCAL
 		result.calming += mass * pleasantness(piece.flavour) * warmth_factor(piece) * quality * CALMING_PER_GRAM
 		result.nourishment += mass * TraitEffects.strength(piece, MysticTrait.Effect.NOURISH)
 		result.calming += mass * (TraitEffects.strength(piece, MysticTrait.Effect.SOOTHE)
