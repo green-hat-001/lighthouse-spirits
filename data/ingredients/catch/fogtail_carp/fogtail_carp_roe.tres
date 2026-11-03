@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="Ingredient" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="Ingredient" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://resources/flavour_profile.gd" id="1"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="2"]
+[ext_resource type="PackedScene" path="res://assets/models/catch/fogtail_carp/fogtail_carp_roe.glb" id="3"]
 
 [sub_resource type="Resource" id="flavour"]
 script = ExtResource("1")
@@ -11,6 +12,7 @@ umami = 0.55
 
 [resource]
 script = ExtResource("2")
+whole_model = ExtResource("3")
 id = &"fogtail_carp_roe"
 display_name = "Fogtail Carp Roe"
 lore = "Pale gold."

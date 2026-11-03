@@ -1,9 +1,10 @@
-[gd_resource type="Resource" script_class="Ingredient" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="Ingredient" load_steps=8 format=3]
 
 [ext_resource type="Resource" path="res://data/traits/kindle.tres" id="1"]
 [ext_resource type="Script" path="res://resources/trait_dose.gd" id="2"]
 [ext_resource type="Script" path="res://resources/flavour_profile.gd" id="3"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="4"]
+[ext_resource type="PackedScene" path="res://assets/models/ingredients/ember_millet.glb" id="5"]
 
 [sub_resource type="Resource" id="dose_0"]
 script = ExtResource("2")
@@ -18,6 +19,7 @@ aroma = 0.3
 
 [resource]
 script = ExtResource("4")
+whole_model = ExtResource("5")
 id = &"ember_millet"
 display_name = "Ember Millet"
 lore = "Tiny russet seeds that grow on the burnt driftwood line. Cooked, each grain keeps a pinprick of heat."

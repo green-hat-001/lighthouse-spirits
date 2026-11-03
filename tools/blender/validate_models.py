@@ -69,6 +69,17 @@ SPEC = {
                     {"grass_field": "MESH"}, {"grass_blade"}),
 }
 
+# The larder (tools/blender/larder.py): every ingredient's whole model, at
+# exactly the size its .tres gives, with at least a `skin` slot.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import larder  # noqa: E402
+
+BLEND = {}
+for _model_id, (_family, _params) in larder.SPECS.items():
+    SPEC[_model_id] = (larder.model_glb(_model_id), larder.budget(_family), larder.model_size(_model_id), 0.01,
+                       "bbox_base", {_model_id: "MESH"}, None)
+    BLEND[_model_id] = os.path.join("models", "larder", _model_id + ".blend")
+
 # Parts whose origin is a pivot: name -> expected world location.
 PIVOTS = {
     "gas_stove": {"knob": (0, -0.150, 0.038)},
@@ -111,8 +122,8 @@ def non_manifold(obj):
 def validate(name):
     glb, budget, size, tol, origin, objects, slots = SPEC[name]
     print(f"\n{name}")
-    blend = os.path.join(ROOT, "models", name + ".blend")
-    check(os.path.isfile(blend), name, f"models/{name}.blend exists")
+    blend = os.path.join(ROOT, BLEND.get(name, os.path.join("models", name + ".blend")))
+    check(os.path.isfile(blend), name, f"{os.path.relpath(blend, ROOT)} exists")
     check(os.path.isfile(os.path.join(ROOT, glb)), name, f"{glb} exists")
     bpy.ops.wm.open_mainfile(filepath=blend)
     scene_objs = {o.name: o for o in bpy.context.scene.objects}
@@ -125,7 +136,11 @@ def validate(name):
               f"{o.name} has identity rotation and scale")
     meshes = [o for o in scene_objs.values() if o.type == "MESH"]
     used_slots = {m.name for o in meshes for m in o.data.materials}
-    check(used_slots == slots, name, f"material slots {sorted(used_slots)}")
+    if slots is None:  # a larder model: its family names the slots, and skin is always one
+        check("skin" in used_slots, name, f"material slots {sorted(used_slots)} include skin")
+        slots = used_slots
+    else:
+        check(used_slots == slots, name, f"material slots {sorted(used_slots)}")
     tris = sum(triangles(o) for o in meshes)
     check(budget[0] <= tris <= budget[1], name, f"{tris} triangles (budget {budget[0]}-{budget[1]})")
     for o in meshes:
@@ -203,7 +218,8 @@ def validate(name):
     dropped = slots - glb_slots
     if dropped:
         print(f"  note  glb omits unused reserved slot(s) {sorted(dropped)}; they stay in the .blend")
-    check(glb_slots <= slots and slots - glb_slots <= {"flesh"}, name, f"glb materials {sorted(glb_slots)}")
+    check(glb_slots <= slots and (name in BLEND or slots - glb_slots <= {"flesh"}), name,
+          f"glb materials {sorted(glb_slots)}")
     return tris
 
 

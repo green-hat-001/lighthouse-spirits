@@ -29,5 +29,9 @@ func _toon(node: Node) -> void:
 			material.rim = RIM
 			material.rim_tint = RIM_TINT
 			material.metallic = minf(material.metallic, MAX_METALLIC)
+			# Larder models carry their painted shading as vertex colour.
+			var arrays := mesh.surface_get_arrays(surface)
+			var colours: Variant = arrays[Mesh.ARRAY_COLOR]
+			material.vertex_color_use_as_albedo = colours != null and (colours as PackedColorArray).size() > 0
 	for child in node.get_children():
 		_toon(child)

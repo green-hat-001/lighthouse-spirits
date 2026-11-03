@@ -24,6 +24,12 @@ LighthouseProgression="*res://autoload/LighthouseProgression.gd"
 window/size/viewport_width=1280
 window/size/viewport_height=720
 
+[importer_defaults]
+
+scene={
+"import_script/path": "res://tools/godot/toon_post_import.gd"
+}
+
 [input]
 
 kitchen_steady={

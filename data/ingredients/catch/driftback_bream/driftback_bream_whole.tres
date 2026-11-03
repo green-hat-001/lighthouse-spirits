@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="Ingredient" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="Ingredient" load_steps=6 format=3]
 
 [ext_resource type="Resource" path="res://data/creatures/driftback_bream.tres" id="1"]
 [ext_resource type="Script" path="res://resources/flavour_profile.gd" id="2"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="3"]
+[ext_resource type="PackedScene" path="res://assets/models/catch/driftback_bream/driftback_bream_whole.glb" id="4"]
 
 [sub_resource type="Resource" id="flavour"]
 script = ExtResource("2")
@@ -13,6 +14,7 @@ aroma = 0.2
 
 [resource]
 script = ExtResource("3")
+whole_model = ExtResource("4")
 id = &"driftback_bream_whole"
 display_name = "Driftback Bream (whole)"
 lore = "A whole bream from the shallows, scaled and gutted on the rocks. Run the mezzaluna through it to open it up."

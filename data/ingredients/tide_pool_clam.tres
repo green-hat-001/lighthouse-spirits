@@ -1,9 +1,10 @@
-[gd_resource type="Resource" script_class="Ingredient" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="Ingredient" load_steps=8 format=3]
 
 [ext_resource type="Resource" path="res://data/traits/stillwater.tres" id="1"]
 [ext_resource type="Script" path="res://resources/trait_dose.gd" id="2"]
 [ext_resource type="Script" path="res://resources/flavour_profile.gd" id="3"]
 [ext_resource type="Script" path="res://resources/ingredient.gd" id="4"]
+[ext_resource type="PackedScene" path="res://assets/models/ingredients/tide_pool_clam.glb" id="5"]
 
 [sub_resource type="Resource" id="dose_0"]
 script = ExtResource("2")
@@ -19,6 +20,7 @@ aroma = 0.2
 
 [resource]
 script = ExtResource("4")
+whole_model = ExtResource("5")
 id = &"tide_pool_clam"
 display_name = "Tide Pool Clam"
 lore = "Small clams from the tide pools. They filter the still water all day, and hold its calm."

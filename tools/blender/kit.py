@@ -379,6 +379,11 @@ def save(slug, glb_rel, vertex_colors=False):
         assert tuple(obj.rotation_euler) == (0.0, 0.0, 0.0), obj.name
         assert tuple(obj.scale) == (1.0, 1.0, 1.0), obj.name
     _frame_viewports()
+    if vertex_colors:
+        # The exporter's "active" colour is the one marked for rendering.
+        for obj in bpy.context.scene.objects:
+            if obj.type == "MESH" and obj.data.color_attributes.active_color is not None:
+                obj.data.color_attributes.render_color_index = obj.data.color_attributes.active_color_index
     os.makedirs(BLEND_DIR, exist_ok=True)
     blend_path = os.path.join(BLEND_DIR, slug + ".blend")
     bpy.ops.wm.save_as_mainfile(filepath=blend_path, compress=True)
@@ -392,6 +397,8 @@ def save(slug, glb_rel, vertex_colors=False):
         export_extras=True,
         export_materials="EXPORT",
         use_selection=False,
-        **({"export_vertex_color": "ACTIVE"} if vertex_colors else {}),
+        # Only the active attribute, as COLOR_0: by default the exporter also
+        # writes a fake white COLOR_0 and moves the real one to COLOR_1.
+        **({"export_vertex_color": "ACTIVE", "export_all_vertex_colors": False} if vertex_colors else {}),
     )
     print(f"SAVED {slug}: {os.path.relpath(blend_path, ROOT)} + {glb_rel}")
